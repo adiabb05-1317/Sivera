@@ -1,0 +1,26 @@
+[project]
+name = "hexagon-a-backend"
+version = "0.1.0"
+description = "Backend API for Hexagon-A"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.1",
+    "pydantic>=2.6.3",
+    "python-dotenv>=1.0.1",
+    "httpx>=0.27.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"] 
