@@ -1,0 +1,235 @@
+{
+  "initial_node": "introduction",
+  "nodes": {
+    "introduction": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Begin the interview with a professional introduction. Introduce yourself as the interviewer for an SDE1 position. Ask for the candidate's name and a brief introduction about themselves. Keep responses concise and under 150 words."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "collect_candidate_info",
+            "description": "Collect candidate's name and background",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "background": { "type": "string" }
+              },
+              "required": ["name", "background"]
+            },
+            "handler": "__function__:collect_candidate_info",
+            "transition_to": "background_discussion"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are a professional technical interviewer conducting an SDE1 interview. Your responses should be clear, professional, and concise. Keep responses under 150 words."
+        }
+      ]
+    },
+    "background_discussion": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Based on the candidate's introduction, ask about their technical background and experience. Focus on their programming languages, projects, and any relevant experience. Ask 1-2 follow-up questions about their strongest technical skills."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "process_background_info",
+            "description": "Process candidate's technical background information",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "technical_background": { "type": "string" },
+                "key_skills": { "type": "string" }
+              },
+              "required": ["technical_background", "key_skills"]
+            },
+            "handler": "__function__:process_background_info",
+            "transition_to": "coding_problem_introduction"
+          }
+        }
+      ]
+    },
+    "coding_problem_introduction": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Introduce a coding problem appropriate for an SDE1 interview. Choose a problem related to data structures and algorithms. Clearly explain the problem, including any constraints and expected input/output. The difficulty should be moderate - not too easy but not too complex. Example problems could be string manipulation, array operations, or basic tree traversals."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "present_coding_problem",
+            "description": "Present a coding problem to the candidate",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "problem_description": { "type": "string" },
+                "problem_constraints": { "type": "string" }
+              },
+              "required": ["problem_description", "problem_constraints"]
+            },
+            "handler": "__function__:present_coding_problem",
+            "transition_to": "coding_problem_discussion"
+          }
+        }
+      ]
+    },
+    "coding_problem_discussion": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Guide the candidate through solving the coding problem. Ask about their approach first, then guide them if needed. Focus on problem-solving skills, code structure, and optimization. Ask for the time and space complexity of their solution. Provide hints if they get stuck. Be supportive but also evaluate their thinking process."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_problem_solving",
+            "description": "Evaluate the candidate's problem-solving approach",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "approach": { "type": "string" },
+                "solution_quality": { "type": "string" }
+              },
+              "required": ["approach", "solution_quality"]
+            },
+            "handler": "__function__:evaluate_problem_solving",
+            "transition_to": "system_design_question"
+          }
+        }
+      ]
+    },
+    "system_design_question": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Present a simple system design question appropriate for an SDE1 candidate. This should be basic, like designing a URL shortening service or a simplified version of a familiar application. Focus on high-level components and basic interactions, not expecting deep architecture knowledge."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "present_system_design",
+            "description": "Present a system design question to the candidate",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "design_question": { "type": "string" },
+                "expected_components": { "type": "string" }
+              },
+              "required": ["design_question", "expected_components"]
+            },
+            "handler": "__function__:present_system_design",
+            "transition_to": "behavioral_questions"
+          }
+        }
+      ]
+    },
+    "behavioral_questions": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Ask 1-2 behavioral questions relevant to an SDE1 role. Focus on teamwork, problem-solving, or handling challenges. Questions could include describing a technical challenge they overcame or how they've worked in a team setting."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_behavioral_response",
+            "description": "Evaluate the candidate's behavioral responses",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "response_quality": { "type": "string" },
+                "communication_skills": { "type": "string" }
+              },
+              "required": ["response_quality", "communication_skills"]
+            },
+            "handler": "__function__:evaluate_behavioral_response",
+            "transition_to": "candidate_questions"
+          }
+        }
+      ]
+    },
+    "candidate_questions": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Ask the candidate if they have any questions about the role, team, or company. Answer any questions they might have to the best of your ability, while staying within the context of an SDE1 interview."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "handle_candidate_questions",
+            "description": "Handle and respond to candidate questions",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "questions": { "type": "string" },
+                "response": { "type": "string" }
+              },
+              "required": ["questions", "response"]
+            },
+            "handler": "__function__:handle_candidate_questions",
+            "transition_to": "interview_conclusion"
+          }
+        }
+      ]
+    },
+    "interview_conclusion": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Conclude the interview by thanking the candidate for their time and explaining the next steps in the interview process. Be professional and encouraging."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "conclude_interview",
+            "description": "Conclude the interview with next steps",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "final_remarks": { "type": "string" },
+                "next_steps": { "type": "string" }
+              },
+              "required": ["final_remarks", "next_steps"]
+            },
+            "handler": "__function__:conclude_interview",
+            "transition_to": "end"
+          }
+        }
+      ]
+    },
+    "end": {
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "The interview is now complete. Thank the candidate again and end the session."
+        }
+      ]
+    }
+  }
+}

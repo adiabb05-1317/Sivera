@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.6.3
+    hooks:
+      - id: uv-lock
+        name: Lock UV dependencies
+        files: ^.*/?pyproject.toml$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.8
+    hooks:
+      - id: ruff
+        name: Run Ruff linter
+        args: [--fix, --select=I]
+        types: [python]
+
+      - id: ruff-format
+        name: Run Ruff formatter
+        types: [python]
