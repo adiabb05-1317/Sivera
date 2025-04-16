@@ -16,6 +16,17 @@ from .handler_functions import (
     evaluate_behavioral_response,
     handle_candidate_questions,
     conclude_interview,
+    process_devops_experience,
+    present_aws_scenario,
+    evaluate_aws_knowledge,
+    present_kubernetes_challenge,
+    evaluate_kubernetes_knowledge,
+    present_python_challenge,
+    evaluate_python_skills,
+    present_incident_scenario,
+    evaluate_troubleshooting_skills,
+    handle_candidate_questions,
+    conclude_interview,
 )
 
 sys.path.append(

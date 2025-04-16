@@ -68,7 +68,7 @@ class InterviewFlow:
         url,
         bot_token,
         session_id,
-        flow_config_path="src/services/sde1_interview_flow.json",
+        flow_config_path="src/services/devops_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url
@@ -118,7 +118,7 @@ class InterviewFlow:
     async def create(
         cls, url, bot_token, session_id, flow_config_path=None, bot_name="Interviewer"
     ):
-        flow_config_path = flow_config_path or "src/services/sde1_interview_flow.json"
+        flow_config_path = flow_config_path or "src/services/devops_flow.json"
         return cls(url, bot_token, session_id, flow_config_path, bot_name)
 
     async def create_transport(self):
@@ -170,11 +170,7 @@ class InterviewFlow:
         @self.transport.event_handler("on_participant_left")
         async def on_participant_left(transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
-            participants = await transport.get_participants()
-            if len(participants) <= 1:
-                logger.info("All participants left, stopping pipeline")
-                await self.stop()
-                logger.info("Interview flow stopped after participant left")
+            await self.stop()
 
         @self.transport.event_handler("on_app_message")
         async def on_app_message(transport, participant, message):

@@ -22,7 +22,7 @@ Options:
     --dry-run        Show what would be deleted without actually deleting
     --all            Delete all rooms (use with caution)
     --count N        Number of rooms to leave (default: 5)
-    --pattern STR    Only delete rooms with names matching pattern (default: path-ai)
+    --pattern STR    Only delete rooms with names matching pattern (default: flowterview)
 """
 
 import argparse
@@ -53,7 +53,7 @@ BOLD = "\033[1m"
 
 async def cleanup_rooms(
     api_key: str,
-    pattern: str = "path-ai",
+    pattern: str = "flowterview",
     force: bool = False,
     dry_run: bool = False,
     delete_all: bool = False,
@@ -166,7 +166,7 @@ def parse_args():
     parser.add_argument(
         "--pattern",
         type=str,
-        default="path-ai",
+        default="flowterview",
         help="Only delete rooms matching pattern",
     )
     return parser.parse_args()

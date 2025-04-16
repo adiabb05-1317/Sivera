@@ -1,85 +1,57 @@
 import json
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from pipecat_flows import FlowArgs
+from pipecat_flows import FlowManager, FlowArgs
 from src.utils.logger import logger
 
 
 async def collect_candidate_info(
-    args: FlowArgs, name: str, background: str = ""
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Collect and process the candidate's name and background information.
 
     Args:
-        args: Flow arguments
-        name: Candidate's name
-        background: Candidate's background (optional)
+        args: Flow arguments object (supports dict-like access for parameters).
+        flow_manager: The FlowManager instance for context access.
+        result: Optional result from a preceding handler (if any).
 
     Returns:
-        Dict with processed information
+        Dict with processed information.
     """
-    logger.info(f"Collected candidate info - Name: {name}")
+    name = args["name"]
+    background = args.get("background", "")
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"candidate_name": name, "candidate_background": background}
-    )
+    logger.info(f"Collected candidate info - Name: {name}, Background: {background}")
 
     return {"name": name, "background": background}
 
 
 async def process_background_info(
-    args: FlowArgs, technical_background: str, key_skills: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Process the candidate's technical background information.
-
-    Args:
-        args: Flow arguments
-        technical_background: Information about the candidate's technical experience
-        key_skills: The candidate's key technical skills
-
-    Returns:
-        Dict with processed information
     """
-    logger.info(f"Processed candidate technical background")
+    technical_background = args["technical_background"]
+    key_skills = args["key_skills"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"technical_background": technical_background, "key_skills": key_skills}
-    )
+    logger.info(f"Processed candidate technical background")
 
     return {"technical_background": technical_background, "key_skills": key_skills}
 
 
 async def present_coding_problem(
-    args: FlowArgs, problem_description: str, problem_constraints: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Present a coding problem to the candidate.
-
-    Args:
-        args: Flow arguments
-        problem_description: Description of the coding problem
-        problem_constraints: Constraints for the coding problem
-
-    Returns:
-        Dict with problem information
     """
-    logger.info(f"Presented coding problem")
+    problem_description = args["problem_description"]
+    problem_constraints = args["problem_constraints"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {
-            "problem_description": problem_description,
-            "problem_constraints": problem_constraints,
-        }
-    )
+    logger.info(f"Presented coding problem")
 
     return {
         "problem_description": problem_description,
@@ -88,51 +60,29 @@ async def present_coding_problem(
 
 
 async def evaluate_problem_solving(
-    args: FlowArgs, approach: str, solution_quality: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Evaluate the candidate's problem-solving approach.
-
-    Args:
-        args: Flow arguments
-        approach: The candidate's approach to solving the problem
-        solution_quality: Assessment of the candidate's solution
-
-    Returns:
-        Dict with evaluation information
     """
-    logger.info(f"Evaluated candidate's problem-solving approach")
+    approach = args["approach"]
+    solution_quality = args["solution_quality"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"problem_solving_approach": approach, "solution_quality": solution_quality}
-    )
+    logger.info(f"Evaluated candidate's problem-solving approach")
 
     return {"approach": approach, "solution_quality": solution_quality}
 
 
 async def present_system_design(
-    args: FlowArgs, design_question: str, expected_components: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Present a system design question to the candidate.
-
-    Args:
-        args: Flow arguments
-        design_question: The system design question
-        expected_components: Expected components in the design
-
-    Returns:
-        Dict with system design information
     """
-    logger.info(f"Presented system design question")
+    design_question = args["design_question"]
+    expected_components = args["expected_components"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"design_question": design_question, "expected_components": expected_components}
-    )
+    logger.info(f"Presented system design question")
 
     return {
         "design_question": design_question,
@@ -141,29 +91,15 @@ async def present_system_design(
 
 
 async def evaluate_behavioral_response(
-    args: FlowArgs, response_quality: str, communication_skills: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Evaluate the candidate's behavioral responses.
-
-    Args:
-        args: Flow arguments
-        response_quality: Quality of the candidate's responses
-        communication_skills: Assessment of the candidate's communication skills
-
-    Returns:
-        Dict with evaluation information
     """
-    logger.info(f"Evaluated candidate's behavioral responses")
+    response_quality = args["response_quality"]
+    communication_skills = args["communication_skills"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {
-            "behavioral_response_quality": response_quality,
-            "communication_skills": communication_skills,
-        }
-    )
+    logger.info(f"Evaluated candidate's behavioral responses")
 
     return {
         "response_quality": response_quality,
@@ -172,50 +108,192 @@ async def evaluate_behavioral_response(
 
 
 async def handle_candidate_questions(
-    args: FlowArgs, questions: str, response: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Handle and respond to candidate questions.
-
-    Args:
-        args: Flow arguments
-        questions: The candidate's questions
-        response: Responses to the candidate's questions
-
-    Returns:
-        Dict with question and response information
     """
-    logger.info(f"Handled candidate questions")
+    questions = args["questions"]
+    response = args["response"]
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"candidate_questions": questions, "question_responses": response}
-    )
+    logger.info(f"Handled candidate questions")
 
     return {"questions": questions, "response": response}
 
 
 async def conclude_interview(
-    args: FlowArgs, final_remarks: str, next_steps: str
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Conclude the interview with final remarks and next steps.
-
-    Args:
-        args: Flow arguments
-        final_remarks: Final remarks to the candidate
-        next_steps: Next steps in the interview process
-
-    Returns:
-        Dict with conclusion information
     """
+    final_remarks = args["final_remarks"]
+    next_steps = args["next_steps"]
+
     logger.info(f"Concluded interview")
 
-    # Add to flow context
-    flow_manager = args.get_data("flow_manager")
-    flow_manager.add_to_context(
-        {"final_remarks": final_remarks, "next_steps": next_steps}
-    )
-
     return {"final_remarks": final_remarks, "next_steps": next_steps}
+
+
+# DevOps Interview Handler Functions
+async def process_devops_experience(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Process candidate's DevOps and cloud infrastructure experience.
+    """
+    cloud_experience = args["cloud_experience"]
+    infrastructure_as_code = args["infrastructure_as_code"]
+    key_skills = args["key_skills"]
+
+    logger.info("Processing DevOps experience information")
+
+    return {
+        "cloud_experience": cloud_experience,
+        "infrastructure_as_code": infrastructure_as_code,
+        "key_skills": key_skills,
+    }
+
+
+async def present_aws_scenario(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present an AWS technical scenario to assess candidate's knowledge.
+    """
+    scenario_description = args["scenario_description"]
+    required_services = args["required_services"]
+
+    logger.info("Presenting AWS scenario to candidate")
+
+    return {
+        "scenario_description": scenario_description,
+        "required_services": required_services,
+    }
+
+
+async def evaluate_aws_knowledge(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Evaluate candidate's AWS solution and knowledge.
+    """
+    solution_architecture = args["solution_architecture"]
+    best_practices_adherence = args["best_practices_adherence"]
+    service_knowledge = args["service_knowledge"]
+
+    logger.info("Evaluating candidate's AWS knowledge")
+
+    return {
+        "solution_architecture": solution_architecture,
+        "best_practices_adherence": best_practices_adherence,
+        "service_knowledge": service_knowledge,
+    }
+
+
+async def present_kubernetes_challenge(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present a Kubernetes implementation challenge.
+    """
+    challenge_description = args["challenge_description"]
+    requirements = args["requirements"]
+
+    logger.info("Presenting Kubernetes challenge to candidate")
+
+    return {
+        "challenge_description": challenge_description,
+        "requirements": requirements,
+    }
+
+
+async def evaluate_kubernetes_knowledge(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Evaluate candidate's Kubernetes knowledge and implementation approach.
+    """
+    architecture_quality = args["architecture_quality"]
+    operational_considerations = args["operational_considerations"]
+    security_measures = args["security_measures"]
+
+    logger.info("Evaluating candidate's Kubernetes knowledge")
+
+    return {
+        "architecture_quality": architecture_quality,
+        "operational_considerations": operational_considerations,
+        "security_measures": security_measures,
+    }
+
+
+async def present_python_challenge(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present a Python automation challenge for DevOps.
+    """
+    challenge_description = args["challenge_description"]
+    requirements = args["requirements"]
+
+    logger.info("Presenting Python automation challenge to candidate")
+
+    return {
+        "challenge_description": challenge_description,
+        "requirements": requirements,
+    }
+
+
+async def evaluate_python_skills(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Evaluate candidate's Python skills for DevOps automation.
+    """
+    code_quality = args["code_quality"]
+    automation_effectiveness = args["automation_effectiveness"]
+    best_practices = args["best_practices"]
+
+    logger.info("Evaluating candidate's Python skills")
+
+    return {
+        "code_quality": code_quality,
+        "automation_effectiveness": automation_effectiveness,
+        "best_practices": best_practices,
+    }
+
+
+async def present_incident_scenario(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present an incident response scenario.
+    """
+    incident_description = args["incident_description"]
+    system_context = args["system_context"]
+
+    logger.info("Presenting incident response scenario to candidate")
+
+    return {
+        "incident_description": incident_description,
+        "system_context": system_context,
+    }
+
+
+async def evaluate_troubleshooting_skills(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Evaluate candidate's incident response and troubleshooting skills.
+    """
+    methodology = args["methodology"]
+    root_cause_analysis = args["root_cause_analysis"]
+    communication = args["communication"]
+
+    logger.info("Evaluating candidate's troubleshooting skills")
+
+    return {
+        "methodology": methodology,
+        "root_cause_analysis": root_cause_analysis,
+        "communication": communication,
+    }
