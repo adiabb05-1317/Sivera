@@ -31,44 +31,41 @@ class ConnectionManager:
         async with aiohttp.ClientSession() as session:
             logger.info("Cleaning up existing Daily.co rooms")
             room_list = await get_rooms(session, Config.DAILY_API_KEY)
-
-            room_count = len(room_list) if room_list else 0
+            room_count = len(room_list)
             logger.info(f"Found {room_count} existing Daily.co rooms")
 
-            if Config.DAILY_CLEANUP_ON_STARTUP:
-                expired_rooms = []
-                path_ai_rooms = []
+            expired_rooms = []
+            flowterview_rooms = []
 
-                for room in room_list:
-                    room_name = room.get("name", "")
-                    room_url = room.get("url", "")
+            for room in room_list:
+                room_name = room.get("name", "")
+                room_url = room.get("url", "")
 
-                    if await is_room_expired(room):
-                        expired_rooms.append(room_name)
+                if await is_room_expired(room):
+                    expired_rooms.append(room_name)
 
-                    elif (
-                        "path-ai" in room_name.lower() or "path-ai" in room_url.lower()
-                    ):
-                        path_ai_rooms.append(room_name)
+                elif (
+                    "flowterview" in room_name.lower()
+                    or "flowterview" in room_url.lower()
+                ):
+                    flowterview_rooms.append(room_name)
 
-                rooms_to_delete = expired_rooms + path_ai_rooms
+            rooms_to_delete = expired_rooms + flowterview_rooms
 
-                if rooms_to_delete:
-                    logger.info(
-                        f"Cleaning up {len(rooms_to_delete)} rooms ({len(expired_rooms)} expired, {len(path_ai_rooms)} path-ai)"
-                    )
+            if rooms_to_delete:
+                logger.info(
+                    f"Cleaning up {len(rooms_to_delete)} rooms ({len(expired_rooms)} expired, {len(flowterview_rooms)} flowterview)"
+                )
 
-                    # Delete in batches of 25 to avoid API limits
-                    batch_size = 25
-                    for i in range(0, len(rooms_to_delete), batch_size):
-                        batch = rooms_to_delete[i : i + batch_size]
-                        await delete_rooms_batch(session, Config.DAILY_API_KEY, batch)
+                # Delete in batches of 25 to avoid API limits
+                batch_size = 25
+                for i in range(0, len(rooms_to_delete), batch_size):
+                    batch = rooms_to_delete[i : i + batch_size]
+                    await delete_rooms_batch(session, Config.DAILY_API_KEY, batch)
 
-                    logger.info(f"Cleaned up {len(rooms_to_delete)} Daily.co rooms")
-                else:
-                    logger.info("No Daily.co rooms needed cleanup")
+                logger.info(f"Cleaned up {len(rooms_to_delete)} Daily.co rooms")
             else:
-                logger.info("Skipping cleanup on startup (disabled in config)")
+                logger.info("No Daily.co rooms needed cleanup")
 
     def terminate_processes(self):
         for process in self.processes.values():
@@ -104,13 +101,11 @@ class ConnectionManager:
                         aiohttp_session=session,
                     )
 
-                    # Create a room with expiration
                     expires_at = datetime.now() + timedelta(
                         minutes=Config.DAILY_ROOM_EXPIRY_MINUTES
                     )
 
-                    # Create a unique name for easier tracking
-                    unique_name = f"path-ai-direct-{time.strftime('%Y%m%d%H%M%S')}"
+                    unique_name = f"flowterview-direct-{time.strftime('%Y%m%d%H%M%S')}"
 
                     room = await helper.create_room(
                         params=DailyRoomParams(
