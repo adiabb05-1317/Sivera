@@ -1,4 +1,4 @@
-# Flowterview Demo Agent by Layerpath
+# Flowterview
 
 A NextJS application that combines an interactive visual layer with a voice agent powered by Daily.co, Deepgram STT, Elevenlabs/ Cartesia TTS, Gemini AI, and LlamaIndex.
 
