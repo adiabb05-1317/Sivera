@@ -18,12 +18,28 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff"
+    "ruff>=0.1.0",
+    "pre-commit>=3.5.0"
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "C4", "ARG", "SIM"]
+ignore = []
+fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
 force-single-line = false
 force-wrap-aliases = true
 force-sort-within-sections = true
 combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
 

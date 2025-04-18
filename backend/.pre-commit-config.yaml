@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.3
+    rev: v0.6.3
     hooks:
       - id: uv-lock
         name: Lock UV dependencies
@@ -17,3 +17,15 @@ repos:
       - id: ruff-format
         name: Run Ruff formatter
         types: [python]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: debug-statements
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
