@@ -65,4 +65,5 @@ if __name__ == "__main__":
         host=Config.HOST,
         port=Config.PORT,
         reload=Config.RELOAD,
+        reload_excludes=[".venv", ".venv/*", "__pycache__", "*.pyc"],
     )

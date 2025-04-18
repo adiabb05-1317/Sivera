@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
-from pipecat.frames.frames import BotInterruptionFrame, LLMMessagesAppendFrame
+from pipecat.frames.frames import BotInterruptionFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -170,6 +170,7 @@ class InterviewFlow:
         @self.transport.event_handler("on_participant_left")
         async def on_participant_left(transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
+            message_history = self.flow_manager.get_current_context()
             await self.stop()
 
         @self.transport.event_handler("on_app_message")
@@ -180,7 +181,6 @@ class InterviewFlow:
                     logger.info(f"Received app message from {message}: {participant}")
                     return
 
-                # Handle dictionary messages
                 if isinstance(message, dict):
                     if message.get("type") == "end_session":
                         logger.info("Received end_session command")
