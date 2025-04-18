@@ -1,14 +1,11 @@
 "use client";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
-import { useEffect, useRef } from "react";
-import AvatarStack from "../ui/AvatarStack";
+import { useEffect } from "react";
 import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
 import CodeEditor from "./CodeEditor";
 import QueryDisplay from "./now-answering";
-import { FlowterviewAvatar } from "./path-avatar";
-import VisualLayer from "./visual-layer";
 
 const Presentation = () => {
   const {
@@ -18,46 +15,18 @@ const Presentation = () => {
     isUserSpeaking,
     currentBotTranscript,
     currentUserTranscript,
-    sources,
     resetStore,
     isSpeakerOn,
     setIsSpeakerOn,
     isCaptionEnabled,
-    botState,
-    showStarterQuestions,
     setJoiningCall,
-    ttsConnecting,
     callStatus,
     connectionStatus,
     participants,
     isCodeEditorOpen,
     setIsCodeEditorOpen,
-    isTransitioning,
-    setIsTransitioning,
-    starterQuestionsOpacity,
-    setStarterQuestionsOpacity,
   } = usePathStore();
 
-  const starterQuestionsTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Debug logging
-  useEffect(() => {
-    console.log("Sources in Presentation:", sources);
-  }, [sources]);
-
-  // Handle transition when sources change
-  useEffect(() => {
-    if (sources.length > 0) {
-      setIsTransitioning(true);
-      // Keep transition state for a short period to ensure smooth animation
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 800); // Increased from 500ms to 800ms for better transition
-      return () => clearTimeout(timer);
-    }
-  }, [sources, setIsTransitioning]);
-
-  // Control audio volume based on speaker state
   const toggleSpeaker = () => {
     setIsSpeakerOn(!isSpeakerOn);
     const audioElements = document.getElementsByTagName("audio");
@@ -95,27 +64,9 @@ const Presentation = () => {
     });
   };
 
-  // Determine if we should show the visual content
-  const hasVisualContent = sources.length > 0;
-
   useEffect(() => {
-    // Clear any existing timers
-    if (starterQuestionsTimerRef.current) {
-      clearTimeout(starterQuestionsTimerRef.current);
-    }
-
-    if (showStarterQuestions) {
-      // Fade in
-      setStarterQuestionsOpacity(0); // Start with opacity 0
-      // Small delay before starting the fade-in for a more natural effect
-      starterQuestionsTimerRef.current = setTimeout(() => {
-        setStarterQuestionsOpacity(1); // Animate to opacity 1
-      }, 50);
-    } else {
-      // Fade out
-      setStarterQuestionsOpacity(0);
-    }
-  }, [showStarterQuestions, setStarterQuestionsOpacity]);
+    console.log(connectionStatus);
+  }, [connectionStatus]);
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
@@ -125,9 +76,8 @@ const Presentation = () => {
         </div>
       ) : (
         <section className="relative flex-grow w-full h-full overflow-hidden bg-[#F0F8FF]">
-          {/* Code Editor - Takes 60% of screen when open */}
           <div
-            className={`absolute top-0 bottom-0 left-0 z-40 w-[60%] transition-transform duration-300 shadow-xl ${
+            className={`absolute top-0 bottom-0 left-0 z-40 w-[50%] transition-transform duration-300 shadow-xl ${
               isCodeEditorOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -137,12 +87,12 @@ const Presentation = () => {
             />
           </div>
 
-          {/* Query display in top center */}
-          <div className="absolute z-50 top-4 left-1/2 transform -translate-x-1/2 max-w-md">
+          <div
+            className={`absolute z-50 top-4 ${isCodeEditorOpen ? "left-[75%]" : "left-1/2"} transform -translate-x-1/2 max-w-md transition-all duration-300`}
+          >
             {currentUserTranscript && isBotSpeaking && <QueryDisplay />}
           </div>
 
-          {/* Audio controls */}
           <div className="absolute top-4 right-20 z-50">
             <div
               onClick={toggleSpeaker}
@@ -156,91 +106,161 @@ const Presentation = () => {
             </div>
           </div>
 
-          {/* Google Meet style grid of participants - moves right when code editor is open */}
-          <div
-            className={`absolute inset-0 flex items-center justify-center p-6 z-10 transition-all duration-300 ${
-              isCodeEditorOpen ? "ml-[60%]" : "ml-0"
-            }`}
-          >
+          {connectionStatus !== "bot_connected" ? (
             <div
-              className={`grid ${participants.length === 1 ? "grid-cols-1" : participants.length === 2 ? "grid-cols-2 gap-16" : "grid-cols-2 gap-16 md:grid-cols-3"} w-full max-w-[1200px]`}
+              className={`absolute top-1/4 ${isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"} flex justify-center p-6 z-10 transition-all duration-300`}
             >
-              {participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className={`bg-[#D8DFE5] rounded-xl aspect-video relative overflow-hidden shadow-md transition-all 
-                    ${participant.isTalking ? "ring-2 ring-[#774BE5] shadow-lg transform scale-[1.02]" : ""}
-                    ${isUserSpeaking && participant.id === "user" ? "ring-2 ring-[#774BE5]" : ""}
-                    ${isBotSpeaking && participant.id === "bot" ? "ring-2 ring-[#774BE5]" : ""}
-                  `}
-                >
-                  {participant.id === "bot" ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-28 h-28 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center border-2 border-[#774BE5]">
-                        <img
-                          src="/Flowterviewlogo.svg"
-                          alt="AI Assistant"
-                          className="w-16 h-16"
-                        />
+              <div
+                className={`w-full ${isCodeEditorOpen ? "max-w-[350px]" : "max-w-[600px]"}`}
+              >
+                {participants
+                  .filter((participant) => participant.id === "user")
+                  .map((participant) => (
+                    <div
+                      key={participant.id}
+                      className={`bg-[#D8E0E8] rounded-xl aspect-video relative overflow-hidden shadow-md transition-all 
+                        ${participant.isTalking ? "ring-2 ring-[#774BE5] shadow-lg transform scale-[1.02]" : ""}
+                        ${isUserSpeaking && participant.id === "user" ? "ring-2 ring-[#774BE5]" : ""}
+                      `}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
+                          {participant.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
+                        {participant.isTalking && (
+                          <div className="flex space-x-[2px]">
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.2s_ease-in-out_infinite_0.2s]"></div>
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.5s_ease-in-out_infinite_0.3s]"></div>
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.3s_ease-in-out_infinite_0.1s]"></div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-28 h-28 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-3xl">
-                        {participant.name.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                  )}
-                  <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-2 rounded-lg text-white text-base flex items-center gap-3 shadow-md">
-                    {participant.isTalking && (
-                      <div className="flex space-x-[2px]">
-                        <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.2s_ease-in-out_infinite_0.2s]"></div>
-                        <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.5s_ease-in-out_infinite_0.3s]"></div>
-                        <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.3s_ease-in-out_infinite_0.1s]"></div>
-                      </div>
-                    )}
-                    <span>{participant.name}</span>
-                    {participant.id === "bot" && (
-                      <span className="text-sm opacity-75">(AI)</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div
+              className={`absolute inset-0 flex items-center justify-center p-6 z-10 transition-all duration-300 ${
+                isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"
+              }`}
+            >
+              <div
+                className={`${
+                  isCodeEditorOpen
+                    ? "flex flex-col gap-6"
+                    : "grid grid-cols-2 gap-8"
+                } w-full ${isCodeEditorOpen ? "max-w-[calc(50vw-24px)]" : "max-w-[1200px]"}`}
+              >
+                {participants
+                  .filter(
+                    (participant) =>
+                      participant.id === "user" ||
+                      (participant.id === "bot" &&
+                        connectionStatus === "bot_connected")
+                  )
+                  .map((participant) => (
+                    <div
+                      key={participant.id}
+                      className={`bg-[#D8E0E8] rounded-xl relative overflow-hidden shadow-md transition-all 
+                        ${participant.isTalking ? "ring-2 ring-[#774BE5] shadow-lg transform scale-[1.02]" : ""}
+                        ${isUserSpeaking && participant.id === "user" ? "ring-2 ring-[#774BE5]" : ""}
+                        ${isBotSpeaking && participant.id === "bot" ? "ring-2 ring-[#774BE5]" : ""}
+                        ${isCodeEditorOpen ? "aspect-[4/3] max-h-[30vh]" : "aspect-video"}
+                      `}
+                    >
+                      {participant.id === "bot" ? (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center border-2 border-[#774BE5]">
+                            <img
+                              src="/Flowterviewlogo.svg"
+                              alt="AI Assistant"
+                              className="w-14 h-14"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
+                            {participant.name.charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
+                        {participant.isTalking && (
+                          <div className="flex space-x-[2px]">
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.2s_ease-in-out_infinite_0.2s]"></div>
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.5s_ease-in-out_infinite_0.3s]"></div>
+                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.3s_ease-in-out_infinite_0.1s]"></div>
+                          </div>
+                        )}
 
-          {/* Visual content */}
-
-          {/* Caption bar at the bottom */}
-          {isCaptionEnabled && currentBotTranscript && (
-            <div className="absolute left-1/2 z-30 transform -translate-x-1/2 bottom-24 max-w-2xl w-full px-4">
-              <div className="bg-[#0E1C29]/85 backdrop-blur-sm p-4 rounded-lg text-center">
-                <p className="text-white text-base">{currentBotTranscript}</p>
+                        {participant.id === "bot" && (
+                          <span className="text-xs opacity-75">(AI)</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
         </section>
       )}
 
-      {/* Controls bar at bottom */}
-      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-30">
-        <Controls
-          participants={participants}
-          isCodeEditorOpen={isCodeEditorOpen}
-          toggleCodeEditor={toggleCodeEditor}
-          style={{
-            maxHeight: callStatus === "left" ? "0" : "80px",
-            overflow: callStatus === "left" ? "hidden" : "visible",
-            width: "auto",
-            minWidth: "450px",
-            maxWidth: "600px",
-            background: "rgba(14, 28, 41, 0.85)",
-            backdropFilter: "blur(8px)",
-            borderRadius: "16px",
-            padding: "0 12px",
-          }}
-          joinAndLeaveCallHandler={joinAndLeaveCallHandler}
-        />
+      {/* Transcript overlay - positioned above controls */}
+      {isCaptionEnabled && currentBotTranscript && callStatus !== "left" && (
+        <div
+          className={`fixed z-30 ${
+            isCodeEditorOpen ? "left-[75%]" : "left-1/2"
+          } bottom-[108px] transform -translate-x-1/2 max-w-2xl w-[calc(100%-32px)] md:w-auto animate-fade-in transition-all duration-300`}
+        >
+          <div className="relative px-4">
+            <div className="bg-[#0E1C29]/90 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-[#323D68]/30">
+              <div className="flex items-start mb-2">
+                <div className="w-6 h-6 rounded-full bg-[#323D68] border border-[#774BE5] flex items-center justify-center mr-2 mt-0.5">
+                  <img
+                    src="/Flowterviewlogo.svg"
+                    alt="AI"
+                    className="w-3.5 h-3.5"
+                  />
+                </div>
+                <span className="text-white/80 text-xs font-medium">
+                  Flowterview
+                </span>
+              </div>
+              <p className="text-white text-base ml-8 leading-relaxed">
+                {currentBotTranscript}
+              </p>
+            </div>
+            <div className="w-4 h-4 bg-[#0E1C29]/90 absolute -bottom-2 left-1/2 transform -translate-x-1/2 rotate-45"></div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`fixed ${isCodeEditorOpen ? "left-[75%] bottom-8" : "left-1/2 bottom-8"} transform -translate-x-1/2 z-30 transition-all duration-300`}
+      >
+        {callStatus !== "left" && (
+          <Controls
+            participants={participants}
+            isCodeEditorOpen={isCodeEditorOpen}
+            toggleCodeEditor={toggleCodeEditor}
+            style={{
+              maxHeight: "80px",
+              overflow: "visible",
+              width: "auto",
+              minWidth: isCodeEditorOpen ? "320px" : "450px",
+              maxWidth: isCodeEditorOpen ? "400px" : "600px",
+              background: "rgba(14, 28, 41, 0.85)",
+              backdropFilter: "blur(8px)",
+              borderRadius: "16px",
+              padding: "0 12px",
+            }}
+            joinAndLeaveCallHandler={joinAndLeaveCallHandler}
+          />
+        )}
       </div>
     </div>
   );

@@ -64,10 +64,6 @@ console.log(result);
           }}
         />
       </div>
-
-      <div className="border-t border-gray-700 py-2 px-4 bg-[#007acc] text-white text-xs">
-        Ready
-      </div>
     </div>
   );
 }

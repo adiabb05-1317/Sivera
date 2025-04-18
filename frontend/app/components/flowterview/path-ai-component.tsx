@@ -1,42 +1,18 @@
 "use client";
 import AudioClient from "./audio-client";
-import ChatBox from "./chat-box";
 import Presentation from "./presentation-layer";
 import usePathStore from "@/app/store/PathStore";
-import { useEffect } from "react";
-import { Icons } from "@/app/lib/icons";
-import ClientOnly from "../client-only";
-
 export default function FlowterviewComponent() {
   const {
     setCurrentBotTranscript,
     isChatBoxOpen,
-    showToast,
     isHeaderVisible,
     setIsHeaderVisible,
   } = usePathStore();
 
   const handleClearTranscripts = () => {
-    console.log("Clearing transcripts");
     setCurrentBotTranscript("");
   };
-
-  // Handle scroll to hide/show header
-  useEffect(() => {
-    const handleScroll = () => {
-      const st = window.scrollY || document.documentElement.scrollTop;
-      if (st > 50) {
-        // Scroll down
-        setIsHeaderVisible(false);
-      } else {
-        // At top
-        setIsHeaderVisible(true);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [setIsHeaderVisible]);
 
   return (
     <main className="h-full w-full bg-[#F0F8FF] relative overflow-hidden">
@@ -77,11 +53,6 @@ export default function FlowterviewComponent() {
       <div className="h-[calc(100%-64px)]">
         <AudioClient onClearTranscripts={handleClearTranscripts} />
         <Presentation />
-        {isChatBoxOpen && (
-          <div className="absolute right-0 top-16 bottom-0 w-80 bg-white border-l border-[#D8DFE5] shadow-lg animate-fade-in">
-            <ChatBox />
-          </div>
-        )}
       </div>
     </main>
   );

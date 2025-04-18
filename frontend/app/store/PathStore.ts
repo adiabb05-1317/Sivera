@@ -27,7 +27,7 @@ type Participant = {
   id: string;
   name: string;
   isTalking: boolean;
-  color?: string; // Optionally support per-user color
+  color?: string;
 };
 
 type TPathStore = {

@@ -43,6 +43,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     if (gainNodeRef.current && audioContextRef.current) {
       if (isSpeakerOn) {
         gainNodeRef.current.connect(audioContextRef.current.destination);
@@ -53,6 +55,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   }, [isSpeakerOn]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     if (gainNodeRef.current) {
       gainNodeRef.current.gain.value = isSpeakerOn ? 1.0 : 0;
     }
@@ -62,10 +66,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         audioRef.current
           .play()
           .then(() => {
-            console.log("Audio playback started from above");
+            console.log("Audio playback started");
           })
           .catch((err) => {
-            // Silently handle NotAllowedError since it's expected before user interaction
             if (err.name !== "NotAllowedError") {
               console.error("Play failed:", err);
               showToast("Audio playback error occurred", "error");
@@ -78,9 +81,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const showToast = (message: string, type: "info" | "error" = "info") => {
     const toast = { message, type };
     setToasts((prev) => [...prev, toast]);
-    console.log(`[AudioClient] ${type === "error" ? "ERROR: " : ""}${message}`);
-
-    // Auto-dismiss toasts after a timeout - shorter for info, longer for errors
     setTimeout(
       () => {
         setToasts((prev) => prev.filter((t) => t !== toast));
@@ -89,34 +89,21 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     );
   };
 
-  const formatImageUrl = (url: string): string => {
-    // Handle different formats of image URLs
+  const getOriginUrl = (url: string): string => {
     if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    if (url.startsWith("data:")) return url;
+    return url.startsWith("/") ? url : `/${url}`;
+  };
 
-    // If it's already a full URL, return it
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-
-    // If it's a data URL, return it
-    if (url.startsWith("data:")) {
-      return url;
-    }
-
-    // If it's a relative path, convert to absolute
-    if (url.startsWith("/")) {
-      // Use the current domain
-      return `${window.location.origin}${url}`;
-    }
-
-    // Default case: assume it's a relative path without leading slash
-    return `${window.location.origin}/${url}`;
+  const formatImageUrl = (url: string): string => {
+    return getOriginUrl(url);
   };
 
   const setupAudioTrack = (track: MediaStreamTrack) => {
-    if (!track) {
-      console.error("No audio track provided");
-      showToast("Audio track missing", "error");
+    if (!track || typeof window === "undefined") {
+      console.error("No audio track provided or not in browser environment");
+      showToast("Audio setup failed", "error");
       return;
     }
 
@@ -134,8 +121,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       audioEl.muted = false;
       audioEl.volume = 1.0;
 
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      const AudioContext =
+        window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       const source = audioContext.createMediaStreamSource(stream);
       const gainNode = audioContext.createGain();
@@ -148,18 +136,12 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       source.connect(gainNode);
       gainNode.connect(analyser);
 
-      audioEl
-        .play()
-        .then(() => {
-          console.log("Audio playback started from below");
-        })
-        .catch((err) => {
-          // Silently handle NotAllowedError since it's expected before user interaction
-          if (err.name !== "NotAllowedError") {
-            console.error("Play failed:", err);
-            showToast("Audio playback error occurred", "error");
-          }
-        });
+      audioEl.play().catch((err) => {
+        if (err.name !== "NotAllowedError") {
+          console.error("Play failed:", err);
+          showToast("Audio playback error occurred", "error");
+        }
+      });
     } catch (error) {
       console.error("Error in setupAudioTrack:", error);
       showToast(
@@ -180,7 +162,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       if (track.kind === "audio" && !participant?.local) {
         console.log("Bot audio track detected:", track);
         setupAudioTrack(track);
-        setConnectionStatus("disconnected");
       }
     });
 
@@ -213,16 +194,13 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       console.log("BotTTs", data.text);
       const latestTranscript = usePathStore.getState().currentBotTranscript;
 
-      // Check if the previous transcript ends with a sentence-ending punctuation
       const isNewSentence = /[.!?]\s*$/.test(latestTranscript);
 
-      // If a sentence just ended, start fresh with the new text
       if (isNewSentence) {
         setCurrentBotTranscript(data.text);
         return;
       }
 
-      // Function to intelligently concatenate text with proper spacing
       const concatenateWithSpacing = (
         prevText: string,
         newText: string
@@ -230,7 +208,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         // If this is the first piece of text
         if (!prevText) return newText;
 
-        // Check if the new text is a punctuation mark
         const isPunctuation = /^[.,!?;:]/.test(newText);
 
         // Check if the previous text ends with a punctuation mark
@@ -505,14 +482,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   }, [callStatus]);
 
   return (
-    <div>
-      <audio
-        ref={audioRef}
-        autoPlay
-        playsInline
-        controls={false}
-        style={{ display: "none" }}
-      />
+    <div className="relative">
+      <audio ref={audioRef} />
+      {/* Rest of your component JSX */}
     </div>
   );
 }
