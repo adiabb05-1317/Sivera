@@ -1,24 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flowterview Demo Agent by Layerpath
+
+A NextJS application that combines an interactive visual layer with a voice agent powered by Daily.co, Deepgram STT, Elevenlabs/ Cartesia TTS, Gemini AI, and LlamaIndex.
+
+## Features
+
+- Interactive visual layer with particle animations
+- Holographic voice agent button
+- Speech-to-text and text-to-speech capabilities
+- AI-powered responses using Gemini 2.0 Flash or any other LLM models (configurable)
+- Information retrieval with LlamaIndex
+- Modern UI built with Shadcn UI components
+
+## Project Structure
+
+```
+frontend/
+├── app/
+│   ├── components/
+│   │   ├── path-ai/
+│   │   │   ├── path-ai-voice-agent.tsx  # Voice agent component
+│   │   │   └── visual-layer.tsx      # Visual effects layer
+│   │   └── ui/
+│   │       ├── button.tsx            # Button component
+│   │       └── dialog.tsx            # Dialog component
+│   ├── lib/
+│   │   ├── api/
+│   │   │   ├── llama-index.ts        # LlamaIndex integration
+│   │   │   └── voice-agent.ts        # Voice agent API
+│   │   └── utils.ts                  # Utility functions
+│   ├── globals.css                   # Global styles
+│   ├── layout.tsx                    # Root layout
+│   └── page.tsx                      # Main page
+├── public/                           # Static assets
+├── package.json                      # Project dependencies
+└── tailwind.config.ts                # Tailwind configuration
+```
+
+## Technologies Used
+
+- **Next.js**: React framework for server-rendered applications
+- **React**: JavaScript library for building user interfaces
+- **TypeScript**: Typed JavaScript
+- **Zustand**: A small, fast Global State Manager
+- **Tailwind CSS**: Utility-first CSS framework
+- **Shadcn UI**: UI component library
+- **Framer Motion**: Animation library
+- **Daily.co**: Video and voice API platform
+- **Google STT/TTS**: Speech-to-text and text-to-speech services
+- **Gemini AI**: Google's AI model for generating responses
+- **LlamaIndex**: Data framework for building LLM applications
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18.x or later
+- pnpm package manager
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   git clone https://github.com/layerpath/layerpath-v2.git
+   cd layerpath-v2
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Run the development server:
+
+   ```bash
+   pnpm dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Development
+
+This project uses placeholder API calls for voice agent functionality, LlamaIndex integration, and AI responses. To implement real functionality, you'll need to:
+
+1. Install and configure the required dependencies:
+
+   ```bash
+   pnpm add @daily-co/daily-js @llama-index/core @google-cloud/speech @google-cloud/text-to-speech @google/generative-ai
+   ```
+
+2. Update the API implementation in `app/lib/api/` with your API keys and configuration.
+
+## License
+
+This project is proprietary software of Flowterview. All rights reserved.
 
 ## Learn More
 

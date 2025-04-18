@@ -68,7 +68,7 @@ class InterviewFlow:
         url,
         bot_token,
         session_id,
-        flow_config_path="src/services/devops_flow.json",
+        flow_config_path="src/services/sde1_interview_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url

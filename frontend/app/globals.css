@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* New Color Palette */
+  --accent-purple: 119, 75, 229; /* #774BE5 */
+  --secondary-blue-gray: 94, 120, 143; /* #5E788F */
+  --dark-blue: 14, 28, 41; /* #0E1C29 */
+  --ui-blue: 50, 61, 104; /* #323D68 */
+  --light-gray: 216, 223, 229; /* #D8DFE5 */
+  
+  /* Main theme colors */
+  --meet-background: #F0F8FF;
+  --meet-surface: #FFFFFF;
+  --meet-surface-light: #D8DFE5;
+  
+  /* Primary colors */
+  --meet-primary: #774BE5; /* Accent Purple */
+  --meet-primary-rgb: var(--accent-purple);
+  --meet-secondary: #5E788F;
+  --meet-secondary-rgb: var(--secondary-blue-gray);
+  
+  /* Status colors */
+  --meet-error: #ea4335;
+  --meet-success: #34a853;
+  --meet-warning: #fbbc04;
+  
+  /* Text and borders */
+  --meet-text-primary: #0E1C29;
+  --meet-text-secondary: #323D68;
+  --meet-border: rgba(119, 75, 229, 0.3);
+  --meet-hover: rgba(119, 75, 229, 0.1);
+  
+  /* Gradient backgrounds */
+  --purple-gradient: linear-gradient(135deg, rgba(var(--accent-purple), 0.8) 0%, rgba(var(--ui-blue), 0.7) 100%);
+  --light-gradient: linear-gradient(180deg, var(--meet-surface) 0%, var(--meet-background) 100%);
+  
+  /* System colors */
+  --foreground-rgb: var(--meet-text-primary);
+  --background-start-rgb: 240, 248, 255;
+  --background-end-rgb: 216, 223, 229;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  ) rgb(var(--background-start-rgb));
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html {
+  height: 100%;
+  background: linear-gradient(180deg, var(--meet-background) 0%, #D8DFE5 100%);
+  color: var(--meet-text-primary);
+  overflow-x: hidden;
+  letter-spacing: 0.2px;
+}
+
+.meet-button {
+  @apply px-4 py-2 rounded-full transition-all duration-200 font-medium flex items-center justify-center gap-2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transform: translateY(0);
+}
+
+.meet-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.meet-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.meet-button-primary {
+  background: var(--purple-gradient);
+  @apply text-white font-medium;
+}
+
+.meet-button-secondary {
+  @apply bg-[--meet-surface-light] text-[--meet-text-secondary] hover:bg-[--meet-hover] border border-[--meet-border];
+}
+
+.meet-button-icon {
+  @apply p-3 rounded-full flex items-center justify-center transition-all duration-200;
+  background: rgba(119, 75, 229, 0.1);
+  border: 1px solid rgba(119, 75, 229, 0.15);
+}
+
+.meet-button-icon:hover {
+  background: rgba(119, 75, 229, 0.2);
+}
+
+.meet-dropdown {
+  @apply bg-[--meet-surface] rounded-lg shadow-lg border border-[--meet-border] p-2;
+}
+
+.meet-card {
+  @apply bg-[--meet-surface] rounded-lg shadow-md;
+  border: 1px solid rgba(119, 75, 229, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), 0 0 1px rgba(119, 75, 229, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.meet-input {
+  @apply bg-[--meet-surface-light] border border-[--meet-border] rounded-md px-3 py-2 text-[--meet-text-primary] focus:outline-none focus:ring-2 focus:ring-[--meet-primary];
+}
+
+/* Define Meet-style shadows */
+.meet-shadow-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.meet-shadow {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.meet-shadow-lg {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Google Meet grid layout */
+.meet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+/* Participant video container */
+.participant-video {
+  background-color: var(--meet-surface);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+}
+
+/* Bottom controls bar */
+.meet-controls-bar {
+  @apply flex items-center justify-center gap-2 px-4 py-3 bg-[--meet-surface] border-t border-[--meet-border];
+}
+
+/* Layout for main content */
+.meet-layout {
+  @apply flex flex-col h-full;
+}
+
+.meet-main-content {
+  @apply flex-grow overflow-hidden relative;
+}
+
+/* Purple Speaker Highlight */
+.active-speaker {
+  @apply ring ring-[--meet-primary] ring-offset-0 ring-opacity-100;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-width: 3px;
+  box-shadow: 0 0 15px rgba(119, 75, 229, 0.5);
+  animation: pulse-purple 2s infinite;
+}
+
+@keyframes pulse-purple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(119, 75, 229, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(119, 75, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(119, 75, 229, 0);
+  }
+}
+
+@layer utilities {
+  .glow-circle {
+    background: transparent;
+    border: 1px solid rgba(119, 75, 229, 0.4);
+    box-shadow: 0 0 20px 1px rgba(119, 75, 229, 0.15);
+    mix-blend-mode: soft-light;
+  }
+
+  .blur-overlay {
+    backdrop-filter: blur(8px);
+    background: rgba(240, 248, 255, 0.8);
+    border-radius: 16px;
+    border: 1px solid rgba(119, 75, 229, 0.1);
+  }
+  
+  .purple-glow {
+    box-shadow: 0 0 15px rgba(119, 75, 229, 0.4);
+  }
+  
+  .purple-text {
+    background: linear-gradient(90deg, #774BE5, #323D68);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+  }
+  
+  .golden-border {
+    border: 1px solid rgba(255, 165, 0, 0.3);
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .glass-effect {
+    background: rgba(42, 42, 42, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 165, 0, 0.1);
+  }
+}
