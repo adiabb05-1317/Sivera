@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
 export default {
   content: [
@@ -51,7 +51,7 @@ export default {
         },
         "sound-wave": {
           "0%, 100%": { height: "0.25rem" },
-          "50%": { height: "1rem" }
+          "50%": { height: "1rem" },
         },
         "fade-out": {
           "0%": { opacity: "1" },
@@ -69,21 +69,17 @@ export default {
           "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
           "50%": { transform: "translate(-50%, -50%) scale(1.1)" },
         },
-        "pulse-golden": {
-          "0%": { boxShadow: "0 0 0 0 rgba(255, 165, 0, 0.7)" },
-          "70%": { boxShadow: "0 0 0 10px rgba(255, 165, 0, 0)" },
-          "100%": { boxShadow: "0 0 0 0 rgba(255, 165, 0, 0)" },
-        },
+
         "subtle-pulse": {
           "0%, 100%": { transform: "scale(1)" },
           "50%": { transform: "scale(1.05)" },
         },
-        "float": {
+        float: {
           "0%": { transform: "translateY(0) rotate(0deg)" },
           "50%": { transform: "translateY(-20px) rotate(10deg)" },
           "100%": { transform: "translateY(0) rotate(0deg)" },
         },
-        "shimmer": {
+        shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
@@ -101,11 +97,11 @@ export default {
         "sound-wave": "sound-wave 1.5s infinite ease-in-out",
         "pulse-golden": "pulse-golden 2s infinite",
         "subtle-pulse": "subtle-pulse 3s ease-in-out infinite",
-        "float": "float 6s ease-in-out infinite",
-        "shimmer": "shimmer 3s linear infinite",
+        float: "float 6s ease-in-out infinite",
+        shimmer: "shimmer 3s linear infinite",
         "glow-pulse": "glow-pulse 3s ease-in-out infinite",
       },
     },
   },
   plugins: [],
-} satisfies Config
+} satisfies Config;

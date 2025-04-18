@@ -1,91 +1,122 @@
-import { useEffect, useState } from "react"
-import { FlowterviewAvatarStatic } from "./path-avatar"
-import { Icons } from "@/app/lib/icons"
+import { useEffect, useState } from "react";
+import { Icons } from "@/app/lib/icons";
+import usePathStore from "@/app/store/PathStore";
 
 const ConclusionSection = () => {
-  const [isVisible, setIsVisible] = useState(false)
-  const [isButtonsVisible, setIsButtonsVisible] = useState(false)
-  const [isTextVisible, setIsTextVisible] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const { resetStore } = usePathStore();
+  const [isVisible, setIsVisible] = useState(false);
+  const [isButtonsVisible, setIsButtonsVisible] = useState(false);
+  const [isTextVisible, setIsTextVisible] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     // Staggered animation sequence
-    const avatarTimer = setTimeout(() => setIsVisible(true), 300)
-    const textTimer = setTimeout(() => setIsTextVisible(true), 600)
-    const buttonsTimer = setTimeout(() => setIsButtonsVisible(true), 900)
-    const confettiTimer = setTimeout(() => setShowConfetti(true), 1200)
+    const avatarTimer = setTimeout(() => setIsVisible(true), 300);
+    const textTimer = setTimeout(() => setIsTextVisible(true), 600);
+    const buttonsTimer = setTimeout(() => setIsButtonsVisible(true), 900);
+    const confettiTimer = setTimeout(() => setShowConfetti(true), 1200);
 
     return () => {
-      clearTimeout(avatarTimer)
-      clearTimeout(textTimer)
-      clearTimeout(buttonsTimer)
-      clearTimeout(confettiTimer)
-    }
-  }, [])
+      clearTimeout(avatarTimer);
+      clearTimeout(textTimer);
+      clearTimeout(buttonsTimer);
+      clearTimeout(confettiTimer);
+    };
+  }, []);
+
+  const handleStartNewSession = () => {
+    resetStore();
+    window.location.reload();
+  };
 
   return (
-    <section className="glass-effect flex items-center justify-center w-full h-full overflow-hidden bg-[#232323]">
-      {/* Background gradient effect */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[rgba(240,248,255,0.7)] to-[rgba(216,223,229,0.8)] z-0"></div>
-      
+    <section className="w-full h-full flex items-center justify-center p-6 bg-[#f8f9fa] dark:bg-[#202124]">
+      {/* Background elements */}
+      <div className="absolute inset-0 overflow-hidden z-0">
+        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#774BE5]/10 to-transparent opacity-50"></div>
+        <div className="absolute bottom-0 right-0 w-full h-64 bg-gradient-to-t from-[#774BE5]/10 to-transparent opacity-50"></div>
+      </div>
+
       {/* Confetti effect */}
       {showConfetti && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-          {[...Array(20)].map((_, i) => (
-            <div 
+          {[...Array(30)].map((_, i) => (
+            <div
               key={i}
               className="absolute rounded-full animate-float"
               style={{
-                width: `${Math.random() * 10 + 5}px`,
-                height: `${Math.random() * 10 + 5}px`,
-                background: `rgba(${Math.random() * 255}, ${Math.random() * 200 + 55}, ${Math.random() * 100}, ${Math.random() * 0.5 + 0.5})`,
+                width: `${Math.random() * 12 + 5}px`,
+                height: `${Math.random() * 12 + 5}px`,
+                background: `hsl(${Math.random() * 360}, ${Math.random() * 50 + 50}%, ${Math.random() * 30 + 60}%)`,
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
                 animationDuration: `${Math.random() * 10 + 5}s`,
-                animationDelay: `${Math.random() * 2}s`
+                animationDelay: `${Math.random() * 2}s`,
               }}
             />
           ))}
         </div>
       )}
-      
+
       {/* Content */}
-      <section className="flex lg:flex-row flex-col h-full w-full items-center justify-center relative gap-10 z-20 py-16 px-8">
-        {/* Avatar section */}
-        <div className="flex justify-center items-center">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden max-w-2xl w-full z-20">
+        <div className="absolute top-0 left-0 w-full h-1 bg-[#774BE5]"></div>
+
+        <div className="flex flex-col items-center p-8 md:p-12">
+          {/* Logo and checkmark */}
           <div
-            className={`transform transition-all duration-700 ease-out ${
+            className={`mb-6 transition-all duration-700 ease-out ${
               isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"
             }`}
           >
-            <FlowterviewAvatarStatic />
-            
-            {/* Golden glow ring around avatar */}
-            {isVisible && (
-              <div className="absolute inset-0 rounded-full purple-glow blur-[30px] opacity-20"></div>
-            )}
-          </div>
-        </div>
-        
-        {/* Content section */}
-        <div className="flex items-center flex-col justify-center max-w-md text-center">
-          {/* Thank you message */}
-          <div 
-            className={`mb-8 transition-all duration-500 ease-out ${
-              isTextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-            }`}
-          >
-            <h2 className="text-2xl font-bold mb-3 purple-text">Session Complete</h2>
-            <p className="text-[--meet-text-secondary] mb-6">Your Flowterview session has been successfully completed.</p>
-            
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-full bg-[rgba(119,75,229,0.1)] flex items-center justify-center border border-[--meet-border]">
-                <Icons.CircleCheck className="w-5 h-5 text-[--meet-primary]" />
+            <div className="w-24 h-24 rounded-full bg-[#F8F9FA] dark:bg-gray-700 flex items-center justify-center relative mb-2">
+              <img
+                src="/Flowterviewlogo.svg"
+                alt="Flowterview Logo"
+                className="w-12 h-12"
+              />
+              <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1 shadow-md">
+                <Icons.CircleCheck className="w-4 h-4 text-white" />
               </div>
-              <span className="text-[--meet-text-primary]">Call successfully completed</span>
             </div>
           </div>
-          
+
+          {/* Thank you message */}
+          <div
+            className={`mb-8 text-center transition-all duration-500 ease-out ${
+              isTextVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-8"
+            }`}
+          >
+            <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">
+              Session Complete
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Your Flowterview session has been successfully completed.
+            </p>
+
+            {/* Session stats */}
+            <div className="mt-6 grid grid-cols-2 gap-4 px-6">
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Duration
+                </div>
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  15 minutes
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Questions
+                </div>
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  5 answered
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Action buttons */}
           <div
             className={`flex flex-col sm:flex-row gap-4 justify-center w-full transition-all duration-500 ease-out ${
@@ -94,19 +125,22 @@ const ConclusionSection = () => {
                 : "opacity-0 translate-y-8"
             }`}
           >
-            <button className="meet-button meet-button-primary py-3 px-6">
+            <button
+              onClick={handleStartNewSession}
+              className="bg-[#774BE5] hover:bg-[#6039d1] text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+            >
               <Icons.DoubleSparkles />
               <span>Start New Session</span>
             </button>
-            <button className="meet-button meet-button-secondary py-3 px-6">
+            <button className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center gap-2">
               <Icons.Chat className="w-5 h-5" />
-              <span>View History</span>
+              <span>Download Summary</span>
             </button>
           </div>
         </div>
-      </section>
+      </div>
     </section>
-  )
-}
+  );
+};
 
-export default ConclusionSection
+export default ConclusionSection;

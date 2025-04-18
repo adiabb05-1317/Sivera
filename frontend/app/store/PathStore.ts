@@ -1,5 +1,5 @@
-import { Message, TConnectionStatus, TSource } from "@/lib/types/general"
-import { create } from "zustand"
+import { Message, TConnectionStatus, TSource } from "@/lib/types/general";
+import { create } from "zustand";
 
 type CallStatus =
   | "initial"
@@ -8,9 +8,9 @@ type CallStatus =
   | "joining"
   | "leaving"
   | "connecting"
-  | "connected"
+  | "connected";
 
-type BotState = "initial" | "speaking" | "listening" | "thinking" | "done"
+type BotState = "initial" | "speaking" | "listening" | "thinking" | "done";
 
 type TTransportState =
   | "disconnected"
@@ -21,88 +21,148 @@ type TTransportState =
   | "connected"
   | "ready"
   | "disconnecting"
-  | "error"
+  | "error";
 
 type Participant = {
-  id: string
-  name: string
-  isTalking: boolean
-  color?: string // Optionally support per-user color
-}
+  id: string;
+  name: string;
+  isTalking: boolean;
+  color?: string; // Optionally support per-user color
+};
 
 type TPathStore = {
-  showToast: (message: string, type: "info" | "success" | "error") => void
-  toasts: Array<{ message: string; type: "info" | "success" | "error" }>
+  // Toast management
+  showToast: (message: string, type: "info" | "success" | "error") => void;
+  toasts: Array<{ message: string; type: "info" | "success" | "error" }>;
   setToasts: (
     toasts: Array<{ message: string; type: "info" | "success" | "error" }>
-  ) => void
-  isBotSpeaking: boolean
-  setIsBotSpeaking: (isBotSpeaking: boolean) => void
-  sources: TSource[]
-  setSources: (sources: TSource[]) => void
+  ) => void;
+
+  // UI States
+  isHeaderVisible: boolean;
+  setIsHeaderVisible: (isVisible: boolean) => void;
+  isTransitioning: boolean;
+  setIsTransitioning: (isTransitioning: boolean) => void;
+  isCodeEditorOpen: boolean;
+  setIsCodeEditorOpen: (isOpen: boolean) => void;
+  starterQuestionsOpacity: number;
+  setStarterQuestionsOpacity: (opacity: number) => void;
+
+  // Visual Layer States
+  isLoading: boolean;
+  setIsLoading: (isLoading: boolean) => void;
+  imageLoaded: boolean;
+  setImageLoaded: (loaded: boolean) => void;
+  currentImageSrc: string;
+  setCurrentImageSrc: (src: string) => void;
+  displayedSource: TSource | null;
+  setDisplayedSource: (source: TSource | null) => void;
+
+  // Chat States
+  chatInput: string;
+  setChatInput: (input: string) => void;
+  activeTab: "chat" | "notes";
+  setActiveTab: (tab: "chat" | "notes") => void;
 
   // Multi-user participants
-  participants: Participant[]
-  setParticipants: (participants: Participant[]) => void
-  addParticipant: (participant: Participant) => void
-  removeParticipant: (id: string) => void
+  participants: Participant[];
+  setParticipants: (participants: Participant[]) => void;
+  addParticipant: (participant: Participant) => void;
+  removeParticipant: (id: string) => void;
 
   // New properties
 
-  ttsConnecting: boolean
-  setTtsConnecting: (ttsConnecting: boolean) => void
-  isUserSpeaking: boolean
-  setIsUserSpeaking: (isUserSpeaking: boolean) => void
-  isChatBoxOpen: boolean
-  setIsChatBoxOpen: (isChatBoxOpen: boolean) => void
+  ttsConnecting: boolean;
+  setTtsConnecting: (ttsConnecting: boolean) => void;
+  isUserSpeaking: boolean;
+  setIsUserSpeaking: (isUserSpeaking: boolean) => void;
+  isChatBoxOpen: boolean;
+  setIsChatBoxOpen: (isChatBoxOpen: boolean) => void;
 
-  isCaptionEnabled: boolean
-  setIsCaptionEnabled: (isCaptionEnabled: boolean) => void
+  isCaptionEnabled: boolean;
+  setIsCaptionEnabled: (isCaptionEnabled: boolean) => void;
 
-  currentChatHistory: Message[]
-  setCurrentChatHistory: (currentChatHistory: Message[]) => void
-  currentBotTranscript: string
-  setCurrentBotTranscript: (currentTranscript: string) => void
-  isNowAnswering: boolean
-  setIsNowAnswering: (isNowAnswering: boolean) => void
-  currentUserTranscript: string
-  setCurrentUserTranscript: (currentUserTranscript: string) => void
-  isSpeakerOn: boolean
-  setIsSpeakerOn: (isSpeakerOn: boolean) => void
-  callStatus: CallStatus
-  setCallStatus: (callStatus: CallStatus) => void
-  isMicMuted: boolean
-  setIsMicMuted: (isMicMuted: boolean) => void
-  permissionGranted: boolean
-  setPermissionGranted: (permissionGranted: boolean) => void
+  currentChatHistory: Message[];
+  setCurrentChatHistory: (currentChatHistory: Message[]) => void;
+  currentBotTranscript: string;
+  setCurrentBotTranscript: (currentTranscript: string) => void;
+  isNowAnswering: boolean;
+  setIsNowAnswering: (isNowAnswering: boolean) => void;
+  currentUserTranscript: string;
+  setCurrentUserTranscript: (currentUserTranscript: string) => void;
+  isSpeakerOn: boolean;
+  setIsSpeakerOn: (isSpeakerOn: boolean) => void;
+  callStatus: CallStatus;
+  setCallStatus: (callStatus: CallStatus) => void;
+  isMicMuted: boolean;
+  setIsMicMuted: (isMicMuted: boolean) => void;
+  permissionGranted: boolean;
+  setPermissionGranted: (permissionGranted: boolean) => void;
 
-  botState: BotState
-  setBotState: (botState: BotState) => void
-  showStarterQuestions: boolean
-  setShowStarterQuestions: (showStarterQuestions: boolean) => void
-  joiningCall: boolean
-  setJoiningCall: (joiningCall: boolean) => void
+  botState: BotState;
+  setBotState: (botState: BotState) => void;
+  showStarterQuestions: boolean;
+  setShowStarterQuestions: (showStarterQuestions: boolean) => void;
+  joiningCall: boolean;
+  setJoiningCall: (joiningCall: boolean) => void;
 
-  connectionStatus: TConnectionStatus
-  setConnectionStatus: (connectionStatus: TConnectionStatus) => void
+  connectionStatus: TConnectionStatus;
+  setConnectionStatus: (connectionStatus: TConnectionStatus) => void;
 
-  transportState: TTransportState
-  setTransportState: (transportState: TTransportState) => void
+  transportState: TTransportState;
+  setTransportState: (transportState: TTransportState) => void;
+
+  // Bot States
+  isBotSpeaking: boolean;
+  setIsBotSpeaking: (isBotSpeaking: boolean) => void;
+  sources: TSource[];
+  setSources: (sources: TSource[]) => void;
 
   // clear
 
-  resetStore: () => void
-}
+  resetStore: () => void;
+};
 
 export const usePathStore = create<TPathStore>((set, get) => ({
+  // UI States
+  isHeaderVisible: true,
+  setIsHeaderVisible: (isVisible) => set({ isHeaderVisible: isVisible }),
+  isTransitioning: false,
+  setIsTransitioning: (isTransitioning) => set({ isTransitioning }),
+  isCodeEditorOpen: false,
+  setIsCodeEditorOpen: (isOpen) => set({ isCodeEditorOpen: isOpen }),
+  starterQuestionsOpacity: 0,
+  setStarterQuestionsOpacity: (opacity) =>
+    set({ starterQuestionsOpacity: opacity }),
+
+  // Visual Layer States
+  isLoading: true,
+  setIsLoading: (isLoading) => set({ isLoading }),
+  imageLoaded: false,
+  setImageLoaded: (loaded) => set({ imageLoaded: loaded }),
+  currentImageSrc: "",
+  setCurrentImageSrc: (src) => set({ currentImageSrc: src }),
+  displayedSource: null,
+  setDisplayedSource: (source) => set({ displayedSource: source }),
+
+  // Chat States
+  chatInput: "",
+  setChatInput: (input) => set({ chatInput: input }),
+  activeTab: "chat",
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
   // Multi-user participants state
   participants: [
     { id: "user", name: "User", isTalking: false, color: "#FFA500" },
     { id: "bot", name: "Flowterview", isTalking: false, color: "#29e9ac" },
   ],
   setParticipants: (participants: Participant[]) => set({ participants }),
-  addParticipant: (participant: Participant) => set((state) => ({ participants: [...state.participants, participant] })),
-  removeParticipant: (id: string) => set((state) => ({ participants: state.participants.filter((p) => p.id !== id) })),
+  addParticipant: (participant: Participant) =>
+    set((state) => ({ participants: [...state.participants, participant] })),
+  removeParticipant: (id: string) =>
+    set((state) => ({
+      participants: state.participants.filter((p) => p.id !== id),
+    })),
 
   showToast: (message: string, type: "info" | "success" | "error") =>
     set((state) => ({
@@ -164,12 +224,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
         { id: "user", name: "User", isTalking: false, color: "#FFA500" },
         { id: "bot", name: "Flowterview", isTalking: false, color: "#29e9ac" },
       ],
-      showToast: (message: string, type: "info" | "success" | "error") =>
-        set((state) => ({
-          toasts: [...state.toasts, { message, type }],
-        })),
       toasts: [],
-      isBotSpeaking: false,
       sources: [],
       isUserSpeaking: false,
       isChatBoxOpen: false,
@@ -184,8 +239,23 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       botState: "initial",
       showStarterQuestions: false,
       joiningCall: false,
-    })
+      isHeaderVisible: true,
+      isTransitioning: false,
+      isCodeEditorOpen: false,
+      starterQuestionsOpacity: 0,
+      isLoading: true,
+      imageLoaded: false,
+      currentImageSrc: "",
+      displayedSource: null,
+      chatInput: "",
+      activeTab: "chat",
+      isBotSpeaking: false,
+      connectionStatus: "disconnected",
+      transportState: "disconnected",
+      permissionGranted: false,
+      callStatus: "initial",
+    });
   },
-}))
+}));
 
-export default usePathStore
+export default usePathStore;
