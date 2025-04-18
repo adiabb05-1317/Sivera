@@ -68,7 +68,7 @@ class InterviewFlow:
         url,
         bot_token,
         session_id,
-        flow_config_path="src/services/devops_flow.json",
+        flow_config_path="src/services/sde1_interview_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url
@@ -258,20 +258,23 @@ class InterviewFlow:
                 f"- STT mute strategy: {self.stt_mute_filter._config.strategies}"
             )
 
-            # Run the pipeline - DailyTransport connects automatically
+            logger.info(f"Starting interview flow for session {self.session_id}")
+
             await self.runner.run(self.task)
             self.task_running = True
-            logger.info(f"Started interview flow for session {self.session_id}")
+
+            logger.info(
+                f"Interview flow pipeline running for session {self.session_id}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to start interview flow: {e}")
             if self.runner:
                 self.task_running = False
 
-            # Attempt to recover from errors
             logger.info("Attempting to restart pipeline after error...")
+
             try:
-                # Reset the task
                 self.task = PipelineTask(
                     pipeline=self.task.pipeline,
                     params=self.task.params,
