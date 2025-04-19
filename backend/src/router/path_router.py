@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from starlette.responses import JSONResponse
 
 from src.core.config import Config
+from src.llm_handler.analytics import InterviewAnalytics
 
 
 UPLOAD_DIR = Config.UPLOAD_DIR
@@ -45,6 +46,56 @@ async def rtvi_connect(request: Request):
         raise HTTPException(status_code=500, detail="Failed to process!")
 
     return {"room_url": room_url, "token": bot_token}
+
+
+@router.get("/get_interview_analytics")
+async def get_interview_analytics(request: Request, session_id: str):
+    db_manager = request.app.state.db_manager
+    try:
+        if not session_id:
+            raise HTTPException(status_code=400, detail="Session ID is required")
+
+        # Fetch session data from the database
+        session_record = db_manager.fetch_one(
+            "session_history", query_params={"session_id": session_id}
+        )
+
+        if not session_record:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Parse the chat history from the session record
+        chat_history = json.loads(session_record.get("chat_history", "[]"))
+
+        if not chat_history:
+            return {"message": "No chat history available for analysis"}
+
+        # Instantiate the analytics class and analyze the interview
+        analytics = InterviewAnalytics()
+        analysis_result = await analytics.analyze_interview(chat_history)
+
+        # Add timestamp to the analysis
+        analysis_result["timestamp"] = datetime.now().isoformat()
+        analysis_result["session_id"] = session_id
+
+        # Optionally store the analysis in the database
+        try:
+            analysis_data = {
+                "session_id": uuid.UUID(session_id),
+                "analysis": json.dumps(analysis_result),
+                "created_at": datetime.now(),
+            }
+            db_manager.execute_query("interview_analytics", analysis_data)
+        except Exception as store_error:
+            logger.warning(f"Failed to store analytics result: {store_error}")
+            # Continue even if storage fails
+
+        return analysis_result
+
+    except Exception as e:
+        logger.error(f"Error getting interview analytics: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error getting interview analytics: {str(e)}"
+        )
 
 
 @router.post("/disconnect")

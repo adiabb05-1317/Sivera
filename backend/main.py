@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import Config
 from src.lib.manager import ConnectionManager
 from src.router.path_router import router
+from storage.db_manager import DatabaseManager
 from src.utils.logger import intercept_standard_logging, logger
 
 intercept_standard_logging()
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application initialization")
 
     manager = ConnectionManager()
+    db_manager = DatabaseManager()
 
     try:
         logger.info("Cleaning up existing Daily.co rooms before initialization")
@@ -26,6 +28,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Continuing without initial room cleanup")
 
     app.state.manager = manager
+    app.state.db_manager = db_manager
 
     logger.info("Application initialized successfully")
     yield
@@ -34,6 +37,7 @@ async def lifespan(app: FastAPI):
 
     try:
         await manager.cleanup()
+        db_manager.close()
         logger.info("All connections and resources terminated")
     except Exception as e:
         logger.error(f"Error during application shutdown cleanup: {e}")

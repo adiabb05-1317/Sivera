@@ -227,7 +227,26 @@
       "task_messages": [
         {
           "role": "system",
-          "content": "The interview is now complete. Thank the candidate again and end the session."
+          "content": "The interview is now complete. Thank the candidate again and end the session. ALWAYS call the provided `end_interview` function after thanking the candidate and ending the session."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "end_interview",
+            "description": "End the interview session",
+            "parameters": {
+              "type": "object"
+            },
+            "handler": "__function__:end_interview",
+            "transition_to": "end"
+          }
+        }
+      ],
+      "post_actions": [
+        {
+          "type": "end_conversation"
         }
       ]
     }

@@ -30,6 +30,11 @@ type Participant = {
   color?: string;
 };
 
+type CodingProblem = {
+  description: string;
+  constraints: string;
+};
+
 type TPathStore = {
   // Toast management
   showToast: (message: string, type: "info" | "success" | "error") => void;
@@ -117,6 +122,10 @@ type TPathStore = {
   setIsBotSpeaking: (isBotSpeaking: boolean) => void;
   sources: TSource[];
   setSources: (sources: TSource[]) => void;
+
+  // Coding problem properties
+  codingProblem: CodingProblem | null;
+  setCodingProblem: (codingProblem: CodingProblem | null) => void;
 
   // clear
 
@@ -218,6 +227,12 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   transportState: "disconnected",
   setTransportState: (transportState: TTransportState) =>
     set({ transportState }),
+
+  // Coding problem properties
+  codingProblem: null,
+  setCodingProblem: (codingProblem: CodingProblem | null) =>
+    set({ codingProblem }),
+
   resetStore: () => {
     set({
       participants: [
@@ -254,6 +269,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       transportState: "disconnected",
       permissionGranted: false,
       callStatus: "initial",
+      codingProblem: null,
     });
   },
 }));

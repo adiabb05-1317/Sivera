@@ -65,8 +65,6 @@ const Controls = ({
     try {
       setCallStatus("leaving");
       await joinAndLeaveCallHandler("leave");
-      // Don't call resetStore here - it's already called in joinAndLeaveCallHandler
-      // resetStore();
     } catch (error) {
       console.error("Error ending call:", error);
       showToast("Error ending call", "error");

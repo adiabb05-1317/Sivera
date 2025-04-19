@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from supabase import create_client
 
-from ..core.config import Config
-from ..utils.logger import logger
+from src.core.config import Config
+from src.utils.logger import logger
 
 
 class DatabaseError(Exception):
@@ -22,7 +22,6 @@ class DatabaseManager:
 
     def __init__(self):
         """Initialize instance variables. Will only run once per singleton instance."""
-        # Initialization logic should be in __new__, not here
         pass
 
     def __new__(cls):
@@ -31,11 +30,10 @@ class DatabaseManager:
             instance = super(DatabaseManager, cls).__new__(cls)
             instance.initialized = False
             instance.connected = False
-            instance.supabase_url = Config.SUPABASE_PROJECT
-            instance.supabase_key = Config.SUPABASE_API_KEY
+            instance.supabase_url = Config.SUPABASE_URL
+            instance.supabase_key = Config.SUPABASE_KEY
             instance.supabase = None
 
-            # Initialize Supabase client only once
             if not instance.initialized:
                 if instance.initialize_connection():
                     instance.initialized = True
@@ -74,12 +72,10 @@ class DatabaseManager:
     def close(self) -> None:
         """Close the Supabase connection."""
         if self.supabase:
-            # Supabase SDK doesn't require explicit connection closing
             self.connected = False
             self.supabase = None
             logger.info("Supabase connection released")
 
-    # Generic query execution methods
     def execute_query(self, table: str, data: Dict, returning: str = "id") -> Dict:
         """Insert data into a table."""
         if not self.connected:
@@ -142,12 +138,10 @@ class DatabaseManager:
         try:
             query = self.supabase.table(table).select(select)
 
-            # Apply filters if provided
             if query_params:
                 for key, value in query_params.items():
                     query = query.eq(key, value)
 
-            # Apply ordering if provided
             if order_by:
                 query = query.order(order_by)
 
@@ -165,7 +159,6 @@ class DatabaseManager:
         try:
             query = self.supabase.table(table).update(data)
 
-            # Apply filters
             for key, value in query_params.items():
                 query = query.eq(key, value)
 
@@ -183,7 +176,6 @@ class DatabaseManager:
         try:
             query = self.supabase.table(table).delete()
 
-            # Apply filters
             for key, value in query_params.items():
                 query = query.eq(key, value)
 

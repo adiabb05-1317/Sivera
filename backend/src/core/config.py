@@ -40,6 +40,8 @@ class Config:
     ZEROX_API_KEY = os.getenv("ZEROX_API_KEY", "")
     FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY", "")
     COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
     # Daily.co Configuration
     DAILY_ROOM_EXPIRY_MINUTES = 30  # Hardcoded instead of env
@@ -123,6 +125,8 @@ class Config:
             "LLM_MODEL",
             "OPENAI_API_KEY",
             "GEMINI_API_KEY",
+            "SUPABASE_URL",
+            "SUPABASE_KEY",
         ]
 
         missing = [var for var in required_vars if not getattr(cls, var)]

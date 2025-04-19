@@ -1,7 +1,8 @@
 import asyncio
 import json
 import os
-from typing import Any, Dict, Optional
+import uuid
+from typing import Any, Dict, Optional, Literal
 
 from dotenv import load_dotenv
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
@@ -17,13 +18,12 @@ from pipecat.processors.filters.stt_mute_filter import (
 )
 from pipecat.processors.frame_processor import Frame, FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import (
-    ActionResult,
-    RTVIAction,
-    RTVIActionArgument,
     RTVIConfig,
     RTVIObserver,
     RTVIProcessor,
     TransportMessageUrgentFrame,
+    RTVI_MESSAGE_LABEL,
+    RTVIMessageLiteral,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
@@ -32,6 +32,8 @@ from pipecat_flows import FlowArgs, FlowManager
 from src.constants.ai_models import LLMModels
 from src.services.tts_factory import TTSFactory
 from src.utils.logger import logger
+from pydantic import BaseModel
+
 
 load_dotenv(override=True)
 
@@ -62,12 +64,51 @@ class InterviewRTVIObserver(RTVIObserver):
 rtvi_instance = None
 
 
+async def end_interview():
+    logger.info("Ending interview session")
+    if rtvi_instance:
+        await rtvi_instance.stop()
+
+
+class RTVISourcesMessage(BaseModel):
+    """Model for sending sources to client via RTVI transport."""
+
+    label: RTVIMessageLiteral = RTVI_MESSAGE_LABEL
+    type: str = "sources"
+    data: Dict[str, Any]
+
+
+async def send_message_to_client(message):
+    """
+    Send generic message to the client via RTVI transport.
+
+    Args:
+        message: Message data to send to client
+    """
+    if not rtvi_instance:
+        logger.warning("Cannot send message: RTVI instance not set")
+        return
+
+    try:
+
+        message_model = RTVISourcesMessage(data=message)
+        logger.info(f"Sending message to client using model approach")
+        await rtvi_instance.push_frame(
+            TransportMessageUrgentFrame(message=message_model.model_dump()),
+            FrameDirection.DOWNSTREAM,
+        )
+        logger.info("Message sent to client via RTVI")
+    except Exception as e:
+        logger.error(f"Error sending message to client: {str(e)}")
+
+
 class InterviewFlow:
     def __init__(
         self,
         url,
         bot_token,
         session_id,
+        db_manager,
         flow_config_path="src/services/sde1_interview_flow.json",
         bot_name="Interviewer",
     ):
@@ -78,6 +119,7 @@ class InterviewFlow:
         self.task: Optional[PipelineTask] = None
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
+        self.db = db_manager
 
         self.flow_config = json.load(open(flow_config_path))
 
@@ -171,12 +213,29 @@ class InterviewFlow:
         async def on_participant_left(transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
             message_history = self.flow_manager.get_current_context()
+            filtered_messages = [
+                msg
+                for msg in message_history
+                if (msg["role"] == "user" or msg["role"] == "assistant")
+            ]
+
+            try:
+                session_data = {
+                    "session_id": self.session_id,
+                    "chat_history": json.dumps(filtered_messages),
+                }
+                self.db.execute_query("session_history", session_data)
+                logger.info(
+                    f"Chat history saved to session_history table for session {self.session_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to save chat history: {e}")
+
             await self.stop()
 
         @self.transport.event_handler("on_app_message")
         async def on_app_message(transport, participant, message):
             try:
-                # Check if message is a string (participant ID)
                 if isinstance(participant, dict) and isinstance(message, str):
                     logger.info(f"Received app message from {message}: {participant}")
                     return
@@ -184,6 +243,7 @@ class InterviewFlow:
                 if isinstance(message, dict):
                     if message.get("type") == "end_session":
                         logger.info("Received end_session command")
+
                         await self.stop()
                     elif message.get("msg") == "interrupt":
                         logger.info(
@@ -196,7 +256,6 @@ class InterviewFlow:
                             logger.error(f"Failed to interrupt bot: {e}")
                     elif message.get("event") == "request-chat-history":
                         logger.info("Chat history request received")
-                        # Handle chat history request if needed
                     else:
                         logger.info(f"Unhandled message type: {message}")
             except Exception as e:
@@ -288,6 +347,29 @@ class InterviewFlow:
 
     async def stop(self):
         try:
+            # Save chat history when pipeline is canceled
+            if hasattr(self, "flow_manager") and self.flow_manager:
+                try:
+                    message_history = self.flow_manager.get_current_context()
+                    filtered_messages = [
+                        msg
+                        for msg in message_history
+                        if (msg["role"] == "user" or msg["role"] == "assistant")
+                    ]
+
+                    session_data = {
+                        "session_id": self.session_id,
+                        "chat_history": json.dumps(filtered_messages),
+                    }
+                    self.db.execute_query("session_history", session_data)
+                    logger.info(
+                        f"Chat history saved to session_history table for session {self.session_id}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to save chat history during pipeline cancellation: {e}"
+                    )
+
             if self.task:
                 logger.info("Canceling pipeline task")
                 try:

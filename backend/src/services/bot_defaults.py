@@ -5,6 +5,7 @@ import os
 import sys
 
 
+from storage.db_manager import DatabaseManager
 from ..core.config import Config
 from .interview_flow import InterviewFlow
 from .handler_functions import (
@@ -46,11 +47,13 @@ async def main():
     )
 
     args = parser.parse_args()
+    db_manager = DatabaseManager()
 
     bot = InterviewFlow(
         args.url,
         args.token,
         session_id=args.session_id,
+        db_manager=db_manager,
     )
     await bot.create_transport()
     await bot.create_pipeline()

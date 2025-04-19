@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 
 from pipecat_flows import FlowManager, FlowArgs
 from src.utils.logger import logger
+from src.services.interview_flow import end_interview, send_message_to_client
 
 
 async def collect_candidate_info(
@@ -51,7 +52,20 @@ async def present_coding_problem(
     problem_description = args["problem_description"]
     problem_constraints = args["problem_constraints"]
 
-    logger.info(f"Presented coding problem")
+    try:
+
+        message = {
+            "type": "coding-problem",
+            "payload": {
+                "problem_description": problem_description,
+                "problem_constraints": problem_constraints,
+                "open_editor": True,
+            },
+        }
+        await send_message_to_client(message)
+
+    except Exception as e:
+        logger.error(f"Failed to send coding problem to client: {e}")
 
     return {
         "problem_description": problem_description,
@@ -297,3 +311,12 @@ async def evaluate_troubleshooting_skills(
         "root_cause_analysis": root_cause_analysis,
         "communication": communication,
     }
+
+
+async def end_interview(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    End the interview session.
+    """
+    await end_interview()

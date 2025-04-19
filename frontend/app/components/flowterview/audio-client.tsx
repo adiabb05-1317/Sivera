@@ -4,6 +4,7 @@ import usePathStore from "@/app/store/PathStore";
 import { RTVIClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
 import { useEffect, useRef, useState } from "react";
+import { Message } from "@/lib/types/general";
 
 export interface AudioClientProps {
   onClearTranscripts: () => void;
@@ -31,6 +32,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setJoiningCall,
     setShowStarterQuestions,
     setTransportState,
+    codingProblem,
+    setCodingProblem,
+    isCodeEditorOpen,
+    setIsCodeEditorOpen,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>
@@ -260,6 +265,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       setCurrentBotTranscript("");
       setBotState("done");
     });
+
+    client.on(RTVIEvent.TransportStateChanged, (state) => {
+      console.log("Transport state changed:", state);
+      setTransportState(state);
+    });
   };
 
   const checkPermissionAndConnect = async () => {
@@ -268,7 +278,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       setConnectionStatus("initializing");
       console.log("Starting connection to Interview Copilot backend...");
 
-      // Get microphone stream first
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -279,7 +288,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       micStreamRef.current = stream;
 
-      // Now check the stream
       if (!micStreamRef.current) {
         console.error("No microphone stream available");
         showToast("Microphone not available", "error");
@@ -368,6 +376,37 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                 }
                 if (message?.chatHistory?.length > 0) {
                   setCurrentChatHistory(message.chatHistory);
+                }
+
+                // Handle coding problem messages - check both direct and wrapped formats
+                const messageData = message.message || message;
+
+                if (
+                  messageData &&
+                  typeof messageData === "object" &&
+                  messageData.type === "coding-problem"
+                ) {
+                  console.log("Coding problem received:", messageData.payload);
+                  const {
+                    problem_description,
+                    problem_constraints,
+                    open_editor,
+                  } = messageData.payload;
+
+                  // Store the coding problem in the PathStore
+                  setCodingProblem({
+                    description: problem_description,
+                    constraints: problem_constraints,
+                  });
+
+                  // Open the code editor if requested
+                  if (open_editor) {
+                    setIsCodeEditorOpen(true);
+                  }
+                  const problemMessage: Message = {
+                    role: "assistant",
+                    content: `**Coding Problem:**\n\n${problem_description}\n\n**Constraints:**\n\n${problem_constraints}`,
+                  };
                 }
               }
             } catch (error) {

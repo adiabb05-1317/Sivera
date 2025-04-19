@@ -25,6 +25,7 @@ const Presentation = () => {
     participants,
     isCodeEditorOpen,
     setIsCodeEditorOpen,
+    codingProblem,
   } = usePathStore();
 
   const toggleSpeaker = () => {
@@ -262,6 +263,19 @@ const Presentation = () => {
           />
         )}
       </div>
+
+      {!isCodeEditorOpen && codingProblem && (
+        <div className="fixed z-10 bottom-24 right-6">
+          <button
+            onClick={() => setIsCodeEditorOpen(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 shadow-lg flex items-center justify-center"
+            title="Open Code Editor"
+          >
+            <span className="mr-2">Open Code Editor</span>
+            <Icons.Code className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

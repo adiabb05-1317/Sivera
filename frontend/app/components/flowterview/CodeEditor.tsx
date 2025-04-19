@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icons } from "@/app/lib/icons";
+import usePathStore from "@/app/store/PathStore";
 
 interface CodeEditorProps {
   isOpen?: boolean;
@@ -11,14 +12,25 @@ export default function CodeEditor({
   isOpen = false,
   onClose,
 }: CodeEditorProps) {
-  const [code, setCode] = useState(`// Write your code here
-function greet(name) {
-  return \`Hello, \${name}!\`;
+  const { codingProblem } = usePathStore();
+  const [code, setCode] = useState(`// Write your code here to solve the problem
+function solution() {
+  // Your code here
 }
-
-const result = greet('Flowterview user');
-console.log(result);
 `);
+
+  useEffect(() => {
+    if (codingProblem) {
+      // When a new problem arrives, reset the code to a template with the problem context
+      setCode(`// Problem: ${codingProblem.description.split("\n")[0]}
+// Write your code here to solve the problem
+
+function solution() {
+  // Your code here
+}
+`);
+    }
+  }, [codingProblem]);
 
   if (!isOpen) return null;
 
@@ -27,7 +39,7 @@ console.log(result);
       <div className="flex justify-between items-center py-3 px-4 border-b border-gray-700 bg-[#252526]">
         <h3 className="text-white font-medium flex items-center gap-2">
           <Icons.Code className="w-4 h-4" />
-          <span>Code Editor</span>
+          <span>Coding Challenge</span>
         </h3>
         <button
           onClick={onClose}
@@ -37,6 +49,19 @@ console.log(result);
           <Icons.X className="w-5 h-5" />
         </button>
       </div>
+
+      {codingProblem && (
+        <div className="bg-[#252526] border-b border-gray-700 p-3 max-h-[300px] overflow-auto">
+          <h4 className="font-medium text-white mb-2">Problem:</h4>
+          <p className="text-gray-300 mb-3 whitespace-pre-line">
+            {codingProblem.description}
+          </p>
+          <h4 className="font-medium text-white mb-2">Constraints:</h4>
+          <p className="text-gray-300 whitespace-pre-line">
+            {codingProblem.constraints}
+          </p>
+        </div>
+      )}
 
       <div className="px-2 py-2 flex items-center gap-2 border-b border-gray-700 bg-[#252526]">
         <div className="text-xs text-gray-400 bg-gray-800 rounded px-2 py-1">
@@ -63,6 +88,19 @@ console.log(result);
             caretColor: "#fff",
           }}
         />
+      </div>
+
+      <div className="flex justify-end py-2 px-4 bg-[#252526] border-t border-gray-700">
+        <button
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
+          onClick={() => {
+            // Handle code submission
+            // This could send the code back to the server for evaluation
+            alert("Code submitted successfully!");
+          }}
+        >
+          Submit Solution
+        </button>
       </div>
     </div>
   );
