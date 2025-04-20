@@ -62,12 +62,13 @@ class InterviewRTVIObserver(RTVIObserver):
 
 
 rtvi_instance = None
+interview__flow_instance = None
 
 
-async def end_interview():
+async def end_interview_pipeline():
     logger.info("Ending interview session")
-    if rtvi_instance:
-        await rtvi_instance.stop()
+    if interview__flow_instance:
+        await interview__flow_instance.stop()
 
 
 class RTVISourcesMessage(BaseModel):
@@ -109,7 +110,7 @@ class InterviewFlow:
         bot_token,
         session_id,
         db_manager,
-        flow_config_path="src/services/sde1_interview_flow.json",
+        flow_config_path="src/services/sde1_improved_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url
@@ -154,6 +155,7 @@ class InterviewFlow:
         )
         self.rtvi = InterviewRTVIProcessor(config=self.rtvi_config)
         globals()["rtvi_instance"] = self.rtvi
+        globals()["interview__flow_instance"] = self
         self.rtvi_observer = InterviewRTVIObserver(rtvi=self.rtvi)
 
     @classmethod

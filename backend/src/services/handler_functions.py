@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 
 from pipecat_flows import FlowManager, FlowArgs
 from src.utils.logger import logger
-from src.services.interview_flow import end_interview, send_message_to_client
+from src.services.interview_flow import end_interview_pipeline, send_message_to_client
 
 
 async def collect_candidate_info(
@@ -319,4 +319,4 @@ async def end_interview(
     """
     End the interview session.
     """
-    await end_interview()
+    await end_interview_pipeline()

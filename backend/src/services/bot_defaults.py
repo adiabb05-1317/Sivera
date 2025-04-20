@@ -28,6 +28,7 @@ from .handler_functions import (
     evaluate_troubleshooting_skills,
     handle_candidate_questions,
     conclude_interview,
+    end_interview,
 )
 
 
