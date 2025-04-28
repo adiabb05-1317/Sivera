@@ -18,12 +18,15 @@ from pipecat.processors.filters.stt_mute_filter import (
 )
 from pipecat.processors.frame_processor import Frame, FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import (
+    ActionResult,
     RTVIConfig,
     RTVIObserver,
     RTVIProcessor,
     TransportMessageUrgentFrame,
     RTVI_MESSAGE_LABEL,
     RTVIMessageLiteral,
+    RTVIAction,
+    RTVIActionArgument,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
@@ -110,7 +113,7 @@ class InterviewFlow:
         bot_token,
         session_id,
         db_manager,
-        flow_config_path="src/services/sde1_improved_flow.json",
+        flow_config_path="src/services/sde1_interview_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url
@@ -157,6 +160,8 @@ class InterviewFlow:
         globals()["rtvi_instance"] = self.rtvi
         globals()["interview__flow_instance"] = self
         self.rtvi_observer = InterviewRTVIObserver(rtvi=self.rtvi)
+
+        
 
     @classmethod
     async def create(
@@ -220,6 +225,7 @@ class InterviewFlow:
                 for msg in message_history
                 if (msg["role"] == "user" or msg["role"] == "assistant")
             ]
+            print(filtered_messages)
 
             try:
                 session_data = {
@@ -297,7 +303,29 @@ class InterviewFlow:
             tts=self.tts,
             flow_config=self.flow_config,
         )
-
+        
+        async def handle_append_to_messages(
+            rtvi: RTVIProcessor, service: str, arguments: Dict[str, Any]
+        ) -> ActionResult:
+            if "messages" in arguments and arguments["messages"]:
+                for msg in arguments["messages"]:
+                    self.context_aggregator.user()._context.messages.append(msg)
+                print("Current context:", self.flow_manager.get_current_context())
+                return True
+            else:
+                return False
+     
+        
+        self.append_to_messages_action = RTVIAction(
+            service="llm",
+            action="append_to_messages",
+            arguments=[
+                RTVIActionArgument(name="messages", type="array"),
+            ],
+            result="bool",
+            handler=handle_append_to_messages,
+        )
+        self.rtvi.register_action(self.append_to_messages_action)
         return self.task
 
     async def start(self):
@@ -387,3 +415,5 @@ class InterviewFlow:
 
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
+
+   

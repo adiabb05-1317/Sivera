@@ -36,6 +36,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setCodingProblem,
     isCodeEditorOpen,
     setIsCodeEditorOpen,
+    setRtviClient,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>
@@ -158,10 +159,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     }
   };
 
-  const debugEvents = (eventName: string, data: any) => {
-    console.log(`DEBUG [${eventName}]:`, data);
-  };
-
+ 
   const setupEventListeners = (client: RTVIClient) => {
     client.on(RTVIEvent.TrackStarted, (track, participant) => {
       if (track.kind === "audio" && !participant?.local) {
@@ -312,7 +310,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       setConnectionStatus("audio_connected");
 
-      rtviClientRef.current = new RTVIClient({
+      const rtviClient = new RTVIClient({
         params: {
           baseUrl:
             process.env.NEXT_PUBLIC_PIPECAT_BASE_URL ||
@@ -423,9 +421,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           },
         },
       });
+      setRtviClient(rtviClient);
+      rtviClientRef.current = rtviClient;
 
-      setupEventListeners(rtviClientRef.current);
-      await rtviClientRef.current.connect();
+      setupEventListeners(rtviClient);
+      await rtviClient.connect();
     } catch (error) {
       console.error("Connection failed:", error);
       showToast(

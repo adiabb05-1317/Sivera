@@ -127,9 +127,14 @@ type TPathStore = {
   codingProblem: CodingProblem | null;
   setCodingProblem: (codingProblem: CodingProblem | null) => void;
 
-  // clear
+  // RTVI client
+  rtviClient: any; // Replace 'any' with 'RTVIClient' if you have the type
+  setRtviClient: (client: any) => void;
 
+  // clear
   resetStore: () => void;
+
+  sendCodeMessage: (code: string, language: string) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -233,6 +238,9 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setCodingProblem: (codingProblem: CodingProblem | null) =>
     set({ codingProblem }),
 
+  rtviClient: null,
+  setRtviClient: (client: any) => set({ rtviClient: client }),
+
   resetStore: () => {
     set({
       participants: [
@@ -270,7 +278,31 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       permissionGranted: false,
       callStatus: "initial",
       codingProblem: null,
+      rtviClient: null,
     });
+  },
+
+  sendCodeMessage: async (code: string, language: string) => {
+    const { rtviClient } = get();
+    if (!rtviClient || !code.trim()) return;
+    try {
+      await rtviClient.action({
+        service: "llm",
+        action: "append_to_messages",
+      arguments: [        {
+          name: "messages",
+          value: [
+            {
+              role: "user",
+              content: `Language: ${language}\n\n${code}`,
+            },
+          ],
+        },
+      ],
+    });
+    } catch (error) {
+      console.error("Error sending code message:", error);
+    }
   },
 }));
 
