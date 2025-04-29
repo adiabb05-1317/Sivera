@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 
@@ -18,7 +18,8 @@ export default function CodeEditor({
   isOpen = false,
   onClose,
 }: CodeEditorProps) {
-  const { codingProblem, sendCodeMessage } = usePathStore();
+  const { codingProblem, sendCodeMessage, sendSubmittedMessage } =
+    usePathStore();
   const [selectedLang, setSelectedLang] = useState(SUPPORTED_LANGUAGES[0].id);
   const [codes, setCodes] = useState<Record<string, string>>({
     js: "",
@@ -26,10 +27,52 @@ export default function CodeEditor({
     java: "",
   });
 
+  // Debounce logic
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastSentCode = useRef<Record<string, string>>({
+    js: "",
+    py: "",
+    java: "",
+  });
+  const hasUnsentChanges = useRef(false);
+
   useEffect(() => {
     // Clear all code when a new problem arrives
     setCodes({ js: "", py: "", java: "" });
+    lastSentCode.current = { js: "", py: "", java: "" };
+    hasUnsentChanges.current = false;
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
   }, [codingProblem]);
+
+  // Helper to send code if changed
+  const trySendCode = (lang: string, code: string) => {
+    const langName =
+      SUPPORTED_LANGUAGES.find((l) => l.id === lang)?.name || lang;
+    if (lastSentCode.current[lang] !== code) {
+      sendCodeMessage(code, langName);
+      lastSentCode.current[lang] = code;
+      hasUnsentChanges.current = false;
+    }
+  };
+
+  // On close, send latest code if unsent
+  const handleClose = () => {
+    if (hasUnsentChanges.current) {
+      trySendCode(selectedLang, codes[selectedLang]);
+    }
+    if (onClose) onClose();
+  };
+
+  // On submit, send all codes immediately
+  const handleSubmit = () => {
+    SUPPORTED_LANGUAGES.forEach((lang) => {
+      trySendCode(lang.id, codes[lang.id]);
+      sendSubmittedMessage(codes[lang.id], lang.name);
+    });
+    alert("Submitted code:\n" + JSON.stringify(codes, null, 2));
+  };
 
   if (!isOpen) return null;
 
@@ -41,7 +84,7 @@ export default function CodeEditor({
           <span>Coding Challenge</span>
         </h3>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Close editor"
         >
@@ -55,7 +98,9 @@ export default function CodeEditor({
           <p className="text-gray-300 mb-4 whitespace-pre-line text-sm leading-relaxed">
             {codingProblem.description}
           </p>
-          <h4 className="font-semibold text-white mb-2 text-base">Constraints</h4>
+          <h4 className="font-semibold text-white mb-2 text-base">
+            Constraints
+          </h4>
           <p className="text-gray-400 whitespace-pre-line text-sm leading-relaxed">
             {codingProblem.constraints}
           </p>
@@ -85,11 +130,16 @@ export default function CodeEditor({
           onChange={(e) => {
             const newCode = e.target.value;
             setCodes((prev) => ({ ...prev, [selectedLang]: newCode }));
-            const langName = SUPPORTED_LANGUAGES.find(l => l.id === selectedLang)?.name || selectedLang;
-            sendCodeMessage(newCode, langName);
+            hasUnsentChanges.current = true;
+            if (debounceTimer.current) {
+              clearTimeout(debounceTimer.current);
+            }
+            debounceTimer.current = setTimeout(() => {
+              trySendCode(selectedLang, newCode);
+            }, 10000); // 10 seconds
           }}
           spellCheck={false}
-          placeholder={`// Write your ${SUPPORTED_LANGUAGES.find(l => l.id === selectedLang)?.name} solution here...`}
+          placeholder={`// Write your ${SUPPORTED_LANGUAGES.find((l) => l.id === selectedLang)?.name} solution here...`}
           style={{ minHeight: "calc(100vh - 300px)", caretColor: "#60a5fa" }}
         />
       </div>
@@ -97,9 +147,7 @@ export default function CodeEditor({
       <div className="flex justify-end py-4 px-6 bg-[#20232A] border-t border-gray-800">
         <button
           className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-2 rounded-lg text-base font-semibold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onClick={() => {
-            alert("Submitted code:\n" + JSON.stringify(codes, null, 2));
-          }}
+          onClick={handleSubmit}
         >
           Submit Solution
         </button>

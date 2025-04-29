@@ -135,6 +135,8 @@ type TPathStore = {
   resetStore: () => void;
 
   sendCodeMessage: (code: string, language: string) => void;
+
+  sendSubmittedMessage: (code: string, language: string) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -289,19 +291,44 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       await rtviClient.action({
         service: "llm",
         action: "append_to_messages",
-      arguments: [        {
-          name: "messages",
-          value: [
-            {
-              role: "user",
-              content: `Language: ${language}\n\n${code}`,
-            },
-          ],
-        },
-      ],
-    });
+        arguments: [
+          {
+            name: "messages",
+            value: [
+              {
+                role: "user",
+                content: `Language: ${language}\n\n${code}`,
+              },
+            ],
+          },
+        ],
+      });
     } catch (error) {
       console.error("Error sending code message:", error);
+    }
+  },
+
+  sendSubmittedMessage: async (code: string, language: string) => {
+    const { rtviClient } = get();
+    if (!rtviClient || !code.trim()) return;
+    try {
+      await rtviClient.action({
+        service: "llm",
+        action: "append_to_messages",
+        arguments: [
+          {
+            name: "messages",
+            value: [
+              {
+                role: "user",
+                content: `Language: ${language}\n\n${code}`,
+              },
+            ],
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Error sending submitted code message:", error);
     }
   },
 }));

@@ -159,7 +159,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     }
   };
 
- 
   const setupEventListeners = (client: RTVIClient) => {
     client.on(RTVIEvent.TrackStarted, (track, participant) => {
       if (track.kind === "audio" && !participant?.local) {

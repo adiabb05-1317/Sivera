@@ -161,8 +161,6 @@ class InterviewFlow:
         globals()["interview__flow_instance"] = self
         self.rtvi_observer = InterviewRTVIObserver(rtvi=self.rtvi)
 
-        
-
     @classmethod
     async def create(
         cls, url, bot_token, session_id, flow_config_path=None, bot_name="Interviewer"
@@ -176,12 +174,14 @@ class InterviewFlow:
             token=self.token,
             bot_name=self.bot_name,
             params=DailyParams(
-                join_as_owner=False,
                 audio_out_enabled=True,
                 audio_out_sample_rate=48000,
                 audio_out_channels=1,
-                mic_enabled=True,
-                cam_enabled=False,
+                audio_in_enabled=True,
+                camera_out_enabled=True,
+                camera_out_width=1024,
+                camera_out_height=768,
+                camera_out_framerate=30,
                 vad_enabled=True,
                 vad_analyzer=SileroVADAnalyzer(
                     sample_rate=16000,
@@ -303,7 +303,7 @@ class InterviewFlow:
             tts=self.tts,
             flow_config=self.flow_config,
         )
-        
+
         async def handle_append_to_messages(
             rtvi: RTVIProcessor, service: str, arguments: Dict[str, Any]
         ) -> ActionResult:
@@ -314,8 +314,7 @@ class InterviewFlow:
                 return True
             else:
                 return False
-     
-        
+
         self.append_to_messages_action = RTVIAction(
             service="llm",
             action="append_to_messages",
@@ -415,5 +414,3 @@ class InterviewFlow:
 
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
-
-   
