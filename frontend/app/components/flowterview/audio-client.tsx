@@ -37,6 +37,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     isCodeEditorOpen,
     setIsCodeEditorOpen,
     setRtviClient,
+    setLocalVideoStream,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>
@@ -281,9 +282,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           noiseSuppression: true,
           autoGainControl: true,
         },
+        video: true,
       });
 
       micStreamRef.current = stream;
+      setLocalVideoStream(stream);
 
       if (!micStreamRef.current) {
         console.error("No microphone stream available");
@@ -309,6 +312,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       setConnectionStatus("audio_connected");
 
+      const videoTrack = stream.getVideoTracks()[0];
+
       const rtviClient = new RTVIClient({
         params: {
           baseUrl:
@@ -316,12 +321,13 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
             "http://localhost:8000/api/v1",
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
+          videoTrack: videoTrack,
         },
         transport: new DailyTransport({
           dailyFactoryOptions: {
             subscribeToTracksAutomatically: true,
             audioSource: microphoneTrack,
-            videoSource: false,
+            videoSource: videoTrack,
             dailyConfig: {
               micAudioMode: "speech",
               userMediaAudioConstraints: {
@@ -333,7 +339,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           },
         }),
         enableMic: true,
-        enableCam: false,
+        enableCam: true,
         callbacks: {
           onConnected: () => {
             console.log("Connected to the server!");
@@ -496,6 +502,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      setLocalVideoStream(null);
       if (rtviClientRef.current) {
         rtviClientRef.current
           .disconnect()
@@ -512,6 +519,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      setLocalVideoStream(null);
       if (rtviClientRef.current) {
         rtviClientRef.current.disconnect().catch(console.error);
       }
@@ -522,7 +530,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      {/* Rest of your component JSX */}
+      {/* Remove video element here if it exists - we'll show it in Presentation instead */}
     </div>
   );
 }

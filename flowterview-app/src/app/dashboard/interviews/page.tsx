@@ -136,9 +136,6 @@ export default function InterviewsPage() {
                   <div className="mt-1 flex items-center text-sm text-gray-500">
                     <span>{interview.candidates} candidates</span>
                     <span className="mx-1">&middot;</span>
-                    <span>
-                      Created on {new Date(interview.date).toLocaleDateString()}
-                    </span>
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">

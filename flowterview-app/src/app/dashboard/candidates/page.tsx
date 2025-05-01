@@ -176,9 +176,7 @@ export default function CandidatesPage() {
                       {candidate.status}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {new Date(candidate.date).toLocaleDateString()}
-                  </td>
+
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <Link
                       href={`/dashboard/candidates/${candidate.id}`}

@@ -137,6 +137,10 @@ type TPathStore = {
   sendCodeMessage: (code: string, language: string) => void;
 
   sendSubmittedMessage: (code: string, language: string) => void;
+
+  // Local video stream
+  localVideoStream: MediaStream | null;
+  setLocalVideoStream: (stream: MediaStream | null) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -243,6 +247,11 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   rtviClient: null,
   setRtviClient: (client: any) => set({ rtviClient: client }),
 
+  // Local video stream
+  localVideoStream: null,
+  setLocalVideoStream: (stream: MediaStream | null) =>
+    set({ localVideoStream: stream }),
+
   resetStore: () => {
     set({
       participants: [
@@ -281,6 +290,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       callStatus: "initial",
       codingProblem: null,
       rtviClient: null,
+      localVideoStream: null,
     });
   },
 
