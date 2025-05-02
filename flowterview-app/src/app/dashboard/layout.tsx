@@ -73,7 +73,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }`}
       >
         <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 px-4">
-          <div className="text-2xl font-bold text-indigo-600">Flowterview</div>
+          <div className="text-2xl font-medium text-indigo-600 tracking-widest">
+            FLOWTERVIEW
+          </div>
           <button className="md:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-6 w-6 text-gray-500" />
           </button>

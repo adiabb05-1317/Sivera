@@ -35,8 +35,8 @@ export default function FlowterviewComponent() {
               />
             </div>
           </div>
-          <h1 className="text-white text-lg font-medium hidden sm:block">
-            Flowterview
+          <h1 className="text-white text-md font-medium tracking-widest hidden sm:block">
+            FLOWTERVIEW
           </h1>
         </div>
 

@@ -190,7 +190,7 @@ export default function InviteCandidatesPage() {
                           }
                           placeholder="Candidate Name"
                           required
-                          className="mb-2 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          className="mb-2 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
                         />
                         <input
                           type="email"
@@ -204,7 +204,7 @@ export default function InviteCandidatesPage() {
                           }
                           placeholder="Email Address"
                           required
-                          className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
                         />
                       </div>
                       <button

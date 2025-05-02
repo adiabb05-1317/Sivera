@@ -11,21 +11,21 @@ export default function DashboardPage() {
       name: "Active Interviews",
       value: "12",
       icon: FileText,
-      color: "bg-blue-500",
+      color: "bg-blue-400",
     },
     {
       id: 2,
       name: "Total Candidates",
       value: "48",
       icon: Users,
-      color: "bg-green-500",
+      color: "bg-green-400",
     },
     {
       id: 3,
       name: "Completion Rate",
       value: "92%",
       icon: Activity,
-      color: "bg-purple-500",
+      color: "bg-purple-400",
     },
   ];
 
@@ -154,7 +154,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <div className="overflow-hidden rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 shadow">
+        <div className="overflow-hidden rounded-lg bg-gradient-to-bl from-indigo-700 to-indigo-400 shadow">
           <div className="px-6 py-5 sm:p-6">
             <h3 className="text-lg font-medium text-white">
               Create from Job Description
@@ -176,7 +176,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow">
+        <div className="overflow-hidden rounded-lg bg-gradient-to-bl from-green-900 to-green-300 shadow">
           <div className="px-6 py-5 sm:p-6">
             <h3 className="text-lg font-medium text-white">
               Invite Candidates
