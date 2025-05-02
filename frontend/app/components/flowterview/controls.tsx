@@ -1,9 +1,25 @@
 "use client";
 import { Icons } from "@/app/lib/icons";
-import { cn } from "@/app/lib/utils";
 import usePathStore from "@/app/store/PathStore";
 import { useEffect, useRef, useState } from "react";
 import { Participant } from "../ui/AvatarStack";
+import { Mic, MicOff } from "lucide-react";
+
+const ControlTooltip = ({
+  text,
+  isHovered,
+}: {
+  text: string;
+  isHovered: boolean;
+}) => {
+  return (
+    isHovered && (
+      <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
+        {text}
+      </div>
+    )
+  );
+};
 
 const Controls = ({
   className,
@@ -105,53 +121,49 @@ const Controls = ({
 
   return (
     <section
-      className="rounded-full shadow-lg flex items-center justify-between p-4 gap-4 relative z-30"
+      className="rounded-full shadow-lg flex items-center justify-center z-30 p-3 gap-5"
       style={style}
     >
       {/* Left side */}
-      <div className="flex items-center justify-start gap-5">
-        <button
-          className="p-3.5 rounded-full bg-[#323D68] text-white hover:bg-[#262F50] relative"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowParticipantsList(!showParticipantsList);
-          }}
-          onMouseEnter={() => setIsHovered("participants")}
-          onMouseLeave={() => setIsHovered(null)}
-        >
-          <Icons.Users className="w-6 h-6" />
-          <span className="absolute -top-1 -right-1 bg-[#774BE5] text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-            {connectionStatus === "bot_connected" ? participants.length : 1}
-          </span>
+      <button
+        className="p-3.5 rounded-full bg-[#323D68] text-white hover:bg-[#262F50] relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowParticipantsList(!showParticipantsList);
+        }}
+        onMouseEnter={() => setIsHovered("participants")}
+        onMouseLeave={() => setIsHovered(null)}
+      >
+        <Icons.Users className="w-4 h-4" />
+        <span className="absolute -top-[0.5px] -right-[0.5px] bg-[#774BE5] text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+          {connectionStatus === "bot_connected" ? participants.length : 1}
+        </span>
 
-          {isHovered === "participants" && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
-              View participants
-            </div>
-          )}
-        </button>
+        <ControlTooltip
+          text="View participants"
+          isHovered={isHovered === "participants"}
+        />
+      </button>
 
-        {/* Code Editor toggle button - Google Meet style */}
-        <button
-          className={`p-3.5 rounded-full ${isCodeEditorOpen ? "bg-[#774BE5] text-white" : "bg-[#323D68] text-white hover:bg-[#262F50]"}`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleCodeEditor?.();
-          }}
-          onMouseEnter={() => setIsHovered("codeEditor")}
-          onMouseLeave={() => setIsHovered(null)}
-        >
-          <Icons.Code className="h-6 w-6" />
+      {/* Code Editor toggle button - Google Meet style */}
+      <button
+        className={`p-3.5 rounded-full ${isCodeEditorOpen ? "bg-[#774BE5] text-white" : "bg-[#323D68] text-white hover:bg-[#262F50]"}`}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleCodeEditor?.();
+        }}
+        onMouseEnter={() => setIsHovered("codeEditor")}
+        onMouseLeave={() => setIsHovered(null)}
+      >
+        <Icons.Code className="h-4 w-4" />
 
-          {isHovered === "codeEditor" && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
-              {isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
-            </div>
-          )}
-        </button>
-      </div>
+        <ControlTooltip
+          text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
+          isHovered={isHovered === "codeEditor"}
+        />
+      </button>
 
       {/* Center controls */}
       <div className="flex items-center gap-6">
@@ -166,13 +178,12 @@ const Controls = ({
           onMouseEnter={() => setIsHovered("captions")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.ClosedCaptions className="w-6 h-6" />
+          <Icons.ClosedCaptions className="w-4 h-4" />
 
-          {isHovered === "captions" && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
-              {isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
-            </div>
-          )}
+          <ControlTooltip
+            text={isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
+            isHovered={isHovered === "captions"}
+          />
         </button>
 
         {/* Microphone control */}
@@ -193,13 +204,16 @@ const Controls = ({
           onMouseEnter={() => setIsHovered("microphone")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          {isMicMuted ? <Icons.MicOff className="w-7 h-7" /> : <Icons.Mic />}
-
-          {isHovered === "microphone" && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
-              {isMicMuted ? "Unmute microphone" : "Mute microphone"}
-            </div>
+          {isMicMuted ? (
+            <Icons.MicOff className="w-4 h-4" />
+          ) : (
+            <Icons.MicrophoneIcon className="w-4 h-4" />
           )}
+
+          <ControlTooltip
+            text={isMicMuted ? "Unmute microphone" : "Mute microphone"}
+            isHovered={isHovered === "microphone"}
+          />
         </button>
 
         <button
@@ -208,20 +222,12 @@ const Controls = ({
           onMouseEnter={() => setIsHovered("endCall")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.PhoneOff className="w-7 h-7" />
+          <Icons.PhoneOff className="w-4 h-4" />
 
-          {isHovered === "endCall" && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
-              End call
-            </div>
-          )}
+          <ControlTooltip text="End call" isHovered={isHovered === "endCall"} />
         </button>
       </div>
 
-      {/* Right side - placeholder for balance */}
-      <div className="w-[86px]"></div>
-
-      {/* Participants panel */}
       {showParticipantsList && (
         <div
           ref={participantsRef}

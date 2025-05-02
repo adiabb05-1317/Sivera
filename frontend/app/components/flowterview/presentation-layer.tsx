@@ -280,15 +280,9 @@ const Presentation = () => {
             isCodeEditorOpen={isCodeEditorOpen}
             toggleCodeEditor={toggleCodeEditor}
             style={{
-              maxHeight: "80px",
               overflow: "visible",
-              width: "auto",
-              minWidth: isCodeEditorOpen ? "320px" : "450px",
-              maxWidth: isCodeEditorOpen ? "400px" : "600px",
               background: "rgba(14, 28, 41, 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: "16px",
-              padding: "0 12px",
             }}
             joinAndLeaveCallHandler={joinAndLeaveCallHandler}
           />
