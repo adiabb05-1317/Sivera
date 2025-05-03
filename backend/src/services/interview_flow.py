@@ -225,7 +225,7 @@ class InterviewFlow:
                 for msg in message_history
                 if (msg["role"] == "user" or msg["role"] == "assistant")
             ]
-            print(filtered_messages)
+            logger.debug(filtered_messages)
 
             try:
                 session_data = {
