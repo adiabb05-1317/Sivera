@@ -145,45 +145,30 @@ async def generate_interview_flow_from_jd(job_description: str) -> Dict[str, Any
         "{job_description}", job_description.strip()
     )
 
-    max_retries = 3
-    for attempt in range(max_retries):
+    try:
+        llm_response = await call_llm(
+            prompt=prompt,
+            temperature=0.3,
+        )
+
+        llm_response = llm_response.strip()
+        if not llm_response:
+            raise ValueError("Empty response from LLM")
+
         try:
-            llm_response = await call_llm(
-                prompt=prompt,
-                temperature=0.3,
+            flow_json = json.loads(llm_response)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON format: {str(e)}\nResponse: {llm_response[:100]}..."
             )
 
-            llm_response = llm_response.strip()
-            if not llm_response:
-                raise ValueError("Empty response from LLM")
+        validate_flow_json(flow_json)
+        return flow_json
 
-            try:
-                flow_json = json.loads(llm_response)
-            except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"Invalid JSON format: {str(e)}\nResponse: {llm_response[:100]}..."
-                )
-
-            validate_flow_json(flow_json)
-            return flow_json
-
-        except json.JSONDecodeError as e:
-            if attempt == max_retries - 1:
-                raise ValueError(
-                    f"Failed to generate valid JSON after {max_retries} attempts. Error: {str(e)}\nLast response: {llm_response[:100]}..."
-                )
-        except ValueError as e:
-            if attempt == max_retries - 1:
-                raise ValueError(
-                    f"Generated flow validation failed after {max_retries} attempts. Error: {str(e)}"
-                )
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise Exception(
-                    f"Flow generation failed after {max_retries} attempts. Error: {str(e)}"
-                )
-
-    raise Exception("Unexpected error in flow generation")
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Failed to generate valid JSON after 3 attempts. Error: {str(e)}\nLast response: {llm_response[:100]}..."
+        )
 
 
 async def generate_react_flow_json(flow_json: Dict[str, Any] = None) -> Dict[str, Any]:

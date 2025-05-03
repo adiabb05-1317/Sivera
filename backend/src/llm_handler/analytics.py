@@ -9,7 +9,7 @@ from src.utils.logger import logger
 class InterviewAnalytics:
     def __init__(self):
         # self.llm = GenericLLM(
-        #     model_name="gemini-2.0-flash", api_key=Config.GOOGLE_API_KEY
+        #     model_name="gemini-2.0-flash", api_key=Config.GEMINI_API_KEY
         # )
         pass
 
