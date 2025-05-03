@@ -101,6 +101,8 @@ type TPathStore = {
   setCallStatus: (callStatus: CallStatus) => void;
   isMicMuted: boolean;
   setIsMicMuted: (isMicMuted: boolean) => void;
+  isCameraOn: boolean;
+  setIsCameraOn: (isCameraOn: boolean) => void;
   permissionGranted: boolean;
   setPermissionGranted: (permissionGranted: boolean) => void;
 
@@ -221,7 +223,9 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   callStatus: "joining",
   setCallStatus: (callStatus: CallStatus) => set({ callStatus }),
   isMicMuted: false,
+  isCameraOn: true,
   setIsMicMuted: (isMicMuted: boolean) => set({ isMicMuted }),
+  setIsCameraOn: (isCameraOn: boolean) => set({ isCameraOn }),
   permissionGranted: false,
   setPermissionGranted: (permissionGranted: boolean) =>
     set({ permissionGranted }),
@@ -270,6 +274,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       currentUserTranscript: "",
       isSpeakerOn: true,
       isMicMuted: false,
+      isCameraOn: true,
       botState: "initial",
       showStarterQuestions: false,
       joiningCall: false,

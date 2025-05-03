@@ -51,6 +51,8 @@ const Controls = ({
     setCallStatus,
     isMicMuted,
     setIsMicMuted,
+    isCameraOn,
+    setIsCameraOn,
     permissionGranted,
     setTtsConnecting,
     setConnectionStatus,
@@ -213,6 +215,36 @@ const Controls = ({
           <ControlTooltip
             text={isMicMuted ? "Unmute microphone" : "Mute microphone"}
             isHovered={isHovered === "microphone"}
+          />
+        </button>
+
+        {/* Camera control */}
+        <button
+          className={`p-4 rounded-full ${
+            callStatus === "initial" || callStatus === "left"
+              ? "bg-gray-300 cursor-not-allowed"
+              : isCameraOn
+                ? "bg-[#0E1C29]/40 text-white/70"
+                : "bg-[#323D68] text-white"
+          }`}
+          onClick={() => {
+            if (callStatus !== "initial" && callStatus !== "left") {
+              setIsCameraOn(!isCameraOn);
+            }
+          }}
+          disabled={callStatus === "initial" || callStatus === "left"}
+          onMouseEnter={() => setIsHovered("camera")}
+          onMouseLeave={() => setIsHovered(null)}
+        >
+          {isCameraOn ? (
+            <Icons.Video className="w-4 h-4" />
+          ) : (
+            <Icons.VideoOff className="w-4 h-4" />
+          )}
+
+          <ControlTooltip
+            text={isCameraOn ? "Turn off camera" : "Turn on camera"}
+            isHovered={isHovered === "camera"}
           />
         </button>
 

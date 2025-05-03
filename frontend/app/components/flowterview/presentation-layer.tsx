@@ -12,6 +12,7 @@ const Presentation = () => {
     setCallStatus,
     showToast,
     isBotSpeaking,
+    isCameraOn,
     isUserSpeaking,
     currentBotTranscript,
     currentUserTranscript,
@@ -71,6 +72,18 @@ const Presentation = () => {
   }, [connectionStatus]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (isCameraOn) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = localVideoStream;
+      }
+    } else {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [isCameraOn]);
 
   useEffect(() => {
     if (videoRef.current && localVideoStream) {
@@ -136,15 +149,18 @@ const Presentation = () => {
                       `}
                     >
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {participant.id === "user" && localVideoStream ? (
-                          <video
-                            autoPlay
-                            muted
-                            playsInline
-                            className="w-full h-full object-cover"
-                            ref={videoRef}
-                          />
-                        ) : (
+                        {isCameraOn &&
+                          participant.id === "user" &&
+                          localVideoStream && (
+                            <video
+                              autoPlay
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                              ref={videoRef}
+                            />
+                          )}
+                        {!isCameraOn && (
                           <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
                             {participant.name.charAt(0).toUpperCase()}
                           </div>
@@ -205,15 +221,18 @@ const Presentation = () => {
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          {participant.id === "user" && localVideoStream ? (
-                            <video
-                              autoPlay
-                              muted
-                              playsInline
-                              className="w-full h-full object-cover"
-                              ref={videoRef}
-                            />
-                          ) : (
+                          {isCameraOn &&
+                            participant.id === "user" &&
+                            localVideoStream && (
+                              <video
+                                autoPlay
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover"
+                                ref={videoRef}
+                              />
+                            )}
+                          {!isCameraOn && (
                             <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
                               {participant.name.charAt(0).toUpperCase()}
                             </div>

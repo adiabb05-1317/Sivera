@@ -13,9 +13,13 @@ import {
   CheckCircle,
   Crown,
   Code,
-} from "lucide-react"
+  VideoOffIcon,
+  Video,
+} from "lucide-react";
 
 export const Icons = {
+  Video: Video,
+  VideoOff: VideoOffIcon,
   MicrophoneIcon: Mic,
   MicOff: MicOff,
   Speaker: Volume2,
@@ -45,12 +49,8 @@ export const Icons = {
           fill="white"
         />
       </svg>
-    )
+    );
   },
-
-
-
-
 
   Flowterview: () => {
     return (
@@ -59,7 +59,7 @@ export const Icons = {
         alt="F"
         className="w-full h-full object-cover"
       />
-    )
+    );
   },
   KeyboardOutline: () => {
     return (
@@ -75,7 +75,7 @@ export const Icons = {
           fill="white"
         />
       </svg>
-    )
+    );
   },
   CircleHelp: () => {
     return (
@@ -91,7 +91,7 @@ export const Icons = {
           fill="white"
         />
       </svg>
-    )
+    );
   },
   DoubleSparkles: () => {
     return (
@@ -107,6 +107,6 @@ export const Icons = {
           fill="white"
         />
       </svg>
-    )
+    );
   },
-}
+};
