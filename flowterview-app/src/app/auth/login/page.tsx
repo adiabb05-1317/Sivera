@@ -1,18 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { FloatingPaths } from "@/components/ui/background-paths";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@radix-ui/react-label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        console.log("User is already logged in, redirecting to dashboard...");
+        router.push("/dashboard");
+      }
+      setSessionLoading(false);
+    };
+
+    checkSession();
+  }, [router]);
+
+  const handleLogin = async () => {
     setLoading(true);
     setError(null);
 
@@ -63,26 +92,42 @@ export default function LoginPage() {
     }
   };
 
+  if (sessionLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
+        <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg flex flex-col items-center justify-center">
+          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+            FLOWTERVIEW
+          </div>
+          <div className="text-center">
+            <p className="mt-4 text-gray-600">Loading...</p>
+            <div className="mt-6 flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (magicLinkSent) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Flowterview</h1>
-            <h2 className="mt-2 text-xl font-semibold text-green-600">
-              Check your email
-            </h2>
+            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              FLOWTERVIEW
+            </div>
             <p className="mt-4 text-gray-600">
               We&apos;ve sent a magic link to <strong>{email}</strong>. Click
               the link in the email to sign in.
             </p>
             <div className="mt-8">
-              <button
-                onClick={() => setMagicLinkSent(false)}
-                className="text-indigo-600 hover:text-indigo-500"
-              >
+              <Button variant="outline" onClick={() => setMagicLinkSent(false)}>
                 Try again
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -91,77 +136,56 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Flowterview</h1>
-          <h2 className="mt-2 text-xl font-semibold text-gray-700">
-            Sign in to your account
-          </h2>
-        </div>
-
-        {error && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="space-y-4 rounded-md">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                placeholder="name@company.com"
-              />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-indigo-50/20 to-indigo-300/30 p-4">
+      <FloatingPaths position={-1} className="inset-0 opacity-30" />
+      <Card className="w-[450px]">
+        <CardHeader className="flex flex-col items-center justify-center">
+          <CardTitle className="tracking-widest text-2xl">
+            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              FLOWTERVIEW
             </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password (optional)
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                placeholder="Leave empty to use magic link"
-              />
+          </CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form>
+            <div className="grid w-full items-center gap-4">
+              <div className="flex flex-col space-y-1.5 text-sm">
+                <Label htmlFor="name">Email address</Label>
+                <Input
+                  id="name"
+                  placeholder="email@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col space-y-1.5 text-sm">
+                <Label htmlFor="name">Password (optional)</Label>
+                <Input
+                  id="password"
+                  placeholder="Leave empty to use magic link"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
             </div>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-between flex-col gap-5 p-2">
+          <div className="flex self-start text-sm">
+            <Link
+              href="/auth/forgot-password"
+              className="font-medium text-indigo-600 hover:text-indigo-500 ml-5"
+            >
+              Forgot your password?
+            </Link>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link
-                href="/auth/forgot-password"
-                className="font-medium text-indigo-600 hover:text-indigo-500"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
+          <div className="flex flex-col items-center space-y-3 w-full">
+            <Button
+              className="w-[80%]"
               disabled={loading}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70"
+              onClick={handleLogin}
             >
               {loading
                 ? password
@@ -170,20 +194,19 @@ export default function LoginPage() {
                 : password
                 ? "Sign in"
                 : "Send magic link"}
-            </button>
-          </div>
-
-          <div className="text-center text-sm">
-            <span className="text-gray-500">Don&apos;t have an account?</span>{" "}
-            <Link
-              href="/auth/signup"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+            </Button>
+            <Button
+              variant="outline"
+              className="w-[80%]"
+              onClick={() => {
+                router.push("/auth/signup");
+              }}
             >
               Sign up
-            </Link>
+            </Button>
           </div>
-        </form>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
