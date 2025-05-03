@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { Plus, Search, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
 
 export default function CandidatesPage() {
-  // Placeholder data - in a real application, this would come from an API
+  const router = useRouter();
   const candidates = [
     {
       id: 1,
@@ -81,15 +85,15 @@ export default function CandidatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between space-y-4 md:flex-row md:items-center md:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900">Candidates</h1>
-        <Link
-          href="/dashboard/candidates/invite"
-          className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
+        <Button
+          onClick={() => router.push("/dashboard/candidates/invite")}
+          className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+          variant="outline"
         >
           <Plus className="mr-2 h-4 w-4" />
           Invite Candidates
-        </Link>
+        </Button>
       </div>
 
       {/* Search and Filter */}
@@ -98,22 +102,22 @@ export default function CandidatesPage() {
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
-          <input
+          <Input
             type="text"
-            placeholder="Search candidates"
+            placeholder="Search interviews"
             className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="inline-flex">
-          <button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+          <Button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer">
             <Filter className="mr-2 h-4 w-4 text-gray-400" />
             Filter
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Candidates Table */}
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <Card className="overflow-hidden rounded-lg bg-white shadow p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -142,12 +146,9 @@ export default function CandidatesPage() {
                 >
                   Date Added
                 </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">View</span>
-                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="bg-white">
               {candidates.map((candidate) => (
                 <tr key={candidate.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
@@ -176,21 +177,19 @@ export default function CandidatesPage() {
                       {candidate.status}
                     </span>
                   </td>
-
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <Link
-                      href={`/dashboard/candidates/${candidate.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      View
-                    </Link>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {new Date(candidate.date).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                    })}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

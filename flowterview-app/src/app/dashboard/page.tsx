@@ -106,7 +106,7 @@ export default function DashboardPage() {
       {/* Recent Interviews */}
       <Card className="overflow-hidden rounded-lg bg-white shadow pb-0">
         <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-lg font-medium text-gray-900">
+          <h2 className="text-lg font-medium text-gray-900 ml-5">
             Recent Interviews
           </h2>
         </div>
@@ -128,6 +128,9 @@ export default function DashboardPage() {
                     variant={
                       interview.status === "active" ? "secondary" : "outline"
                     }
+                    className={`${
+                      interview.status !== "active" ? "bg-indigo-100/90" : ""
+                    } font-normal text-xs`}
                   >
                     {interview.status}
                   </Badge>
@@ -163,7 +166,7 @@ export default function DashboardPage() {
           <CardFooter className="flex justify-between">
             <Button
               onClick={() => router.push("/dashboard/candidates/invite")}
-              className="cursor-pointer border-indigo-600/40 hover:bg-indigo-50/20"
+              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
               variant="outline"
             >
               Invite Now
@@ -184,7 +187,7 @@ export default function DashboardPage() {
                 router.push("/dashboard/interviews/from-description")
               }
               variant="outline"
-              className="cursor-pointer border-indigo-600/40 hover:bg-indigo-50/20"
+              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
             >
               Generate Workflow
             </Button>

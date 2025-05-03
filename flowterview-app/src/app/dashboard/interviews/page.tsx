@@ -1,9 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { Plus, Search, Filter, ChevronRight } from "lucide-react";
+import { Search, Filter, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 export default function InterviewsPage() {
+  const router = useRouter();
   // Placeholder data - in a real application, this would come from an API
   const interviews = [
     {
@@ -73,65 +78,71 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between space-y-4 md:flex-row md:items-center md:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900">Interviews</h1>
-        <div className="flex space-x-3">
-          <Link
-            href="/dashboard/interviews/from-description"
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            From Job Description
-          </Link>
-          <Link
-            href="/dashboard/interviews/new"
-            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Interview
-          </Link>
-        </div>
+      <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/interviews/from-description")}
+          className="cursor-pointer"
+        >
+          From Job Description
+        </Button>
+        <Button
+          onClick={() => router.push("/dashboard/interviews/new")}
+          className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+          variant="outline"
+        >
+          New Interview
+          <ArrowRight className="ml-1 h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Search and Filter */}
       <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
-          <input
+          <Input
             type="text"
             placeholder="Search interviews"
             className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="inline-flex">
-          <button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+          <Button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer">
             <Filter className="mr-2 h-4 w-4 text-gray-400" />
             Filter
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Interviews List */}
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <Card className="overflow-hidden rounded-lg bg-white shadow p-0">
         <ul className="divide-y divide-gray-200">
           {interviews.map((interview) => (
             <li key={interview.id} className="hover:bg-gray-50">
-              <div className="flex items-center px-6 py-4">
+              <CardContent
+                className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer"
+                onClick={() =>
+                  router.push(`/dashboard/interviews/${interview.id}`)
+                }
+              >
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex items-center space-x-3">
                     <h3 className="truncate text-sm font-medium text-gray-900">
                       {interview.title}
                     </h3>
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        statusColors[
-                          interview.status as keyof typeof statusColors
-                        ]
-                      }`}
+                    <Badge
+                      variant={
+                        interview.status === "completed"
+                          ? "secondary"
+                          : "outline"
+                      }
+                      className={`${
+                        interview.status === "completed" && "bg-indigo-100/90"
+                      } font-normal text-xs`}
                     >
                       {interview.status}
-                    </span>
+                    </Badge>
                   </div>
                   <div className="mt-1 flex items-center text-sm text-gray-500">
                     <span>{interview.candidates} candidates</span>
@@ -139,20 +150,13 @@ export default function InterviewsPage() {
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">
-                  <Link
-                    href={`/dashboard/interviews/${interview.id}`}
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    <span className="hidden sm:inline">View details</span>
-                    <span className="inline sm:hidden">View</span>
-                    <ChevronRight className="ml-1 inline-block h-4 w-4" />
-                  </Link>
+                  <ArrowRight className="ml-1 h-4 w-4" />
                 </div>
-              </div>
+              </CardContent>
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
     </div>
   );
 }
