@@ -36,6 +36,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setCodingProblem,
     isCodeEditorOpen,
     setIsCodeEditorOpen,
+    setRtviClient,
+    setLocalVideoStream,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>
@@ -156,10 +158,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         "error"
       );
     }
-  };
-
-  const debugEvents = (eventName: string, data: any) => {
-    console.log(`DEBUG [${eventName}]:`, data);
   };
 
   const setupEventListeners = (client: RTVIClient) => {
@@ -284,9 +282,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           noiseSuppression: true,
           autoGainControl: true,
         },
+        video: true,
       });
 
       micStreamRef.current = stream;
+      setLocalVideoStream(stream);
 
       if (!micStreamRef.current) {
         console.error("No microphone stream available");
@@ -312,19 +312,22 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       setConnectionStatus("audio_connected");
 
-      rtviClientRef.current = new RTVIClient({
+      const videoTrack = stream.getVideoTracks()[0];
+
+      const rtviClient = new RTVIClient({
         params: {
           baseUrl:
             process.env.NEXT_PUBLIC_PIPECAT_BASE_URL ||
             "http://localhost:8000/api/v1",
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
+          videoTrack: videoTrack,
         },
         transport: new DailyTransport({
           dailyFactoryOptions: {
             subscribeToTracksAutomatically: true,
             audioSource: microphoneTrack,
-            videoSource: false,
+            videoSource: videoTrack,
             dailyConfig: {
               micAudioMode: "speech",
               userMediaAudioConstraints: {
@@ -336,7 +339,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           },
         }),
         enableMic: true,
-        enableCam: false,
+        enableCam: true,
         callbacks: {
           onConnected: () => {
             console.log("Connected to the server!");
@@ -423,9 +426,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           },
         },
       });
+      setRtviClient(rtviClient);
+      rtviClientRef.current = rtviClient;
 
-      setupEventListeners(rtviClientRef.current);
-      await rtviClientRef.current.connect();
+      setupEventListeners(rtviClient);
+      await rtviClient.connect();
     } catch (error) {
       console.error("Connection failed:", error);
       showToast(
@@ -497,6 +502,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      setLocalVideoStream(null);
       if (rtviClientRef.current) {
         rtviClientRef.current
           .disconnect()
@@ -513,6 +519,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      setLocalVideoStream(null);
       if (rtviClientRef.current) {
         rtviClientRef.current.disconnect().catch(console.error);
       }
@@ -523,7 +530,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      {/* Rest of your component JSX */}
+      {/* Remove video element here if it exists - we'll show it in Presentation instead */}
     </div>
   );
 }

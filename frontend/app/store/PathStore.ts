@@ -101,6 +101,8 @@ type TPathStore = {
   setCallStatus: (callStatus: CallStatus) => void;
   isMicMuted: boolean;
   setIsMicMuted: (isMicMuted: boolean) => void;
+  isCameraOn: boolean;
+  setIsCameraOn: (isCameraOn: boolean) => void;
   permissionGranted: boolean;
   setPermissionGranted: (permissionGranted: boolean) => void;
 
@@ -127,9 +129,20 @@ type TPathStore = {
   codingProblem: CodingProblem | null;
   setCodingProblem: (codingProblem: CodingProblem | null) => void;
 
-  // clear
+  // RTVI client
+  rtviClient: any; // Replace 'any' with 'RTVIClient' if you have the type
+  setRtviClient: (client: any) => void;
 
+  // clear
   resetStore: () => void;
+
+  sendCodeMessage: (code: string, language: string) => void;
+
+  sendSubmittedMessage: (code: string, language: string) => void;
+
+  // Local video stream
+  localVideoStream: MediaStream | null;
+  setLocalVideoStream: (stream: MediaStream | null) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -210,7 +223,9 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   callStatus: "joining",
   setCallStatus: (callStatus: CallStatus) => set({ callStatus }),
   isMicMuted: false,
+  isCameraOn: true,
   setIsMicMuted: (isMicMuted: boolean) => set({ isMicMuted }),
+  setIsCameraOn: (isCameraOn: boolean) => set({ isCameraOn }),
   permissionGranted: false,
   setPermissionGranted: (permissionGranted: boolean) =>
     set({ permissionGranted }),
@@ -233,6 +248,14 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setCodingProblem: (codingProblem: CodingProblem | null) =>
     set({ codingProblem }),
 
+  rtviClient: null,
+  setRtviClient: (client: any) => set({ rtviClient: client }),
+
+  // Local video stream
+  localVideoStream: null,
+  setLocalVideoStream: (stream: MediaStream | null) =>
+    set({ localVideoStream: stream }),
+
   resetStore: () => {
     set({
       participants: [
@@ -251,6 +274,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       currentUserTranscript: "",
       isSpeakerOn: true,
       isMicMuted: false,
+      isCameraOn: true,
       botState: "initial",
       showStarterQuestions: false,
       joiningCall: false,
@@ -270,7 +294,57 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       permissionGranted: false,
       callStatus: "initial",
       codingProblem: null,
+      rtviClient: null,
+      localVideoStream: null,
     });
+  },
+
+  sendCodeMessage: async (code: string, language: string) => {
+    const { rtviClient } = get();
+    if (!rtviClient || !code.trim()) return;
+    try {
+      await rtviClient.action({
+        service: "llm",
+        action: "append_to_messages",
+        arguments: [
+          {
+            name: "messages",
+            value: [
+              {
+                role: "user",
+                content: `Language: ${language}\n\n${code}`,
+              },
+            ],
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Error sending code message:", error);
+    }
+  },
+
+  sendSubmittedMessage: async (code: string, language: string) => {
+    const { rtviClient } = get();
+    if (!rtviClient || !code.trim()) return;
+    try {
+      await rtviClient.action({
+        service: "llm",
+        action: "append_to_messages",
+        arguments: [
+          {
+            name: "messages",
+            value: [
+              {
+                role: "user",
+                content: `Language: ${language}\n\n${code}`,
+              },
+            ],
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Error sending submitted code message:", error);
+    }
   },
 }));
 

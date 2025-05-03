@@ -1,7 +1,7 @@
 "use client";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
 import CodeEditor from "./CodeEditor";
@@ -12,6 +12,7 @@ const Presentation = () => {
     setCallStatus,
     showToast,
     isBotSpeaking,
+    isCameraOn,
     isUserSpeaking,
     currentBotTranscript,
     currentUserTranscript,
@@ -26,6 +27,7 @@ const Presentation = () => {
     isCodeEditorOpen,
     setIsCodeEditorOpen,
     codingProblem,
+    localVideoStream,
   } = usePathStore();
 
   const toggleSpeaker = () => {
@@ -68,6 +70,28 @@ const Presentation = () => {
   useEffect(() => {
     console.log(connectionStatus);
   }, [connectionStatus]);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (isCameraOn) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = localVideoStream;
+      }
+    } else {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [isCameraOn]);
+
+  useEffect(() => {
+    if (videoRef.current && localVideoStream) {
+      if (videoRef.current.srcObject !== localVideoStream) {
+        videoRef.current.srcObject = localVideoStream;
+      }
+    }
+  }, [localVideoStream]);
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
@@ -125,9 +149,22 @@ const Presentation = () => {
                       `}
                     >
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
-                          {participant.name.charAt(0).toUpperCase()}
-                        </div>
+                        {isCameraOn &&
+                          participant.id === "user" &&
+                          localVideoStream && (
+                            <video
+                              autoPlay
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                              ref={videoRef}
+                            />
+                          )}
+                        {!isCameraOn && (
+                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
+                            {participant.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
                         {participant.isTalking && (
@@ -184,9 +221,22 @@ const Presentation = () => {
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
-                            {participant.name.charAt(0).toUpperCase()}
-                          </div>
+                          {isCameraOn &&
+                            participant.id === "user" &&
+                            localVideoStream && (
+                              <video
+                                autoPlay
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover"
+                                ref={videoRef}
+                              />
+                            )}
+                          {!isCameraOn && (
+                            <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
+                              {participant.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
                       )}
                       <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
@@ -249,15 +299,9 @@ const Presentation = () => {
             isCodeEditorOpen={isCodeEditorOpen}
             toggleCodeEditor={toggleCodeEditor}
             style={{
-              maxHeight: "80px",
               overflow: "visible",
-              width: "auto",
-              minWidth: isCodeEditorOpen ? "320px" : "450px",
-              maxWidth: isCodeEditorOpen ? "400px" : "600px",
               background: "rgba(14, 28, 41, 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: "16px",
-              padding: "0 12px",
             }}
             joinAndLeaveCallHandler={joinAndLeaveCallHandler}
           />

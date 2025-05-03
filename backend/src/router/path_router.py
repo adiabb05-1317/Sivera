@@ -6,12 +6,16 @@ import uuid
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile, Body
 from starlette.responses import JSONResponse
 
 from src.core.config import Config
 from src.llm_handler.analytics import InterviewAnalytics
-
+from src.llm_handler.flow_generator import (
+    generate_interview_flow_from_jd,
+    generate_react_flow_json,
+    convert_flow_to_react_flow,
+)
 
 UPLOAD_DIR = Config.UPLOAD_DIR
 
@@ -119,3 +123,51 @@ async def rtvi_disconnect(token: str, request: Request):
     except Exception as e:
         logger.error(f"Error during disconnect: {e}")
         raise HTTPException(status_code=500, detail=f"Disconnect failed: {str(e)}")
+
+
+@router.post("/generate_interview_flow")
+async def generate_interview_flow(
+    request: Request,
+    data: dict = Body(...),
+):
+    """
+    Generate an interview flow JSON using Gemini LLM, given org ID and job description.
+    Also generates a React Flow compatible version for visualization.
+    """
+    if (
+        not data["organization_id"]
+        or not data["job_description"]
+        or len(data["job_description"]) < 30
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="organization_id and a valid job_description are required.",
+        )
+
+    flow_json = await generate_interview_flow_from_jd(data["job_description"])
+    print(flow_json)
+
+    try:
+
+        react_flow_json = await generate_react_flow_json(flow_json)
+        print(react_flow_json)
+    except Exception as e:
+        logger.warning(f"Failed to generate React Flow JSON directly: {e}")
+        react_flow_json = convert_flow_to_react_flow(flow_json)
+
+    db_manager = request.app.state.db_manager
+
+    db_manager.execute_query(
+        "interview_flows",
+        {
+            "flow_json": json.dumps(flow_json),
+            "name": "test_flow",
+            "react_flow_json": json.dumps(react_flow_json),
+        },
+    )
+
+    return {
+        "organization_id": data["organization_id"],
+        "flow": flow_json,
+        "react_flow": react_flow_json,
+    }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^2.1.9",
+    "@monaco-editor/react": "^4.7.0",
     "@pipecat-ai/client-js": "^0.3.3",
     "@pipecat-ai/daily-transport": "^0.3.5",
     "@radix-ui/react-dialog": "^1.1.6",
@@ -16,6 +17,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.476.0",
+    "monaco-editor": "^0.52.2",
     "next": "15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -34,5 +36,6 @@
     "source-map-loader": "^5.0.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@10.8.1+sha512.c50088ba998c67b8ca8c99df8a5e02fd2ae2e2b29aaf238feaa9e124248d3f48f9fb6db2424949ff901cffbb5e0f0cc1ad6aedb602cd29450751d11c35023677"
 }

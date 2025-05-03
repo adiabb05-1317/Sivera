@@ -18,12 +18,15 @@ from pipecat.processors.filters.stt_mute_filter import (
 )
 from pipecat.processors.frame_processor import Frame, FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import (
+    ActionResult,
     RTVIConfig,
     RTVIObserver,
     RTVIProcessor,
     TransportMessageUrgentFrame,
     RTVI_MESSAGE_LABEL,
     RTVIMessageLiteral,
+    RTVIAction,
+    RTVIActionArgument,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
@@ -110,7 +113,7 @@ class InterviewFlow:
         bot_token,
         session_id,
         db_manager,
-        flow_config_path="src/services/sde1_improved_flow.json",
+        flow_config_path="src/services/sde1_interview_flow.json",
         bot_name="Interviewer",
     ):
         self.url = url
@@ -171,12 +174,14 @@ class InterviewFlow:
             token=self.token,
             bot_name=self.bot_name,
             params=DailyParams(
-                join_as_owner=False,
                 audio_out_enabled=True,
                 audio_out_sample_rate=48000,
                 audio_out_channels=1,
-                mic_enabled=True,
-                cam_enabled=False,
+                audio_in_enabled=True,
+                camera_out_enabled=True,
+                camera_out_width=1024,
+                camera_out_height=768,
+                camera_out_framerate=30,
                 vad_enabled=True,
                 vad_analyzer=SileroVADAnalyzer(
                     sample_rate=16000,
@@ -220,6 +225,7 @@ class InterviewFlow:
                 for msg in message_history
                 if (msg["role"] == "user" or msg["role"] == "assistant")
             ]
+            logger.debug(filtered_messages)
 
             try:
                 session_data = {
@@ -298,6 +304,27 @@ class InterviewFlow:
             flow_config=self.flow_config,
         )
 
+        async def handle_append_to_messages(
+            rtvi: RTVIProcessor, service: str, arguments: Dict[str, Any]
+        ) -> ActionResult:
+            if "messages" in arguments and arguments["messages"]:
+                for msg in arguments["messages"]:
+                    self.context_aggregator.user()._context.messages.append(msg)
+                print("Current context:", self.flow_manager.get_current_context())
+                return True
+            else:
+                return False
+
+        self.append_to_messages_action = RTVIAction(
+            service="llm",
+            action="append_to_messages",
+            arguments=[
+                RTVIActionArgument(name="messages", type="array"),
+            ],
+            result="bool",
+            handler=handle_append_to_messages,
+        )
+        self.rtvi.register_action(self.append_to_messages_action)
         return self.task
 
     async def start(self):
