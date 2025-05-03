@@ -1,16 +1,17 @@
 from typing import Dict, List, Any
 import json
 
-from src.llm_handler.generic_llm import GenericLLM
+# from src.llm_handler.generic_llm import GenericLLM
 from src.core.config import Config
 from src.utils.logger import logger
 
 
 class InterviewAnalytics:
     def __init__(self):
-        self.llm = GenericLLM(
-            model_name="gemini-2.0-flash", api_key=Config.GOOGLE_API_KEY
-        )
+        # self.llm = GenericLLM(
+        #     model_name="gemini-2.0-flash", api_key=Config.GOOGLE_API_KEY
+        # )
+        pass
 
     def _prepare_prompt(self, chat_history: List[Dict[str, str]]) -> str:
         """Prepare the prompt for the LLM to analyze the interview."""
