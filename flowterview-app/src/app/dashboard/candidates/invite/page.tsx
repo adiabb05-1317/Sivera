@@ -10,7 +10,7 @@ export default function InviteCandidatesPage() {
   const [selectedInterview, setSelectedInterview] = useState("");
   type CandidateRow = { name: string; email: string; resume: File | null; id: number; status: string };
   const [candidates, setCandidates] = useState<CandidateRow[]>([
-    { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
+    { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
   ]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +29,7 @@ export default function InviteCandidatesPage() {
   const addCandidateRow = () => {
     setCandidates([
       ...candidates,
-      { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
+      { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
     ]);
   };
 
@@ -57,9 +57,9 @@ export default function InviteCandidatesPage() {
     setTimeout(() => {
       // Simulate adding candidates from CSV
       setCandidates([
-        { name: "John Doe", email: "john@example.com", resume: null, id: Date.now(), status: "applied" },
-        { name: "Jane Smith", email: "jane@example.com", resume: null, id: Date.now() + 1, status: "applied" },
-        { name: "Bob Johnson", email: "bob@example.com", resume: null, id: Date.now() + 2, status: "applied" },
+        { name: "John Doe", email: "john@example.com", resume: null, id: Date.now(), status: "Applied" },
+        { name: "Jane Smith", email: "jane@example.com", resume: null, id: Date.now() + 1, status: "Applied" },
+        { name: "Bob Johnson", email: "bob@example.com", resume: null, id: Date.now() + 2, status: "Applied" },
       ]);
       setIsUploading(false);
     }, 1500);
