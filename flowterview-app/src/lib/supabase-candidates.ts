@@ -75,10 +75,10 @@ export async function getJobIdByTitle(title: string, organization_id: string): P
 export type CandidateStatus =
   | "Applied"
   | "Screening"
-  | "Interview_Scheduled"
+  | "Interview_scheduled"
   | "Interviewed"
   | "Hired"
-  | "On_Hold"
+  | "On_hold"
   | "Rejected";
 
 export async function addCandidate({ name, email, jobTitle, resumeFile, status = "Applied" }: { name: string; email: string; jobTitle: string; resumeFile?: File; status?: CandidateStatus }) {
@@ -99,10 +99,16 @@ export async function addCandidate({ name, email, jobTitle, resumeFile, status =
   }
 
   // 4. Insert candidate (resume_url will be null if no file was uploaded)
+  console.log("Candidate insert payload:", { name, email, job_id, organization_id, resume_url, status });
   const { data, error } = await supabase.from("candidates").insert([
     { name, email, job_id, organization_id, resume_url, status }
   ]);
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase insert error (full):", JSON.stringify(error, null, 2));
+    console.log("Supabase insert response:", { data, error });
+    throw error;
+  }
+  console.log("Candidate added:", data);
   return data;
 }
 
