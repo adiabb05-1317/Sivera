@@ -106,6 +106,7 @@ const Presentation = () => {
     setIsCodeEditorOpen,
     codingProblem,
     localVideoStream,
+    transportState,
   } = usePathStore();
 
   const toggleCodeEditor = () => {
@@ -137,10 +138,6 @@ const Presentation = () => {
     });
   };
 
-  useEffect(() => {
-    console.log(connectionStatus);
-  }, [connectionStatus]);
-
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -165,6 +162,11 @@ const Presentation = () => {
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
+      {transportState !== "ready" && callStatus !== "left" && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/60 backdrop-blur-sm">
+          <div className="w-10 h-10 border-4 border-indigo-500/70 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
       {callStatus === "left" ? (
         <div className="w-full h-full flex items-center justify-center">
           <ConclusionSection />

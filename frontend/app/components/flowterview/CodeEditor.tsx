@@ -104,7 +104,7 @@ export default function CodeEditor({
 
       debounceTimer.current = setTimeout(() => {
         trySendCode(selectedLang, value);
-      }, 10000); // 10 seconds
+      }, 5000); // 5 seconds
     }
   };
 
@@ -195,6 +195,7 @@ export default function CodeEditor({
         <Button
           className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
           variant="outline"
+          onClick={handleSubmit}
         >
           <Send className="mr-2 h-4 w-4" />
           Submit Code

@@ -323,7 +323,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
     }
   },
 
-  sendSubmittedMessage: async (code: string, language: string) => {
+  sendSubmittedMessage: async (code: string, _: string) => {
     const { rtviClient } = get();
     if (!rtviClient || !code.trim()) return;
     try {
@@ -336,7 +336,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
             value: [
               {
                 role: "user",
-                content: `Language: ${language}\n\n${code}`,
+                content: `Code Submission {"submitted_code": ${code}}`,
               },
             ],
           },
