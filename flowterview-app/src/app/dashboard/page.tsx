@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="ml-4 flex-shrink-0">
-                <ChevronRight className="ml-1 h-4 w-4" />
+                <ChevronRight className="mx-3 h-4 w-4" />
               </div>
             </div>
           ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -146,11 +146,20 @@ export default function CandidatesPage() {
                 >
                   Date Added
                 </th>
+                <th
+                  scope="col"
+                  className="relative px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  <span className="sr-only">View</span>
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {candidates.map((candidate) => (
-                <tr key={candidate.id} className="hover:bg-gray-50">
+                <tr
+                  key={candidate.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
                       <div>
@@ -183,6 +192,9 @@ export default function CandidatesPage() {
                       month: "2-digit",
                       day: "2-digit",
                     })}
+                  </td>
+                  <td>
+                    <ArrowRight className="w-4 h-4 mx-3" />
                   </td>
                 </tr>
               ))}

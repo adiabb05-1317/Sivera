@@ -2,14 +2,12 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   Node,
   Edge,
   useNodesState,
   useEdgesState,
   addEdge,
   Connection,
-  Panel,
   ReactFlowProvider,
   ReactFlowInstance,
   MarkerType,
@@ -158,7 +156,7 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
           id: `${nodeId}-${transitionTo}`,
           source: nodeId,
           target: transitionTo,
-          type: "smoothstep",
+          type: "default",
           animated: true,
           style: { stroke: nodeColor.border, strokeWidth: 2 },
           markerEnd: {
@@ -215,10 +213,14 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
 
     setTimeout(() => {
       if (reactFlowInstanceRef.current) {
-        reactFlowInstanceRef.current.fitView({ padding: 0.2 });
+        reactFlowInstanceRef.current.fitView({ padding: 0.05 });
       }
     }, 50);
   }, [setNodes]);
+
+  useEffect(() => {
+    improveLayout();
+  }, [improveLayout]);
 
   return (
     <ReactFlow
@@ -229,7 +231,7 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
       onConnect={onConnect}
       nodeTypes={nodeTypes}
       defaultEdgeOptions={{
-        type: "smoothstep",
+        type: "default",
         animated: true,
       }}
       fitView
@@ -247,21 +249,6 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     >
       <Background color="#aaa" gap={16} size={1} />
       <Controls className="bg-white shadow-md rounded-md border border-gray-200" />
-      <MiniMap className="rounded-md border border-gray-200" />
-      <Panel position="top-right" className="flex gap-2">
-        <button
-          onClick={improveLayout}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium shadow-sm"
-        >
-          Fix Layout
-        </button>
-      </Panel>
-      <Panel
-        position="top-center"
-        className="bg-white rounded-md shadow-sm px-3 py-1 text-sm text-gray-500 border border-gray-200"
-      >
-        Drag to reposition • Scroll to zoom • Click Fix Layout if nodes overlap
-      </Panel>
     </ReactFlow>
   );
 }
