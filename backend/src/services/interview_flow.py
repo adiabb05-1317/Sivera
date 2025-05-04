@@ -137,7 +137,11 @@ class InterviewFlow:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an interviewer. Your responses should be clear, concise, and professional. Keep your responses under 150 words.",
+                    "content": """
+                    You are an interviewer. Your responses should be clear, concise, and professional.
+                    Keep your responses under 150 words. 
+                    Your output will be converted to audio so don't include special characters in your answers. 
+                    """
                 }
             ]
         )

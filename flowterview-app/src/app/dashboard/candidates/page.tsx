@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,10 @@ export default function CandidatesPage() {
           />
         </div>
         <div className="inline-flex">
-          <Button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer" disabled>
+          <Button
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
+            disabled
+          >
             <Filter className="mr-2 h-4 w-4 text-gray-400" />
             Filter
           </Button>
@@ -75,27 +78,64 @@ export default function CandidatesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Job Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Resume</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date Added</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Job Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Resume
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Date Added
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {/* Group by job */}
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-8">Loading...</td></tr>
+                <tr>
+                  <td colSpan={6} className="text-center py-8">
+                    Loading...
+                  </td>
+                </tr>
               ) : error ? (
-                <tr><td colSpan={6} className="text-center text-red-600 py-8">{error}</td></tr>
+                <tr>
+                  <td colSpan={6} className="text-center text-red-600 py-8">
+                    {error}
+                  </td>
+                </tr>
               ) : candidates && candidates.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16">
                     <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 7v-6m0 6a9 9 0 100-18 9 9 0 000 18z" /></svg>
-                      <div className="text-lg font-medium text-gray-500">No candidates found</div>
-                      <div className="text-sm text-gray-400">Add your first candidate to get started!</div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-10 w-10 mb-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 14l9-5-9-5-9 5 9 5zm0 7v-6m0 6a9 9 0 100-18 9 9 0 000 18z"
+                        />
+                      </svg>
+                      <div className="text-lg font-medium text-gray-500">
+                        No candidates found
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Add your first candidate to get started!
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -103,49 +143,66 @@ export default function CandidatesPage() {
                 candidates.map((candidate: any) => (
                   <tr key={candidate.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-6 py-4">
-                      <div className="font-medium text-gray-900">{candidate.name}</div>
-                      <div className="text-gray-500 text-xs">{candidate.email}</div>
+                      <div className="font-medium text-gray-900">
+                        {candidate.name}
+                      </div>
+                      <div className="text-gray-500 text-xs">
+                        {candidate.email}
+                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">{candidate.email}</td>
-                    <td className="whitespace-nowrap px-6 py-4">{candidate.jobs ? candidate.jobs.title : "-"}</td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${statusColors[candidate.status] || 'bg-gray-100 text-gray-800'}`}>
-                        {statusLabels[candidate.status] || candidate.status || "-"}
+                      {candidate.email}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      {candidate.jobs ? candidate.jobs.title : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                          statusColors[candidate.status] ||
+                          "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {statusLabels[candidate.status] ||
+                          candidate.status ||
+                          "-"}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       {candidate.resume_url ? (
-  <a
-    href={candidate.resume_url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="group inline-flex items-center px-2 py-1 rounded transition bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-    title="Preview Resume"
-  >
-    <span className="font-medium mr-1">Preview</span>
-    {/* Eye icon from Lucide */}
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-4 w-4 transition-transform duration-150 group-hover:scale-125 group-hover:text-indigo-800"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M1.5 12s4-7 10.5-7 10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"
-      />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  </a>
-) : (
-  <span className="text-gray-400">No Resume</span>
-)}
+                        <a
+                          href={candidate.resume_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center px-2 py-1 rounded transition bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          title="Preview Resume"
+                        >
+                          <span className="font-medium mr-1">Preview</span>
+                          {/* Eye icon from Lucide */}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 transition-transform duration-150 group-hover:scale-125 group-hover:text-indigo-800"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M1.5 12s4-7 10.5-7 10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"
+                            />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">No Resume</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
-                      {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : "-"}
+                      {candidate.created_at
+                        ? new Date(candidate.created_at).toLocaleDateString()
+                        : "-"}
                     </td>
                   </tr>
                 ))

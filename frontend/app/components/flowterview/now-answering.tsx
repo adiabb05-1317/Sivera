@@ -1,13 +1,12 @@
-"use client"
-import { cn } from "@/app/lib/utils"
-import usePathStore from "@/app/store/PathStore"
-import { Icons } from "@/app/lib/icons"
+"use client";
+import { cn } from "@/app/lib/utils";
+import usePathStore from "@/app/store/PathStore";
 
 const QueryDisplay = ({ className }: { className?: string }) => {
-  const { currentUserTranscript } = usePathStore()
-  
-  if (!currentUserTranscript) return null
-  
+  const { currentUserTranscript } = usePathStore();
+
+  if (!currentUserTranscript) return null;
+
   return (
     <div
       className={cn(
@@ -15,16 +14,13 @@ const QueryDisplay = ({ className }: { className?: string }) => {
         className
       )}
     >
-      <div className="text-[--meet-primary] animate-pulse">
-        <Icons.CircleCheck className="w-5 h-5" />
-      </div>
       <div className="flex-1 overflow-hidden">
         <p className="text-[--meet-text-primary] text-sm font-medium truncate">
           {currentUserTranscript}
         </p>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default QueryDisplay
+export default QueryDisplay;

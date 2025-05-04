@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, ArrowRight } from "lucide-react";
+import { Search, Filter, ArrowRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -84,6 +84,7 @@ export default function InterviewsPage() {
           onClick={() => router.push("/dashboard/interviews/from-description")}
           className="cursor-pointer"
         >
+          <Sparkles className="mr-2" />
           From Job Description
         </Button>
         <Button
@@ -150,7 +151,7 @@ export default function InterviewsPage() {
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">
-                  <ArrowRight className="ml-1 h-4 w-4" />
+                  <ArrowRight className="mx-3 h-4 w-4" />
                 </div>
               </CardContent>
             </li>

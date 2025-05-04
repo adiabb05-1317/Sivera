@@ -17,7 +17,6 @@ interface InterviewNodeData {
 const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
   const nodeStyle = {
     backgroundColor: data.style?.backgroundColor || "#e0f2fe",
-    borderColor: data.style?.borderColor || "#0ea5e9",
     color: data.style?.color || "#0c4a6e",
     width: data.style?.width || 280,
     aspectRatio: "1.1/1",
@@ -39,11 +38,12 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="target"
         position={Position.Left}
         style={{
-          background: "#e5e7eb",
-          width: 8,
-          height: 8,
-          border: `2px solid #e5e7eb`,
+          zIndex: 100,
+          opacity: 1,
+          border: "2.5px solid gray",
+          backgroundColor: nodeStyle.backgroundColor,
         }}
+        className="ml-[-3.5px] p-[1.75px]"
       />
 
       <div className="flex flex-col h-full">
@@ -70,11 +70,12 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="source"
         position={Position.Right}
         style={{
-          background: "#e5e7eb",
-          width: 8,
-          height: 8,
-          border: `2px solid #e5e7eb`,
+          zIndex: 100,
+          opacity: 1,
+          border: "3px solid gray",
+          backgroundColor: nodeStyle.backgroundColor,
         }}
+        className="mr-[-3.5px] p-[1.75px]"
       />
     </div>
   );
