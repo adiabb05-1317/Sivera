@@ -336,7 +336,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
             value: [
               {
                 role: "user",
-                content: `Code Submission {"submitted_code": ${code}}`,
+                content: `Code Submitted. {"submitted_code": ${code}}`,
               },
             ],
           },
