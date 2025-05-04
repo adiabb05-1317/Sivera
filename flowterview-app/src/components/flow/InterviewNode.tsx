@@ -38,30 +38,19 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="target"
         position={Position.Left}
         style={{
-<<<<<<< HEAD
           zIndex: 100,
           opacity: 1,
           border: "2.5px solid gray",
           backgroundColor: nodeStyle.backgroundColor,
-=======
-          background: "#e5e7eb",
-          width: 8,
-          height: 8,
-          border: `2px solid #e5e7eb`,
->>>>>>> 564797dba02d84c0a7a63a2df89bdedbe2fd52d1
         }}
         className="ml-[-3.5px] p-[1.75px]"
       />
 
       <div className="flex flex-col h-full">
-<<<<<<< HEAD
-        <div className="p-2 border-b font-medium border-gray-300">
-=======
         <div
           className="p-2 border-b font-medium"
           style={{ borderColor: "#e5e7eb" }}
         >
->>>>>>> 564797dba02d84c0a7a63a2df89bdedbe2fd52d1
           <div className="text-sm truncate font-bold">{displayLabel}</div>
         </div>
 
@@ -81,17 +70,10 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="source"
         position={Position.Right}
         style={{
-<<<<<<< HEAD
           zIndex: 100,
           opacity: 1,
           border: "3px solid gray",
           backgroundColor: nodeStyle.backgroundColor,
-=======
-          background: "#e5e7eb",
-          width: 8,
-          height: 8,
-          border: `2px solid #e5e7eb`,
->>>>>>> 564797dba02d84c0a7a63a2df89bdedbe2fd52d1
         }}
         className="mr-[-3.5px] p-[1.75px]"
       />
