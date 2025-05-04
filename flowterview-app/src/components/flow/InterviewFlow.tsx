@@ -47,9 +47,7 @@ const nodeTypes = {
   interview: InterviewNode,
 };
 
-// Professional color palette options
 const COLOR_PALETTES = [
-  // Blue focus
   [
     { bg: "#e0f2fe", border: "#0ea5e9", text: "#0c4a6e" },
     { bg: "#dbeafe", border: "#3b82f6", text: "#1e3a8a" },
@@ -57,7 +55,6 @@ const COLOR_PALETTES = [
     { bg: "#f5f3ff", border: "#a78bfa", text: "#5b21b6" },
     { bg: "#fae8ff", border: "#d946ef", text: "#86198f" },
   ],
-  // Green focus
   [
     { bg: "#dcfce7", border: "#22c55e", text: "#14532d" },
     { bg: "#d1fae5", border: "#10b981", text: "#065f46" },
@@ -81,22 +78,21 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
         const colorIndex = index % palette.length;
         const nodeColor = palette[colorIndex];
 
+        // Remove or override the top-level style.border
+        const { style, ...rest } = node;
+        const sanitizedStyle = { ...style };
+        delete sanitizedStyle.border; // Remove border property if present
+
         return {
-          ...node,
+          ...rest,
+          style: sanitizedStyle, // Use sanitized style (no border)
           data: {
             ...node.data,
             style: {
-              backgroundColor: nodeColor.bg,
-              borderColor: nodeColor.border,
-              color: nodeColor.text,
-              width: 280,
+              ...node.data.style,
+              // Optionally, also remove borderColor if you want
+              borderColor: undefined,
             },
-            label: node.data.type
-              .split("_")
-              .map(
-                (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
-              )
-              .join(" "),
           },
         };
       });
@@ -118,11 +114,9 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     const yOffset = 80;
 
     Object.entries(flowData.nodes).forEach(([nodeId, nodeData], index) => {
-      // Calculate position with zigzag pattern
       const xPos = xStartPosition + index * nodeSpacing;
       const yPos = yBasePosition + (index % 2) * yOffset;
 
-      // Assign a color based on position in sequence
       const colorIndex = index % palette.length;
       const nodeColor = palette[colorIndex];
 
@@ -144,14 +138,12 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
           taskMessage: nodeData.task_messages[0].content,
           style: {
             backgroundColor: nodeColor.bg,
-            borderColor: nodeColor.border,
             color: nodeColor.text,
             width: 280,
           },
         },
       });
 
-      // Create edge to next node
       const transitionTo = nodeData.functions[0].function.transition_to;
       if (transitionTo && transitionTo !== "end") {
         edges.push({
@@ -198,7 +190,6 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     }
   }, [nodes, fitOnce]);
 
-  // Layout improvement function
   const improveLayout = useCallback(() => {
     setNodes((nodes) => {
       const xPos = 100;

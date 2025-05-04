@@ -27,10 +27,9 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
 
   return (
     <div
-      className="shadow-md rounded-md border-2 relative"
+      className="shadow-md rounded-md relative"
       style={{
         backgroundColor: nodeStyle.backgroundColor,
-        borderColor: nodeStyle.borderColor,
         color: nodeStyle.color,
         width: nodeStyle.width,
         aspectRatio: nodeStyle.aspectRatio,
@@ -40,17 +39,17 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="target"
         position={Position.Left}
         style={{
-          background: nodeStyle.borderColor,
+          background: "#e5e7eb",
           width: 8,
           height: 8,
-          border: `2px solid ${nodeStyle.borderColor}`,
+          border: `2px solid #e5e7eb`,
         }}
       />
 
       <div className="flex flex-col h-full">
         <div
           className="p-2 border-b font-medium"
-          style={{ borderColor: nodeStyle.borderColor }}
+          style={{ borderColor: "#e5e7eb" }}
         >
           <div className="text-sm truncate font-bold">{displayLabel}</div>
         </div>
@@ -71,10 +70,10 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
         type="source"
         position={Position.Right}
         style={{
-          background: nodeStyle.borderColor,
+          background: "#e5e7eb",
           width: 8,
           height: 8,
-          border: `2px solid ${nodeStyle.borderColor}`,
+          border: `2px solid #e5e7eb`,
         }}
       />
     </div>
