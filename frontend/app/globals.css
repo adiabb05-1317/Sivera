@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code&display=swap");
 
 :root {
   /* New Color Palette */
@@ -11,33 +12,41 @@
   --dark-blue: 14, 28, 41; /* #0E1C29 */
   --ui-blue: 50, 61, 104; /* #323D68 */
   --light-gray: 216, 223, 229; /* #D8DFE5 */
-  
+
   /* Main theme colors */
-  --meet-background: #F0F8FF;
-  --meet-surface: #FFFFFF;
-  --meet-surface-light: #D8DFE5;
-  
+  --meet-background: #f0f8ff;
+  --meet-surface: #ffffff;
+  --meet-surface-light: #d8dfe5;
+
   /* Primary colors */
-  --meet-primary: #774BE5; /* Accent Purple */
+  --meet-primary: #774be5; /* Accent Purple */
   --meet-primary-rgb: var(--accent-purple);
-  --meet-secondary: #5E788F;
+  --meet-secondary: #5e788f;
   --meet-secondary-rgb: var(--secondary-blue-gray);
-  
+
   /* Status colors */
   --meet-error: #ea4335;
   --meet-success: #34a853;
   --meet-warning: #fbbc04;
-  
+
   /* Text and borders */
-  --meet-text-primary: #0E1C29;
-  --meet-text-secondary: #323D68;
+  --meet-text-primary: #0e1c29;
+  --meet-text-secondary: #323d68;
   --meet-border: rgba(119, 75, 229, 0.3);
   --meet-hover: rgba(119, 75, 229, 0.1);
-  
+
   /* Gradient backgrounds */
-  --purple-gradient: linear-gradient(135deg, rgba(var(--accent-purple), 0.8) 0%, rgba(var(--ui-blue), 0.7) 100%);
-  --light-gradient: linear-gradient(180deg, var(--meet-surface) 0%, var(--meet-background) 100%);
-  
+  --purple-gradient: linear-gradient(
+    135deg,
+    rgba(var(--accent-purple), 0.8) 0%,
+    rgba(var(--ui-blue), 0.7) 100%
+  );
+  --light-gradient: linear-gradient(
+    180deg,
+    var(--meet-surface) 0%,
+    var(--meet-background) 100%
+  );
+
   /* System colors */
   --foreground-rgb: var(--meet-text-primary);
   --background-start-rgb: 240, 248, 255;
@@ -45,18 +54,19 @@
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-    to bottom,
-    rgb(var(--background-start-rgb)),
-    rgb(var(--background-end-rgb))
-  ) rgb(var(--background-start-rgb));
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 html {
   height: 100%;
-  background: linear-gradient(180deg, var(--meet-background) 0%, #D8DFE5 100%);
+  background: linear-gradient(180deg, var(--meet-background) 0%, #d8dfe5 100%);
   color: var(--meet-text-primary);
   overflow-x: hidden;
   letter-spacing: 0.2px;
@@ -104,7 +114,9 @@ html {
 .meet-card {
   @apply bg-[--meet-surface] rounded-lg shadow-md;
   border: 1px solid rgba(119, 75, 229, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), 0 0 1px rgba(119, 75, 229, 0.1);
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.05),
+    0 0 1px rgba(119, 75, 229, 0.1);
   backdrop-filter: blur(10px);
 }
 
@@ -192,34 +204,109 @@ html {
     border-radius: 16px;
     border: 1px solid rgba(119, 75, 229, 0.1);
   }
-  
+
   .purple-glow {
     box-shadow: 0 0 15px rgba(119, 75, 229, 0.4);
   }
-  
+
   .purple-text {
-    background: linear-gradient(90deg, #774BE5, #323D68);
+    background: linear-gradient(90deg, #774be5, #323d68);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 600;
   }
-  
+
   .golden-border {
     border: 1px solid rgba(255, 165, 0, 0.3);
   }
-  
+
   .animate-fade-in {
     animation: fadeIn 0.5s ease-in-out;
   }
-  
+
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  
+
   .glass-effect {
     background: rgba(42, 42, 42, 0.7);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 165, 0, 0.1);
+  }
+}
+
+
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

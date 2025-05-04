@@ -1,4 +1,5 @@
 "use client";
+
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import { useEffect, useRef } from "react";
@@ -6,6 +7,85 @@ import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
 import CodeEditor from "./CodeEditor";
 import QueryDisplay from "./now-answering";
+import { Logo } from "@/logos";
+
+const UserTile = ({
+  participant,
+  isUserSpeaking,
+  isCameraOn,
+  localVideoStream,
+  videoRef,
+}: {
+  participant: {
+    id: string;
+    name: string;
+    isTalking: boolean;
+    color?: string;
+  };
+  isUserSpeaking: boolean;
+  isCameraOn: boolean;
+  localVideoStream: MediaStream | null;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+}) => (
+  <div
+    className={`bg-indigo-200/40 rounded-xl aspect-video relative overflow-hidden shadow-md border transition-all
+      ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
+    `}
+  >
+    <div className="absolute inset-0 flex items-center justify-center">
+      {isCameraOn && localVideoStream && videoRef ? (
+        <video
+          autoPlay
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          ref={videoRef}
+        />
+      ) : (
+        <div className="w-24 h-24 rounded-full bg-indigo-500/50 text-white text-2xl font-medium flex items-center justify-center border-2 border-indigo-500">
+          {participant.name.charAt(0).toUpperCase()}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const BotTile = ({
+  isBotSpeaking,
+}: {
+  isBotSpeaking: boolean;
+  isCameraOn: boolean;
+  localVideoStream: MediaStream | null;
+  currentUserTranscript: string | null;
+  currentBotTranscript: string | null;
+}) => (
+  <div
+    className={`bg-indigo-200/40 rounded-xl aspect-video relative overflow-hidden shadow-md border transition-all
+      ${isBotSpeaking ? "ring-2 ring-[#774BE5] scale-[1.02]" : ""}
+    `}
+  >
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="w-24 h-24 rounded-full bg-indigo-500/50 flex items-center justify-center border-2 border-[#774BE5]">
+        <Logo width="60" height="60" />
+      </div>
+    </div>
+    <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-indigo-600/70 px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
+      {isBotSpeaking && <SoundWave />}
+      <span className="text-xs opacity-75">Flotia</span>
+    </div>
+  </div>
+);
+
+const SoundWave = () => (
+  <div className="flex space-x-[2px]">
+    {[1.2, 1.5, 1.3].map((d, i) => (
+      <div
+        key={i}
+        className={`w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_${d}s_ease-in-out_infinite_${0.2 + i * 0.1}s]`}
+      />
+    ))}
+  </div>
+);
 
 const Presentation = () => {
   const {
@@ -17,8 +97,6 @@ const Presentation = () => {
     currentBotTranscript,
     currentUserTranscript,
     resetStore,
-    isSpeakerOn,
-    setIsSpeakerOn,
     isCaptionEnabled,
     setJoiningCall,
     callStatus,
@@ -29,14 +107,6 @@ const Presentation = () => {
     codingProblem,
     localVideoStream,
   } = usePathStore();
-
-  const toggleSpeaker = () => {
-    setIsSpeakerOn(!isSpeakerOn);
-    const audioElements = document.getElementsByTagName("audio");
-    for (const audio of audioElements) {
-      audio.muted = !isSpeakerOn;
-    }
-  };
 
   const toggleCodeEditor = () => {
     setIsCodeEditorOpen(!isCodeEditorOpen);
@@ -102,7 +172,7 @@ const Presentation = () => {
       ) : (
         <section className="relative flex-grow w-full h-full overflow-hidden bg-[#F0F8FF]">
           <div
-            className={`absolute top-0 bottom-0 left-0 z-40 w-[50%] transition-transform duration-300 shadow-xl ${
+            className={`absolute top-0 bottom-0 left-0 z-40 w-[65%] transition-transform duration-300 p-5 ${
               isCodeEditorOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -113,147 +183,68 @@ const Presentation = () => {
           </div>
 
           <div
-            className={`absolute z-50 top-4 ${isCodeEditorOpen ? "left-[75%]" : "left-1/2"} transform -translate-x-1/2 max-w-md transition-all duration-300`}
+            className={`absolute z-50 top-4 ${isCodeEditorOpen ? "left-[82.5%]" : "left-1/2"} transform -translate-x-1/2 max-w-md transition-all duration-300`}
           >
             {currentUserTranscript && isBotSpeaking && <QueryDisplay />}
           </div>
 
-          <div className="absolute top-4 right-20 z-50">
-            <div
-              onClick={toggleSpeaker}
-              className="cursor-pointer bg-[#D8DFE5] hover:bg-[#C6CED8] p-3 rounded-full shadow-md transition-colors"
-            >
-              {isSpeakerOn ? (
-                <Icons.Speaker className="w-6 h-6 text-[#0E1C29]" />
-              ) : (
-                <Icons.SpeakerOff className="w-6 h-6 text-[#0E1C29]" />
-              )}
-            </div>
-          </div>
-
           {connectionStatus !== "bot_connected" ? (
             <div
-              className={`absolute top-1/4 ${isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"} flex justify-center p-6 z-10 transition-all duration-300`}
+              className={`absolute p-4 z-10 transition-all duration-300 flex justify-center -m-16 ${
+                isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"
+              }`}
             >
-              <div
-                className={`w-full ${isCodeEditorOpen ? "max-w-[350px]" : "max-w-[600px]"}`}
-              >
+              <div className="w-full flex justify-center">
                 {participants
-                  .filter((participant) => participant.id === "user")
-                  .map((participant) => (
-                    <div
-                      key={participant.id}
-                      className={`bg-[#D8E0E8] rounded-xl aspect-video relative overflow-hidden shadow-md transition-all 
-                        ${participant.isTalking ? "ring-2 ring-[#774BE5] shadow-lg transform scale-[1.02]" : ""}
-                        ${isUserSpeaking && participant.id === "user" ? "ring-2 ring-[#774BE5]" : ""}
-                      `}
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        {isCameraOn &&
-                          participant.id === "user" &&
-                          localVideoStream && (
-                            <video
-                              autoPlay
-                              muted
-                              playsInline
-                              className="w-full h-full object-cover"
-                              ref={videoRef}
-                            />
-                          )}
-                        {!isCameraOn && (
-                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
-                            {participant.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
-                        {participant.isTalking && (
-                          <div className="flex space-x-[2px]">
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.2s_ease-in-out_infinite_0.2s]"></div>
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.5s_ease-in-out_infinite_0.3s]"></div>
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.3s_ease-in-out_infinite_0.1s]"></div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                  .filter((p) => p.id === "user")
+                  .map((p) => (
+                    <UserTile
+                      key={p.id}
+                      participant={p}
+                      isUserSpeaking={isUserSpeaking}
+                      isCameraOn={isCameraOn}
+                      localVideoStream={localVideoStream}
+                      videoRef={videoRef}
+                    />
                   ))}
               </div>
             </div>
           ) : (
             <div
-              className={`absolute inset-0 flex items-center justify-center p-6 z-10 transition-all duration-300 ${
-                isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"
+              className={`absolute inset-0 p-4 z-10 transition-all duration-300 flex justify-center items-center -mt-16 ${
+                isCodeEditorOpen ? "left-[65%] right-0" : "left-0 right-0"
               }`}
             >
               <div
-                className={`${
+                className={`w-full ${
                   isCodeEditorOpen
                     ? "flex flex-col gap-6"
-                    : "grid grid-cols-2 gap-8"
-                } w-full ${isCodeEditorOpen ? "max-w-[calc(50vw-24px)]" : "max-w-[1200px]"}`}
+                    : "grid grid-cols-2 gap-6"
+                }`}
               >
                 {participants
-                  .filter(
-                    (participant) =>
-                      participant.id === "user" ||
-                      (participant.id === "bot" &&
-                        connectionStatus === "bot_connected")
-                  )
-                  .map((participant) => (
-                    <div
-                      key={participant.id}
-                      className={`bg-[#D8E0E8] rounded-xl relative overflow-hidden shadow-md transition-all 
-                        ${participant.isTalking ? "ring-2 ring-[#774BE5] shadow-lg transform scale-[1.02]" : ""}
-                        ${isUserSpeaking && participant.id === "user" ? "ring-2 ring-[#774BE5]" : ""}
-                        ${isBotSpeaking && participant.id === "bot" ? "ring-2 ring-[#774BE5]" : ""}
-                        ${isCodeEditorOpen ? "aspect-[4/3] max-h-[30vh]" : "aspect-video"}
-                      `}
-                    >
-                      {participant.id === "bot" ? (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center border-2 border-[#774BE5]">
-                            <img
-                              src="/Flowterviewlogo.svg"
-                              alt="AI Assistant"
-                              className="w-14 h-14"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          {isCameraOn &&
-                            participant.id === "user" &&
-                            localVideoStream && (
-                              <video
-                                autoPlay
-                                muted
-                                playsInline
-                                className="w-full h-full object-cover"
-                                ref={videoRef}
-                              />
-                            )}
-                          {!isCameraOn && (
-                            <div className="w-24 h-24 rounded-full overflow-hidden bg-[#323D68] flex items-center justify-center text-white font-medium text-2xl">
-                              {participant.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-[#5E788F] px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
-                        {participant.isTalking && (
-                          <div className="flex space-x-[2px]">
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.2s_ease-in-out_infinite_0.2s]"></div>
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.5s_ease-in-out_infinite_0.3s]"></div>
-                            <div className="w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_1.3s_ease-in-out_infinite_0.1s]"></div>
-                          </div>
-                        )}
-
-                        {participant.id === "bot" && (
-                          <span className="text-xs opacity-75">(AI)</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  .filter((p) => p.id === "user" || p.id === "bot")
+                  .map((p) =>
+                    p.id === "user" ? (
+                      <UserTile
+                        key={p.id}
+                        participant={p}
+                        isUserSpeaking={isUserSpeaking}
+                        isCameraOn={isCameraOn}
+                        localVideoStream={localVideoStream}
+                        videoRef={videoRef}
+                      />
+                    ) : (
+                      <BotTile
+                        key={p.id}
+                        isBotSpeaking={isBotSpeaking}
+                        isCameraOn={isCameraOn}
+                        localVideoStream={localVideoStream}
+                        currentUserTranscript={currentUserTranscript}
+                        currentBotTranscript={currentBotTranscript}
+                      />
+                    )
+                  )}
               </div>
             </div>
           )}
@@ -264,34 +255,29 @@ const Presentation = () => {
       {isCaptionEnabled && currentBotTranscript && callStatus !== "left" && (
         <div
           className={`fixed z-30 ${
-            isCodeEditorOpen ? "left-[75%]" : "left-1/2"
-          } bottom-[108px] transform -translate-x-1/2 max-w-2xl w-[calc(100%-32px)] md:w-auto animate-fade-in transition-all duration-300`}
+            isCodeEditorOpen ? "left-[82.5%]" : "left-1/2"
+          } bottom-[130px] transform -translate-x-1/2 max-w-2xl w-[calc(100%-32px)] md:w-auto animate-fade-in transition-all duration-300`}
         >
           <div className="relative px-4">
-            <div className="bg-[#0E1C29]/90 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-[#323D68]/30">
-              <div className="flex items-start mb-2">
-                <div className="w-6 h-6 rounded-full bg-[#323D68] border border-[#774BE5] flex items-center justify-center mr-2 mt-0.5">
-                  <img
-                    src="/Flowterviewlogo.svg"
-                    alt="AI"
-                    className="w-3.5 h-3.5"
-                  />
+            <div className="bg-indigo-300/30 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-indigo-600/40">
+              <div className="flex items-center mb-2">
+                <div className="w-6 h-6 rounded-full bg-indigo-700 border border-indigo-500 flex items-center justify-center mr-2 mt-0.5">
+                  <Logo width="13" height="13" />
                 </div>
-                <span className="text-white/80 text-xs font-medium">
-                  Flowterview
+                <span className="text-indigo-900 text-sm font-medium tracking-tight">
+                  Flotia
                 </span>
               </div>
-              <p className="text-white text-base ml-8 leading-relaxed">
+              <p className="text-indigo-900 text-xs ml-8 leading-relaxed tracking-tight">
                 {currentBotTranscript}
               </p>
             </div>
-            <div className="w-4 h-4 bg-[#0E1C29]/90 absolute -bottom-2 left-1/2 transform -translate-x-1/2 rotate-45"></div>
           </div>
         </div>
       )}
 
       <div
-        className={`fixed ${isCodeEditorOpen ? "left-[75%] bottom-8" : "left-1/2 bottom-8"} transform -translate-x-1/2 z-30 transition-all duration-300`}
+        className={`fixed ${isCodeEditorOpen ? "left-[82.5%] bottom-8" : "left-1/2 bottom-8"} transform -translate-x-1/2 z-30 transition-all duration-300`}
       >
         {callStatus !== "left" && (
           <Controls
@@ -300,8 +286,6 @@ const Presentation = () => {
             toggleCodeEditor={toggleCodeEditor}
             style={{
               overflow: "visible",
-              background: "rgba(14, 28, 41, 0.85)",
-              backdropFilter: "blur(8px)",
             }}
             joinAndLeaveCallHandler={joinAndLeaveCallHandler}
           />
@@ -312,7 +296,7 @@ const Presentation = () => {
         <div className="fixed z-10 bottom-24 right-6">
           <button
             onClick={() => setIsCodeEditorOpen(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 shadow-lg flex items-center justify-center"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-3 shadow-lg flex items-center justify-center"
             title="Open Code Editor"
           >
             <span className="mr-2">Open Code Editor</span>

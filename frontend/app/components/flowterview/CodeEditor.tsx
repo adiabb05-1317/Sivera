@@ -1,9 +1,15 @@
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import Editor from "@monaco-editor/react";
 import { editor } from "monaco-editor";
+import { Fira_Code } from "next/font/google";
+import { Button } from "@/components/ui/button";
+import { Send } from "lucide-react";
+
+const firaCode = Fira_Code({ subsets: ["latin"], weight: "400" });
 
 const SUPPORTED_LANGUAGES = [
   { name: "JavaScript", id: "js" },
@@ -114,15 +120,15 @@ export default function CodeEditor({
   if (!isOpen) return null;
 
   return (
-    <div className="h-full flex flex-col bg-[#181A20] text-white border-r border-gray-800 shadow-2xl overflow-hidden animate-fade-in">
-      <div className="flex justify-between items-center py-4 px-6 border-b border-gray-800 bg-[#20232A]">
-        <h3 className="text-white font-semibold text-lg flex items-center gap-2 tracking-tight">
-          <Icons.Code className="w-5 h-5 text-blue-400" />
+    <div className="h-full flex flex-col bg-indigo-50 text-white border-r overflow-hidden animate-fade-in rounded-3xl border border-indigo-300/50">
+      <div className="flex justify-between items-center py-4 px-6 bg-indigo-50">
+        <h3 className="text-indigo-800 font-semibold text-lg flex items-center gap-2 tracking-tight">
+          <Icons.Code className="w-5 h-5 text-indigo-500" />
           <span>Coding Challenge</span>
         </h3>
         <button
           onClick={handleClose}
-          className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="text-indigo-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label="Close editor"
         >
           <Icons.X className="w-5 h-5" />
@@ -130,28 +136,30 @@ export default function CodeEditor({
       </div>
 
       {codingProblem && (
-        <div className="bg-[#20232A] border-b border-gray-800 px-6 py-5">
-          <h4 className="font-semibold text-white mb-2 text-base">Problem</h4>
-          <p className="text-gray-300 mb-4 whitespace-pre-line text-sm leading-relaxed">
+        <div className="bg-white border-b border-indigo-200 px-6 py-5">
+          <h4 className="font-semibold text-indigo-800 mb-2 text-base">
+            Problem
+          </h4>
+          <p className="text-gray-700 mb-4 whitespace-pre-line text-sm leading-relaxed">
             {codingProblem.description}
           </p>
-          <h4 className="font-semibold text-white mb-2 text-base">
+          <h4 className="font-semibold text-indigo-800 mb-2 text-base">
             Constraints
           </h4>
-          <p className="text-gray-400 whitespace-pre-line text-sm leading-relaxed">
+          <p className="text-gray-600 whitespace-pre-line text-sm leading-relaxed">
             {codingProblem.constraints}
           </p>
         </div>
       )}
 
-      <div className="flex border-b border-gray-800 bg-[#20232A] px-6">
+      <div className="flex border-b border-indigo-300 bg-indigo-50 px-6">
         {SUPPORTED_LANGUAGES.map((lang) => (
           <button
             key={lang.id}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
               selectedLang === lang.id
-                ? "bg-[#181A20] text-blue-400 border-b-2 border-blue-500"
-                : "text-gray-400 hover:text-white"
+                ? "bg-white text-indigo-600 border-b-2 border-indigo-500"
+                : "text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100"
             }`}
             onClick={() => setSelectedLang(lang.id)}
           >
@@ -160,17 +168,18 @@ export default function CodeEditor({
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto relative bg-[#181A20]">
+      <div className="flex-1 overflow-auto relative bg-indigo-50">
         <Editor
           height="90vh"
           onMount={handleEditorMount}
           language={getMonacoLang(selectedLang)}
           value={codes[selectedLang]}
           onChange={handleEditorChange}
-          theme="vs-dark"
+          theme="light"
           options={{
-            fontSize: 16,
+            fontSize: 18,
             automaticLayout: true,
+            fontFamily: firaCode.style.fontFamily,
             scrollBeyondLastLine: false,
             lineNumbers: "on",
             wordWrap: "on",
@@ -182,13 +191,14 @@ export default function CodeEditor({
         />
       </div>
 
-      <div className="flex justify-end py-4 px-6 bg-[#20232A] border-t border-gray-800">
-        <button
-          className="bg-gradient-to-r text-sm from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onClick={handleSubmit}
+      <div className="flex justify-end py-4 px-6 bg-indigo-50 border-t border-indigo-200">
+        <Button
+          className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+          variant="outline"
         >
-          Submit Solution
-        </button>
+          <Send className="mr-2 h-4 w-4" />
+          Submit Code
+        </Button>
       </div>
     </div>
   );
