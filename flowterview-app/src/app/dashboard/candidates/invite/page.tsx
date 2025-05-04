@@ -1,28 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useJobs, useAddCandidate } from "./supabase-hooks";
+import { useSession } from '@supabase/auth-helpers-react';
 import Link from "next/link";
 import { ArrowLeft, Send, X, Plus, UploadCloud, Check } from "lucide-react";
 
 export default function InviteCandidatesPage() {
   const [selectedInterview, setSelectedInterview] = useState("");
-  const [candidates, setCandidates] = useState([
-    { name: "", email: "", id: Date.now() },
+  type CandidateRow = { name: string; email: string; resume: File | null; id: number; status: string };
+  const [candidates, setCandidates] = useState<CandidateRow[]>([
+    { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
   ]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  // Placeholder data - in a real application, this would come from an API
-  const interviews = [
-    { id: "1", title: "Frontend Developer" },
-    { id: "2", title: "UX Designer" },
-    { id: "3", title: "Product Manager" },
-    { id: "4", title: "DevOps Engineer" },
-  ];
+  // Fetch jobs from backend
+  const { jobs, loadJobs } = useJobs();
+  const { submitCandidate, loading: addLoading, error: addError, success: addSuccess } = useAddCandidate();
+  const session = useSession();
+  const orgEmail = session?.user?.email ?? '';
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
 
   const addCandidateRow = () => {
-    setCandidates([...candidates, { name: "", email: "", id: Date.now() }]);
+    setCandidates([
+      ...candidates,
+      { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
+    ]);
   };
 
   const removeCandidateRow = (id: number) => {
@@ -33,8 +41,8 @@ export default function InviteCandidatesPage() {
 
   const updateCandidate = (
     id: number,
-    field: "name" | "email",
-    value: string
+    field: "name" | "email" | "resume" | "status",
+    value: string | File | null
   ) => {
     setCandidates(
       candidates.map((candidate) =>
@@ -49,23 +57,34 @@ export default function InviteCandidatesPage() {
     setTimeout(() => {
       // Simulate adding candidates from CSV
       setCandidates([
-        { name: "John Doe", email: "john@example.com", id: Date.now() },
-        { name: "Jane Smith", email: "jane@example.com", id: Date.now() + 1 },
-        { name: "Bob Johnson", email: "bob@example.com", id: Date.now() + 2 },
+        { name: "John Doe", email: "john@example.com", resume: null, id: Date.now(), status: "applied" },
+        { name: "Jane Smith", email: "jane@example.com", resume: null, id: Date.now() + 1, status: "applied" },
+        { name: "Bob Johnson", email: "bob@example.com", resume: null, id: Date.now() + 2, status: "applied" },
       ]);
       setIsUploading(false);
     }, 1500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
-    // In a real application, this would send invitations via API
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      for (const candidate of candidates) {
+        await submitCandidate({
+          name: candidate.name,
+          email: candidate.email,
+          orgEmail: orgEmail, // <-- Use current user's email as orgEmail
+          jobTitle: jobs.find(j => j.id === selectedInterview)?.title || '',
+          resumeFile: candidate.resume || undefined,
+          status: candidate.status,
+        });
+      }
       setIsSent(true);
-    }, 1500);
+    } catch (err) {
+      // You can handle error UI here
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSent) {
@@ -90,10 +109,10 @@ export default function InviteCandidatesPage() {
               <Check className="h-8 w-8 text-green-600" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-gray-900">
-              Invitations Sent Successfully
+              Candidates Saved Successfully
             </h2>
             <p className="mt-2 text-sm text-gray-500">
-              All candidates have been invited to complete their interviews.
+              All candidates have been added to your organization.
             </p>
             <div className="mt-6">
               <Link
@@ -119,7 +138,7 @@ export default function InviteCandidatesPage() {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Candidates
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Invite Candidates</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Add Candidates</h1>
       </div>
 
       <div className="overflow-hidden rounded-lg bg-white shadow">
@@ -139,10 +158,10 @@ export default function InviteCandidatesPage() {
                 required
                 className="mt-1 block w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
               >
-                <option value="">Select an interview...</option>
-                {interviews.map((interview) => (
-                  <option key={interview.id} value={interview.id}>
-                    {interview.title}
+                <option value="">Select a job...</option>
+                {jobs && jobs.map((job: any) => (
+                  <option key={job.id} value={job.id}>
+                    {job.title}
                   </option>
                 ))}
               </select>
@@ -178,34 +197,56 @@ export default function InviteCandidatesPage() {
                       className="flex items-start space-x-3"
                     >
                       <div className="flex-1">
-                        <input
-                          type="text"
-                          value={candidate.name}
-                          onChange={(e) =>
-                            updateCandidate(
-                              candidate.id,
-                              "name",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Candidate Name"
-                          required
-                          className="mb-2 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
-                        />
-                        <input
-                          type="email"
-                          value={candidate.email}
-                          onChange={(e) =>
-                            updateCandidate(
-                              candidate.id,
-                              "email",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Email Address"
-                          required
-                          className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
-                        />
+                        <div className="mb-3">
+                          <input
+                            type="text"
+                            value={candidate.name}
+                            onChange={(e) =>
+                              updateCandidate(
+                                candidate.id,
+                                "name",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Candidate Name"
+                            required
+                            className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <input
+                            type="email"
+                            value={candidate.email}
+                            onChange={(e) =>
+                              updateCandidate(
+                                candidate.id,
+                                "email",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Email Address"
+                            required
+                            className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Upload Resume</label>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={e =>
+                              updateCandidate(
+                                candidate.id,
+                                "resume",
+                                e.target.files && e.target.files[0] ? e.target.files[0] : null
+                              )
+                            }
+                            className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                          />
+                          {candidate.resume && (
+                            <span className="text-xs text-green-700">{candidate.resume.name}</span>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -242,11 +283,11 @@ export default function InviteCandidatesPage() {
                 className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70"
               >
                 {isSubmitting ? (
-                  <span>Sending...</span>
+                  <span>Adding...</span>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    Send Invitations
+                    Save Candidate
                   </>
                 )}
               </button>
