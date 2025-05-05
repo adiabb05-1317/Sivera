@@ -1,13 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import {
-  FileText,
-  Users,
-  Activity,
-  ChevronRight,
-  ArrowRight,
-} from "lucide-react";
+import { FileText, Users, Activity, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import {

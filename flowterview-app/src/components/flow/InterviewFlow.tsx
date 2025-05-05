@@ -41,7 +41,7 @@ interface InterviewFlowProps {
   reactFlowData?: ReactFlowData;
 }
 
-const nodeTypes = {
+export const nodeTypes = {
   interview: InterviewNode,
 };
 

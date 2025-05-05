@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@radix-ui/react-select";
 
 // Dynamically import ReactFlow component to avoid SSR issues
 const InterviewFlow = dynamic(() => import("@/components/flow/InterviewFlow"), {
@@ -75,6 +74,10 @@ export default function GenerateFromDescriptionPage() {
     getValues,
     formState: { errors },
   } = useForm<FormData>();
+
+  useEffect(() => {
+    console.log(JSON.stringify(reactFlowData));
+  }, [reactFlowData]);
 
   const onSubmit = async (data: FormData) => {
     try {

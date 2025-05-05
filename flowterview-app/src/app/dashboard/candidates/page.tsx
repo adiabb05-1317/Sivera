@@ -1,16 +1,75 @@
 "use client";
 
-import { Plus, Search, Filter, Eye } from "lucide-react";
+import { Plus, Search, Filter, Eye, View, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+<<<<<<< HEAD
 import toast from "react-hot-toast";
+=======
+import { useState } from "react";
+>>>>>>> f76c1f9b4e24059b220fa20a734f8bb24b94c85d
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+const CandidateViewDialog = ({
+  candidate,
+  onClose,
+  handleSendInvite,
+}: {
+  candidate: any;
+  onClose: () => void;
+  handleSendInvite: (candidate: any) => void;
+}) => {
+  return (
+    <Dialog open={!!candidate} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="tracking-tight">Candidate</DialogTitle>
+          <DialogDescription>{candidate.name}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <div className="flex flex-col gap-2 w-full">
+            {candidate.resume_url && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(candidate.resume_url, "_blank")}
+                className="cursor-pointer"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Resume
+              </Button>
+            )}
+            {!candidate.resume_url && (
+              <p className="text-sm text-gray-500">No resume available.</p>
+            )}
+            <Button
+              onClick={() => handleSendInvite(candidate)}
+              className="cursor-pointer"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Invite for Interview
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function CandidatesPage() {
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
     // Show the success toast immediately - don't wait for API
@@ -24,19 +83,20 @@ export default function CandidatesPage() {
     );
 
     try {
-      const res = await fetch('/api/send-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/send-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: candidate.email,
           name: candidate.name,
-          job: candidate.jobs ? candidate.jobs.title : '',
-        })
+          job: candidate.jobs ? candidate.jobs.title : "",
+        }),
       });
       
       const data = await res.json();
       
       if (data.success) {
+<<<<<<< HEAD
         // Update the existing toast with success message
         toast.success(
           <div className="flex flex-col space-y-1">
@@ -79,6 +139,14 @@ export default function CandidatesPage() {
         </div>,
         { id: toastId } // Use the same toast ID to replace the initial toast
       );
+=======
+        alert("Interview invitation sent to " + candidate.email);
+      } else {
+        alert("Failed to send invite: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Failed to send invite: " + err.message);
+>>>>>>> f76c1f9b4e24059b220fa20a734f8bb24b94c85d
     }
   };
 
@@ -163,9 +231,6 @@ export default function CandidatesPage() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Resume
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Date Added
                 </th>
               </tr>
@@ -213,7 +278,11 @@ export default function CandidatesPage() {
                 </tr>
               ) : (
                 candidates.map((candidate: any) => (
-                  <tr key={candidate.id} className="hover:bg-gray-50">
+                  <tr
+                    key={candidate.id}
+                    className="hover:bg-gray-50 cursor-pointer h-18 border-b border-gray-200"
+                    onClick={() => setSelectedCandidate(candidate)}
+                  >
                     <td className="whitespace-nowrap px-6 py-4">
                       <div className="font-normal text-sm tracking-tight">
                         {candidate.name}
@@ -232,43 +301,10 @@ export default function CandidatesPage() {
                           "-"}
                       </Badge>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          if (candidate.resume_url) {
-                            window.open(candidate.resume_url, "_blank");
-                          }
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {candidate.resume_url ? (
-                        <a
-                          href={candidate.resume_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group inline-flex items-center px-2 py-1 rounded transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                          title="Preview Resume"
-                        ></a>
-                      ) : (
-                        <span className="text-gray-400">No Resume</span>
-                      )}
-                    </td>
                     <td className="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
                       {candidate.created_at
                         ? new Date(candidate.created_at).toLocaleDateString()
                         : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <button
-                        className="inline-flex items-center px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
-                        onClick={() => handleSendInvite(candidate)}
-                      >
-                        Invite for Interview
-                      </button>
                     </td>
                   </tr>
                 ))
@@ -277,6 +313,15 @@ export default function CandidatesPage() {
           </table>
         </div>
       </Card>
+
+      {/* Conditionally render the dialog */}
+      {selectedCandidate && (
+        <CandidateViewDialog
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
+          handleSendInvite={handleSendInvite}
+        />
+      )}
     </div>
   );
 }
