@@ -31,7 +31,7 @@ export default function InviteCandidatesPage() {
     status: string;
   };
   const [candidates, setCandidates] = useState<CandidateRow[]>([
-    { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
+    { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
   ]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +55,7 @@ export default function InviteCandidatesPage() {
   const addCandidateRow = () => {
     setCandidates([
       ...candidates,
-      { name: "", email: "", resume: null, id: Date.now(), status: "applied" },
+      { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
     ]);
   };
 
@@ -88,21 +88,21 @@ export default function InviteCandidatesPage() {
           email: "john@example.com",
           resume: null,
           id: Date.now(),
-          status: "applied",
+          status: "Applied",
         },
         {
           name: "Jane Smith",
           email: "jane@example.com",
           resume: null,
           id: Date.now() + 1,
-          status: "applied",
+          status: "Applied",
         },
         {
           name: "Bob Johnson",
           email: "bob@example.com",
           resume: null,
           id: Date.now() + 2,
-          status: "applied",
+          status: "Applied",
         },
       ]);
       setIsUploading(false);
@@ -134,13 +134,10 @@ export default function InviteCandidatesPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center">
-          <Link
-            href="/dashboard/candidates"
-            className="mr-4 inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700"
-          >
+          <Button variant="link" className="text-xs">
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Candidates
-          </Link>
+          </Button>
         </div>
 
         <div className="overflow-hidden rounded-lg bg-white shadow">
