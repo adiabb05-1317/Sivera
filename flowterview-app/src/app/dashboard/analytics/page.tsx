@@ -13,16 +13,12 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -32,7 +28,7 @@ import {
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState("30");
-  
+
   // Placeholder data - in a real application, this would come from an API
   const stats = [
     {
@@ -67,49 +63,49 @@ export default function AnalyticsPage() {
 
   // Monthly trend data for interviews
   const monthlyTrendData = [
-    { name: 'Jan', interviews: 12, completionRate: 75 },
-    { name: 'Feb', interviews: 19, completionRate: 78 },
-    { name: 'Mar', interviews: 18, completionRate: 81 },
-    { name: 'Apr', interviews: 24, completionRate: 84 },
-    { name: 'May', interviews: 29, completionRate: 85 },
-    { name: 'Jun', interviews: 31, completionRate: 88 },
-    { name: 'Jul', interviews: 32, completionRate: 87 },
-    { name: 'Aug', interviews: 36, completionRate: 89 },
-    { name: 'Sep', interviews: 34, completionRate: 90 },
-    { name: 'Oct', interviews: 40, completionRate: 88 },
-    { name: 'Nov', interviews: 35, completionRate: 89 },
-    { name: 'Dec', interviews: 42, completionRate: 91 },
+    { name: "Jan", interviews: 12, completionRate: 75 },
+    { name: "Feb", interviews: 19, completionRate: 78 },
+    { name: "Mar", interviews: 18, completionRate: 81 },
+    { name: "Apr", interviews: 24, completionRate: 84 },
+    { name: "May", interviews: 29, completionRate: 85 },
+    { name: "Jun", interviews: 31, completionRate: 88 },
+    { name: "Jul", interviews: 32, completionRate: 87 },
+    { name: "Aug", interviews: 36, completionRate: 89 },
+    { name: "Sep", interviews: 34, completionRate: 90 },
+    { name: "Oct", interviews: 40, completionRate: 88 },
+    { name: "Nov", interviews: 35, completionRate: 89 },
+    { name: "Dec", interviews: 42, completionRate: 91 },
   ];
 
   // Completion rates by role
   const completionRateByRole = [
-    { name: 'Frontend Dev', rate: 92 },
-    { name: 'UX Designer', rate: 88 },
-    { name: 'Product Mgr', rate: 85 },
-    { name: 'DevOps Eng', rate: 79 },
-    { name: 'Data Scientist', rate: 84 },
-    { name: 'Backend Dev', rate: 89 },
+    { name: "Frontend Dev", rate: 92 },
+    { name: "UX Designer", rate: 88 },
+    { name: "Product Mgr", rate: 85 },
+    { name: "DevOps Eng", rate: 79 },
+    { name: "Data Scientist", rate: 84 },
+    { name: "Backend Dev", rate: 89 },
   ];
 
   // Performance distribution data
   const performanceData = [
-    { name: 'Excellent', value: 24, color: '#34D399' },
-    { name: 'Good', value: 42, color: '#60A5FA' },
-    { name: 'Average', value: 22, color: '#FBBF24' },
-    { name: 'Below Average', value: 8, color: '#F97316' },
-    { name: 'Poor', value: 4, color: '#EF4444' },
+    { name: "Excellent", value: 24, color: "#34D399" },
+    { name: "Good", value: 42, color: "#60A5FA" },
+    { name: "Average", value: 22, color: "#FBBF24" },
+    { name: "Below Average", value: 8, color: "#F97316" },
+    { name: "Poor", value: 4, color: "#EF4444" },
   ];
 
   // Weekly time-to-hire trend (in days)
   const timeToHireData = [
-    { week: 'Week 1', time: 21 },
-    { week: 'Week 2', time: 19 },
-    { week: 'Week 3', time: 20 },
-    { week: 'Week 4', time: 18 },
-    { week: 'Week 5', time: 17 },
-    { week: 'Week 6', time: 16 },
-    { week: 'Week 7', time: 18 },
-    { week: 'Week 8', time: 15 },
+    { week: "Week 1", time: 21 },
+    { week: "Week 2", time: 19 },
+    { week: "Week 3", time: 20 },
+    { week: "Week 4", time: 18 },
+    { week: "Week 5", time: 17 },
+    { week: "Week 6", time: 16 },
+    { week: "Week 7", time: 18 },
+    { week: "Week 8", time: 15 },
   ];
 
   return (
@@ -213,20 +209,20 @@ export default function AnalyticsPage() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Area 
-                    type="monotone" 
-                    dataKey="interviews" 
+                  <Area
+                    type="monotone"
+                    dataKey="interviews"
                     name="Total Interviews"
-                    stroke="#6366F1" 
-                    fill="#6366F1" 
+                    stroke="#6366F1"
+                    fill="#6366F1"
                     fillOpacity={0.2}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="completionRate" 
+                  <Area
+                    type="monotone"
+                    dataKey="completionRate"
                     name="Completion Rate (%)"
-                    stroke="#10B981" 
-                    fill="#10B981" 
+                    stroke="#10B981"
+                    fill="#10B981"
                     fillOpacity={0.2}
                   />
                 </AreaChart>
@@ -248,10 +244,17 @@ export default function AnalyticsPage() {
           <div className="px-4 py-5 sm:p-6">
             <div className="grid grid-cols-2 gap-4">
               {completionRateByRole.map((role, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <div className="text-sm font-medium text-gray-700">{role.name}</div>
+                <div
+                  key={index}
+                  className="bg-white rounded-lg p-4 shadow-sm border border-gray-100"
+                >
+                  <div className="text-sm font-medium text-gray-700">
+                    {role.name}
+                  </div>
                   <div className="mt-1 flex items-end">
-                    <div className="text-2xl font-semibold text-gray-900">{role.rate}%</div>
+                    <div className="text-2xl font-semibold text-gray-900">
+                      {role.rate}%
+                    </div>
                     <div className="relative ml-3 flex h-3 w-full overflow-hidden rounded bg-gray-200">
                       <div
                         className="bg-indigo-600"
@@ -287,13 +290,15 @@ export default function AnalyticsPage() {
                     outerRadius={100}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                   >
                     {performanceData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+                  <Tooltip formatter={(value) => [`${value}%`, "Percentage"]} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -337,31 +342,55 @@ export default function AnalyticsPage() {
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center justify-center mb-6">
               <div className="text-6xl font-bold text-indigo-600">15</div>
-              <div className="ml-4 text-gray-500 text-lg">Average days<br />to hire</div>
+              <div className="ml-4 text-gray-500 text-lg">
+                Average days
+                <br />
+                to hire
+              </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-6 mt-8">
               <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-center">
-                <div className="text-green-800 text-sm font-medium">Fastest Hire</div>
-                <div className="text-green-900 text-2xl font-semibold mt-1">9 days</div>
-                <div className="text-green-700 text-xs mt-1">Frontend Developer</div>
+                <div className="text-green-800 text-sm font-medium">
+                  Fastest Hire
+                </div>
+                <div className="text-green-900 text-2xl font-semibold mt-1">
+                  9 days
+                </div>
+                <div className="text-green-700 text-xs mt-1">
+                  Frontend Developer
+                </div>
               </div>
-              
+
               <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 text-center">
-                <div className="text-indigo-800 text-sm font-medium">Improvement</div>
-                <div className="text-indigo-900 text-2xl font-semibold mt-1">-28%</div>
-                <div className="text-indigo-700 text-xs mt-1">vs. last quarter</div>
+                <div className="text-indigo-800 text-sm font-medium">
+                  Improvement
+                </div>
+                <div className="text-indigo-900 text-2xl font-semibold mt-1">
+                  -28%
+                </div>
+                <div className="text-indigo-700 text-xs mt-1">
+                  vs. last quarter
+                </div>
               </div>
-              
+
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center">
-                <div className="text-blue-800 text-sm font-medium">Top Performer</div>
-                <div className="text-blue-900 text-2xl font-semibold mt-1">UX Design</div>
-                <div className="text-blue-700 text-xs mt-1">12 days avg. time</div>
+                <div className="text-blue-800 text-sm font-medium">
+                  Top Performer
+                </div>
+                <div className="text-blue-900 text-2xl font-semibold mt-1">
+                  UX Design
+                </div>
+                <div className="text-blue-700 text-xs mt-1">
+                  12 days avg. time
+                </div>
               </div>
-              
+
               <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 text-center">
                 <div className="text-purple-800 text-sm font-medium">Goal</div>
-                <div className="text-purple-900 text-2xl font-semibold mt-1">14 days</div>
+                <div className="text-purple-900 text-2xl font-semibold mt-1">
+                  14 days
+                </div>
                 <div className="text-purple-700 text-xs mt-1">by Q3 2025</div>
               </div>
             </div>

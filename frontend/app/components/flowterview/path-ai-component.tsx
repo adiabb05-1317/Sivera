@@ -1,8 +1,10 @@
 "use client";
+
 import { LogoDark } from "@/logos";
 import AudioClient from "./audio-client";
 import Presentation from "./presentation-layer";
 import usePathStore from "@/app/store/PathStore";
+
 export default function FlowterviewComponent() {
   const { setCurrentBotTranscript, isHeaderVisible } = usePathStore();
 

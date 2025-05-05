@@ -16,9 +16,15 @@ import { Label } from "@radix-ui/react-label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { set, z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+
+const emailSchema = z.string().email();
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +52,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // If password provided, do password login
+      if (!email || !emailSchema.safeParse(email).success) {
+        toast({
+          title: "Invalid email",
+          description: "Please enter a valid email address",
+        });
+        return;
+      }
+
       if (password && password.trim() !== "") {
+        // If password provided, do password login
         console.log("Attempting password login...");
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -183,8 +197,8 @@ export default function LoginPage() {
           </div>
           <div className="flex flex-col items-center space-y-3 w-full">
             <Button
-              className="w-[80%]"
-              disabled={loading}
+              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%]"
+              variant="outline"
               onClick={handleLogin}
             >
               {loading

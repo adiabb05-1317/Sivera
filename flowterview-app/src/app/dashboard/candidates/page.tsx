@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import toast from "react-hot-toast";
 import { useState } from "react";
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
@@ -18,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 const CandidateViewDialog = ({
   candidate,
@@ -65,19 +66,15 @@ const CandidateViewDialog = ({
 };
 
 export default function CandidatesPage() {
+  const { toast } = useToast();
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
-    // Show the success toast immediately - don't wait for API
-    const toastId = `invite-${candidate.id || Date.now()}`;
-    
-    toast.success(
-      <div className="flex flex-col space-y-1">
-        <span>Sending invitation to {candidate.email}...</span>
-      </div>,
-      { id: toastId }
-    );
+    toast({
+      title: "Sending invitation...",
+      description: `Sending invitation to ${candidate.email}`,
+    });
 
     try {
       const res = await fetch("/api/send-invite", {
@@ -89,52 +86,54 @@ export default function CandidatesPage() {
           job: candidate.jobs ? candidate.jobs.title : "",
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         // Update the existing toast with success message
-        toast.success(
-          <div className="flex flex-col space-y-1">
-            <span>Interview invitation sent to {candidate.email}</span>
-            <button 
-              onClick={() => console.log('Undo sending invite to', candidate.email)}
-              className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
+        toast({
+          title: "Interview invitation sent",
+          description: `Interview invitation sent to ${candidate.email}`,
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={() =>
+                console.log("Undo sending invite to", candidate.email)
+              }
             >
               Undo
-            </button>
-          </div>,
-          { id: toastId }
-        );
+            </ToastAction>
+          ),
+        });
       } else {
         // Update the same toast with error message
-        toast.error(
-          <div className="flex flex-col space-y-1">
-            <span>Failed to send invite: {data.error || 'Unknown error'}</span>
-            <button 
+        toast({
+          title: "Failed to send invite",
+          description: data.error || "Unknown error",
+          action: (
+            <ToastAction
+              altText="Retry"
               onClick={() => handleSendInvite(candidate)}
-              className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
             >
               Retry
-            </button>
-          </div>,
-          { id: toastId } // Use the same toast ID to replace the initial toast
-        );
+            </ToastAction>
+          ),
+        });
       }
     } catch (err: any) {
       // Update the same toast with error message
-      toast.error(
-        <div className="flex flex-col space-y-1">
-          <span>Failed to send invite: {err.message}</span>
-          <button 
+      toast({
+        title: "Failed to send invite",
+        description: err.message,
+        action: (
+          <ToastAction
+            altText="Retry"
             onClick={() => handleSendInvite(candidate)}
-            className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
           >
             Retry
-          </button>
-        </div>,
-        { id: toastId } // Use the same toast ID to replace the initial toast
-      );
+          </ToastAction>
+        ),
+      });
     }
   };
 
