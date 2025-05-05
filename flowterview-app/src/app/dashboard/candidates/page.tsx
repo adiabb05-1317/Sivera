@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { Plus, Search, Filter, ArrowRight } from "lucide-react";
+import { Plus, Search, Filter, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
+import { Badge } from "@/components/ui/badge";
 
 export default function CandidatesPage() {
   const router = useRouter();
@@ -143,58 +143,44 @@ export default function CandidatesPage() {
                 candidates.map((candidate: any) => (
                   <tr key={candidate.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-6 py-4">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-normal text-sm tracking-tight">
                         {candidate.name}
                       </div>
-                      <div className="text-gray-500 text-xs">
-                        {candidate.email}
-                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
                       {candidate.email}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
                       {candidate.jobs ? candidate.jobs.title : "-"}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          statusColors[candidate.status] ||
-                          "bg-gray-100 text-gray-800"
-                        }`}
-                      >
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <Badge variant="outline" className="opacity-80">
                         {statusLabels[candidate.status] ||
                           candidate.status ||
                           "-"}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (candidate.resume_url) {
+                            window.open(candidate.resume_url, "_blank");
+                          }
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       {candidate.resume_url ? (
                         <a
                           href={candidate.resume_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group inline-flex items-center px-2 py-1 rounded transition bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          className="group inline-flex items-center px-2 py-1 rounded transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
                           title="Preview Resume"
-                        >
-                          <span className="font-medium mr-1">Preview</span>
-                          {/* Eye icon from Lucide */}
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 transition-transform duration-150 group-hover:scale-125 group-hover:text-indigo-800"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M1.5 12s4-7 10.5-7 10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"
-                            />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                        </a>
+                        ></a>
                       ) : (
                         <span className="text-gray-400">No Resume</span>
                       )}
