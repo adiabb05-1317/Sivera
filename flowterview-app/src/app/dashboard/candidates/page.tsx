@@ -5,11 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
-<<<<<<< HEAD
 import toast from "react-hot-toast";
-=======
 import { useState } from "react";
->>>>>>> f76c1f9b4e24059b220fa20a734f8bb24b94c85d
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
@@ -96,7 +93,6 @@ export default function CandidatesPage() {
       const data = await res.json();
       
       if (data.success) {
-<<<<<<< HEAD
         // Update the existing toast with success message
         toast.success(
           <div className="flex flex-col space-y-1">
@@ -139,14 +135,6 @@ export default function CandidatesPage() {
         </div>,
         { id: toastId } // Use the same toast ID to replace the initial toast
       );
-=======
-        alert("Interview invitation sent to " + candidate.email);
-      } else {
-        alert("Failed to send invite: " + (data.error || "Unknown error"));
-      }
-    } catch (err: any) {
-      alert("Failed to send invite: " + err.message);
->>>>>>> f76c1f9b4e24059b220fa20a734f8bb24b94c85d
     }
   };
 
