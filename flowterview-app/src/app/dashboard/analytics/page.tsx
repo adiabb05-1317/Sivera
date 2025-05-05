@@ -25,6 +25,16 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState("30");
@@ -89,11 +99,11 @@ export default function AnalyticsPage() {
 
   // Performance distribution data
   const performanceData = [
-    { name: "Excellent", value: 24, color: "#34D399" },
-    { name: "Good", value: 42, color: "#60A5FA" },
-    { name: "Average", value: 22, color: "#FBBF24" },
-    { name: "Below Average", value: 8, color: "#F97316" },
-    { name: "Poor", value: 4, color: "#EF4444" },
+    { name: "Excellent", value: 24, color: "#A7F3D0" },
+    { name: "Good", value: 42, color: "#BFDBFE" },
+    { name: "Average", value: 22, color: "#FDE68A" },
+    { name: "Below Average", value: 8, color: "#FDBA74" },
+    { name: "Poor", value: 4, color: "#FCA5A5" },
   ];
 
   // Weekly time-to-hire trend (in days)
@@ -111,88 +121,80 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between space-y-4 md:flex-row md:items-center md:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <h1 className="text-md font-bold text-gray-900 tracking-tight">
+          Analytics
+        </h1>
         <div className="flex space-x-3">
-          <button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+          <Button variant="outline" className="cursor-pointer">
             <Filter className="mr-2 h-4 w-4" />
-            Filter Data
-          </button>
-          <div className="relative inline-block text-left">
-            <button className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-              Last {timeRange} Days
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </button>
-          </div>
+            <span className="text-sm">Filter Data</span>
+          </Button>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last year</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="overflow-hidden rounded-lg bg-white shadow"
-          >
-            <div className="p-5">
+          <Card key={index} className="overflow-hidden">
+            <CardContent className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <stat.icon className="h-6 w-6 text-gray-400" />
+                <div className="flex-shrink-0 rounded-xl bg-indigo-50 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-indigo-500" />
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="truncate text-sm font-medium text-gray-500">
-                      {stat.label}
-                    </dt>
-                    <dd>
-                      <div className="text-lg font-medium text-gray-900">
-                        {stat.value}
-                      </div>
-                    </dd>
-                  </dl>
+                <div className="ml-6 w-0 flex-1">
+                  <dt className="truncate text-xs font-medium text-gray-500 tracking-wider uppercase">
+                    {stat.label}
+                  </dt>
+                  <dd className="mt-2 text-2xl font-bold text-gray-900 tracking-tight">
+                    {stat.value}
+                  </dd>
                 </div>
               </div>
               <div className="mt-4">
-                <div
-                  className={`inline-flex items-baseline rounded-full px-2.5 py-0.5 text-sm font-medium ${
-                    stat.changeType === "positive"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                <Badge
+                  variant={
+                    stat.changeType === "positive" ? "secondary" : "destructive"
+                  }
+                  className="font-normal text-xs tracking-wide"
                 >
                   {stat.changeType === "positive" ? (
                     <TrendingUp className="-ml-1 mr-0.5 h-4 w-4 flex-shrink-0" />
                   ) : (
                     <Activity className="-ml-1 mr-0.5 h-4 w-4 flex-shrink-0" />
                   )}
-                  <span className="sr-only">
-                    {stat.changeType === "positive"
-                      ? "Increased by"
-                      : "Decreased by"}
-                  </span>
                   {stat.change}
-                </div>
-                <span className="ml-2 text-sm text-gray-500">
+                </Badge>
+                <span className="ml-2 text-xs text-gray-500 tracking-wide">
                   from last month
                 </span>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {/* Main Charts */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Monthly Interview Trend Chart */}
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="border-b border-gray-200 px-4 py-5 sm:px-6">
-            <div className="flex items-center">
-              <BarChartIcon className="h-5 w-5 text-gray-400" />
-              <h3 className="ml-2 text-lg font-medium leading-6 text-gray-900">
-                Monthly Interview Trends
-              </h3>
-            </div>
-          </div>
-          <div className="px-4 py-5 sm:p-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-md font-medium tracking-tight">
+              Monthly Interview Trends
+            </CardTitle>
+            <BarChartIcon className="h-4 w-4 text-gray-400" />
+          </CardHeader>
+          <CardContent>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -205,10 +207,14 @@ export default function AnalyticsPage() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <XAxis dataKey="name" tick={{ fontSize: 12.5 }} />
+                  <YAxis tick={{ fontSize: 12.5 }} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 13.5 }}
+                    itemStyle={{ fontSize: 13.5 }}
+                    labelStyle={{ fontSize: 12.5 }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12.5 }} />
                   <Area
                     type="monotone"
                     dataKey="interviews"
@@ -228,36 +234,114 @@ export default function AnalyticsPage() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Completion Rates by Job Role - Simplified */}
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="border-b border-gray-200 px-4 py-5 sm:px-6">
-            <div className="flex items-center">
-              <BarChartIcon className="h-5 w-5 text-gray-400" />
-              <h3 className="ml-2 text-lg font-medium leading-6 text-gray-900">
-                Top Completion Rates by Role
-              </h3>
+        {/* Time to Hire Metrics */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-md font-medium tracking-tight">
+              Time to Hire Metrics
+            </CardTitle>
+            <Clock className="h-4 w-4 text-gray-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center mb-6">
+              <div className="text-5xl font-bold text-indigo-600 tracking-tight">
+                15
+              </div>
+              <div className="ml-4 text-gray-500 text-xs tracking-wide">
+                Average days
+                <br />
+                to hire
+              </div>
             </div>
-          </div>
-          <div className="px-4 py-5 sm:p-6">
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="bg-green-50 border-green-100">
+                <CardContent className="p-4 text-center">
+                  <div className="text-green-800 text-xs font-medium tracking-wider uppercase">
+                    Fastest Hire
+                  </div>
+                  <div className="text-green-900 text-xl font-semibold mt-1 tracking-tight">
+                    9 days
+                  </div>
+                  <div className="text-green-700 text-xs mt-1 tracking-wide">
+                    Frontend Developer
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-indigo-50 border-indigo-100">
+                <CardContent className="p-4 text-center">
+                  <div className="text-indigo-800 text-xs font-medium tracking-wider uppercase">
+                    Improvement
+                  </div>
+                  <div className="text-indigo-900 text-xl font-semibold mt-1 tracking-tight">
+                    -28%
+                  </div>
+                  <div className="text-indigo-700 text-xs mt-1 tracking-wide">
+                    vs. last quarter
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 border-blue-100">
+                <CardContent className="p-4 text-center">
+                  <div className="text-blue-800 text-xs font-medium tracking-wider uppercase">
+                    Top Performer
+                  </div>
+                  <div className="text-blue-900 text-xl font-semibold mt-1 tracking-tight">
+                    UX Design
+                  </div>
+                  <div className="text-blue-700 text-xs mt-1 tracking-wide">
+                    12 days avg. time
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-purple-50 border-purple-100">
+                <CardContent className="p-4 text-center">
+                  <div className="text-purple-800 text-xs font-medium tracking-wider uppercase">
+                    Goal
+                  </div>
+                  <div className="text-purple-900 text-xl font-semibold mt-1 tracking-tight">
+                    14 days
+                  </div>
+                  <div className="text-purple-700 text-xs mt-1 tracking-wide">
+                    by Q3 2025
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Completion Rates by Job Role */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-md font-medium tracking-tight">
+              Top Completion Rates by Role
+            </CardTitle>
+            <BarChartIcon className="h-4 w-4 text-gray-400" />
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-2 gap-4">
               {completionRateByRole.map((role, index) => (
                 <div
                   key={index}
                   className="bg-white rounded-lg p-4 shadow-sm border border-gray-100"
                 >
-                  <div className="text-sm font-medium text-gray-700">
+                  <div className="text-sm font-medium text-gray-700 tracking-wide">
                     {role.name}
                   </div>
-                  <div className="mt-1 flex items-end">
-                    <div className="text-2xl font-semibold text-gray-900">
+                  <div className="mt-1 flex items-center">
+                    <div className="text-xs font-semibold text-gray-900 tracking-tight">
                       {role.rate}%
                     </div>
                     <div className="relative ml-3 flex h-3 w-full overflow-hidden rounded bg-gray-200">
                       <div
-                        className="bg-indigo-600"
+                        className="bg-indigo-400/80"
                         style={{ width: `${role.rate}%` }}
                       ></div>
                     </div>
@@ -265,34 +349,48 @@ export default function AnalyticsPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Candidate Performance Distribution */}
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="border-b border-gray-200 px-4 py-5 sm:px-6">
-            <div className="flex items-center">
-              <PieChartIcon className="h-5 w-5 text-gray-400" />
-              <h3 className="ml-2 text-lg font-medium leading-6 text-gray-900">
-                Candidate Performance Distribution
-              </h3>
-            </div>
-          </div>
-          <div className="px-4 py-5 sm:p-6">
-            <div className="h-72 w-full">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-md font-medium tracking-tight">
+              Candidate Performance Distribution
+            </CardTitle>
+            <PieChartIcon className="h-4 w-4 text-gray-400" />
+          </CardHeader>
+          <CardContent className="h-80 flex flex-row items-center justify-center gap-8 p-0">
+            <div className="flex items-center justify-center w-64 h-64 min-w-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={performanceData}
-                    cx="50%"
-                    cy="50%"
                     innerRadius={70}
                     outerRadius={100}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
+                    label={({ value, cx, cy, midAngle, outerRadius }) => {
+                      // Improved label positioning: closer to the chart, smaller font
+                      const RADIAN = Math.PI / 180;
+                      const radius = outerRadius + 6;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#222"
+                          textAnchor={x > cx ? "start" : "end"}
+                          dominantBaseline="central"
+                          fontSize="12"
+                          fontWeight="bold"
+                        >
+                          {`${value}%`}
+                        </text>
+                      );
+                    }}
+                    labelLine={false}
                   >
                     {performanceData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -302,100 +400,25 @@ export default function AnalyticsPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-1">
-              <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                <div className="rounded-md bg-green-100 p-2 text-green-800">
-                  <div className="font-semibold">Excellent</div>
-                  <div>24%</div>
-                </div>
-                <div className="rounded-md bg-blue-100 p-2 text-blue-800">
-                  <div className="font-semibold">Good</div>
-                  <div>42%</div>
-                </div>
-                <div className="rounded-md bg-yellow-100 p-2 text-yellow-800">
-                  <div className="font-semibold">Average</div>
-                  <div>22%</div>
-                </div>
-                <div className="rounded-md bg-orange-100 p-2 text-orange-800">
-                  <div className="font-semibold">Below Average</div>
-                  <div>8%</div>
-                </div>
-                <div className="rounded-md bg-red-100 p-2 text-red-800">
-                  <div className="font-semibold">Poor</div>
-                  <div>4%</div>
-                </div>
-              </div>
+            <div className="flex flex-col gap-3 min-w-[120px]">
+              {performanceData.map((item, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 text-xs tracking-wide"
+                  style={{ backgroundColor: `${item.color}20` }}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <div className="font-semibold">{item.name}</div>
+                  <div>{item.value}%</div>
+                </Badge>
+              ))}
             </div>
-          </div>
-        </div>
-
-        {/* Time to Hire - Simplified */}
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="border-b border-gray-200 px-4 py-5 sm:px-6">
-            <div className="flex items-center">
-              <Clock className="h-5 w-5 text-gray-400" />
-              <h3 className="ml-2 text-lg font-medium leading-6 text-gray-900">
-                Time to Hire Metrics
-              </h3>
-            </div>
-          </div>
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center justify-center mb-6">
-              <div className="text-6xl font-bold text-indigo-600">15</div>
-              <div className="ml-4 text-gray-500 text-lg">
-                Average days
-                <br />
-                to hire
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mt-8">
-              <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-center">
-                <div className="text-green-800 text-sm font-medium">
-                  Fastest Hire
-                </div>
-                <div className="text-green-900 text-2xl font-semibold mt-1">
-                  9 days
-                </div>
-                <div className="text-green-700 text-xs mt-1">
-                  Frontend Developer
-                </div>
-              </div>
-
-              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 text-center">
-                <div className="text-indigo-800 text-sm font-medium">
-                  Improvement
-                </div>
-                <div className="text-indigo-900 text-2xl font-semibold mt-1">
-                  -28%
-                </div>
-                <div className="text-indigo-700 text-xs mt-1">
-                  vs. last quarter
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center">
-                <div className="text-blue-800 text-sm font-medium">
-                  Top Performer
-                </div>
-                <div className="text-blue-900 text-2xl font-semibold mt-1">
-                  UX Design
-                </div>
-                <div className="text-blue-700 text-xs mt-1">
-                  12 days avg. time
-                </div>
-              </div>
-
-              <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 text-center">
-                <div className="text-purple-800 text-sm font-medium">Goal</div>
-                <div className="text-purple-900 text-2xl font-semibold mt-1">
-                  14 days
-                </div>
-                <div className="text-purple-700 text-xs mt-1">by Q3 2025</div>
-              </div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

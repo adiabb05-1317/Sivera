@@ -53,7 +53,8 @@ const CandidateViewDialog = ({
             )}
             <Button
               onClick={() => handleSendInvite(candidate)}
-              className="cursor-pointer"
+              variant="outline"
+              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
             >
               <Send className="mr-2 h-4 w-4" />
               Invite for Interview
