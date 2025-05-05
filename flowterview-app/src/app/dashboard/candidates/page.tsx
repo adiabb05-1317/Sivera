@@ -10,6 +10,29 @@ import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
 
 export default function CandidatesPage() {
+  // Invite for Interview handler
+  const handleSendInvite = async (candidate: any) => {
+    try {
+      const res = await fetch('/api/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: candidate.email,
+          name: candidate.name,
+          job: candidate.jobs ? candidate.jobs.title : '',
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Interview invitation sent to ' + candidate.email);
+      } else {
+        alert('Failed to send invite: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert('Failed to send invite: ' + err.message);
+    }
+  };
+
   const router = useRouter();
   const { candidates, loading, error, reload } = useCandidatesSortedByJob();
 
@@ -189,6 +212,14 @@ export default function CandidatesPage() {
                       {candidate.created_at
                         ? new Date(candidate.created_at).toLocaleDateString()
                         : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <button
+                        className="inline-flex items-center px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                        onClick={() => handleSendInvite(candidate)}
+                      >
+                        Invite for Interview
+                      </button>
                     </td>
                   </tr>
                 ))
