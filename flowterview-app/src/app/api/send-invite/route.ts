@@ -46,8 +46,14 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    // Start email sending but don't await it
+    // This makes the UI respond immediately
+    const emailPromise = transporter.sendMail(mailOptions);
+    
+    // Return success right away before email completes
     return NextResponse.json({ success: true });
+    
+    // Email continues sending in the background
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

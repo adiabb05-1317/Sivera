@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Toaster } from "react-hot-toast";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
@@ -59,6 +61,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <Toaster position="top-right" toastOptions={{
+        success: { duration: 3000 },
+        error: { duration: 4000 },
+        style: {
+          background: '#F9FAFB',
+          color: '#111827',
+          border: '1px solid #E5E7EB',
+        },
+      }} />
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div

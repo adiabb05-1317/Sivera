@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import toast from "react-hot-toast";
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,16 @@ import { Badge } from "@/components/ui/badge";
 export default function CandidatesPage() {
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
+    // Show the success toast immediately - don't wait for API
+    const toastId = `invite-${candidate.id || Date.now()}`;
+    
+    toast.success(
+      <div className="flex flex-col space-y-1">
+        <span>Sending invitation to {candidate.email}...</span>
+      </div>,
+      { id: toastId }
+    );
+
     try {
       const res = await fetch('/api/send-invite', {
         method: 'POST',
@@ -22,14 +33,52 @@ export default function CandidatesPage() {
           job: candidate.jobs ? candidate.jobs.title : '',
         })
       });
+      
       const data = await res.json();
+      
       if (data.success) {
-        alert('Interview invitation sent to ' + candidate.email);
+        // Update the existing toast with success message
+        toast.success(
+          <div className="flex flex-col space-y-1">
+            <span>Interview invitation sent to {candidate.email}</span>
+            <button 
+              onClick={() => console.log('Undo sending invite to', candidate.email)}
+              className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
+            >
+              Undo
+            </button>
+          </div>,
+          { id: toastId }
+        );
       } else {
-        alert('Failed to send invite: ' + (data.error || 'Unknown error'));
+        // Update the same toast with error message
+        toast.error(
+          <div className="flex flex-col space-y-1">
+            <span>Failed to send invite: {data.error || 'Unknown error'}</span>
+            <button 
+              onClick={() => handleSendInvite(candidate)}
+              className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
+            >
+              Retry
+            </button>
+          </div>,
+          { id: toastId } // Use the same toast ID to replace the initial toast
+        );
       }
     } catch (err: any) {
-      alert('Failed to send invite: ' + err.message);
+      // Update the same toast with error message
+      toast.error(
+        <div className="flex flex-col space-y-1">
+          <span>Failed to send invite: {err.message}</span>
+          <button 
+            onClick={() => handleSendInvite(candidate)}
+            className="self-end text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
+          >
+            Retry
+          </button>
+        </div>,
+        { id: toastId } // Use the same toast ID to replace the initial toast
+      );
     }
   };
 
