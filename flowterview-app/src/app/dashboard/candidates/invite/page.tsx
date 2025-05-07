@@ -60,9 +60,8 @@ export default function InviteCandidatesPage() {
   };
 
   const removeCandidateRow = (id: number) => {
-    if (candidates.length > 1) {
-      setCandidates(candidates.filter((candidate) => candidate.id !== id));
-    }
+    if (candidates.length <= 0) return;
+    setCandidates(candidates.filter((candidate) => candidate.id !== id));
   };
 
   const updateCandidate = (
