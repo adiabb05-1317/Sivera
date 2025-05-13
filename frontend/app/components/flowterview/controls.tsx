@@ -16,7 +16,7 @@ const ControlTooltip = ({
   return (
     isHovered && (
       <Badge
-        className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+        className="absolute bottom-[-2rem] left-1/2 transform -translate-x-1/2 text-indigo-900/70"
         variant="default"
       >
         {text}
@@ -116,7 +116,7 @@ const Controls = ({
       <button
         className={`p-3.5 rounded-full text-white ${
           isCodeEditorOpen
-            ? "bg-indigo-500 text-white"
+            ? "bg-indigo-500"
             : "bg-indigo-300 text-indigo-900/70"
         }`}
         onClick={(e) => {

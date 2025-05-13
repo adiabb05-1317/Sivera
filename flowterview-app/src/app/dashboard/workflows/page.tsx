@@ -17,7 +17,7 @@ export default function WorkflowsPage() {
     },
     {
       id: 2,
-      title: "Google SWE",
+      title: "Software Developer 1",
       date: "2023-08-14",
     },
     {
