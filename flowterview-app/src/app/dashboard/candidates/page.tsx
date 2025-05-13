@@ -78,15 +78,18 @@ export default function CandidatesPage() {
     });
 
     try {
-      const res = await fetch("/api/send-invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: candidate.email,
-          name: candidate.name,
-          job: candidate.jobs ? candidate.jobs.title : "",
-        }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interview/send-invite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: candidate.email,
+            name: candidate.name,
+            job: candidate.jobs ? candidate.jobs.title : "",
+          }),
+        }
+      );
 
       const data = await res.json();
 

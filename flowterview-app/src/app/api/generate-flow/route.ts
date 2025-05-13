@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
-
 export async function POST(request: Request) {
   try {
     const { jobDescription } = await request.json();
@@ -22,7 +20,7 @@ export async function POST(request: Request) {
 
     // Call your backend service
     const response = await fetch(
-      `${BACKEND_URL}/api/v1/generate_interview_flow`,
+      `${process.env.NEXT_PUBLIC_CORE_BACKEND_URL}/api/v1/generate_interview_flow`,
       {
         method: "POST",
         headers: {
