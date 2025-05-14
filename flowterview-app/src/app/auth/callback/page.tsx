@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FloatingPaths } from "@/components/ui/background-paths";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
