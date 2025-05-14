@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { FloatingPaths } from "@/components/ui/background-paths";
 
 export default function AuthCallbackPage() {

@@ -11,6 +11,9 @@ from supabase import create_client, Client
 from src.core.config import Config
 from src.utils.logger import intercept_standard_logging
 from src.router.interview_router import router as interview_router
+from src.router.organization_router import router as organization_router
+from src.router.user_router import router as user_router
+from src.router.candidate_router import router as candidate_router
 
 intercept_standard_logging()
 
@@ -57,6 +60,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(interview_router)
+app.include_router(organization_router)
+app.include_router(user_router)
+app.include_router(candidate_router)
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:

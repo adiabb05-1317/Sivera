@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from typing import Dict, Any, Optional, List, Literal
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field, EmailStr
 import aiosmtplib
 from email.mime.text import MIMEText
@@ -8,7 +8,7 @@ from loguru import logger
 
 from src.core.config import Config
 
-router = APIRouter(prefix="/api/v1/interview", tags=["interview"])
+router = APIRouter(prefix="/api/v1/interviews", tags=["interviews"])
 
 # Pydantic models for request validation
 class GenerateFlowRequest(BaseModel):
@@ -19,6 +19,25 @@ class SendInviteRequest(BaseModel):
     email: EmailStr = Field(..., description="Candidate's email address")
     name: str = Field(..., description="Candidate's name")
     job: str = Field(..., description="Job title/position")
+
+class InterviewIn(BaseModel):
+    title: str
+    organization_id: str
+    created_by: str
+    status: Optional[Literal["draft", "active", "completed"]] = "draft"
+
+class InterviewUpdate(BaseModel):
+    title: Optional[str]
+    status: Optional[Literal["draft", "active", "completed"]]
+
+class InterviewOut(BaseModel):
+    id: str
+    title: str
+    organization_id: str
+    created_by: str
+    status: Literal["draft", "active", "completed"]
+    created_at: str
+    updated_at: str
 
 async def send_email_background(email: str, name: str, job: str) -> None:
     """Background task to send email"""
@@ -31,7 +50,7 @@ async def send_email_background(email: str, name: str, job: str) -> None:
         html_content = f"""
         <div style="font-family: Arial, sans-serif; background: #f7f7fa; padding: 32px;">
             <div style="max-width: 540px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #e0e7ff; padding: 32px;">
-                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">🎉 Congratulations, {name}! 🎉</h2>
+                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">Congratulations, {name}! 🎉</h2>
                 <p style="font-size: 1.1em; color: #333;">
                     We are excited to invite you for an interview for the <b>{job}</b>
                 </p>
@@ -90,4 +109,37 @@ async def send_invite(
         return {"success": True, "message": "Invitation email queued for sending"}
     except Exception as e:
         logger.error(f"Error sending invite: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/", response_model=List[InterviewOut])
+async def list_interviews(request: Request):
+    supabase = request.app.state.supabase
+    resp = supabase.table("interviews").select("*").execute()
+    if resp.error:
+        raise HTTPException(status_code=500, detail=resp.error.message)
+    return resp.data
+
+@router.get("/{interview_id}", response_model=InterviewOut)
+async def get_interview(interview_id: str, request: Request):
+    supabase = request.app.state.supabase
+    resp = supabase.table("interviews").select("*").eq("id", interview_id).single().execute()
+    if resp.error:
+        raise HTTPException(status_code=404, detail=resp.error.message)
+    return resp.data
+
+@router.post("/", response_model=InterviewOut)
+async def create_interview(interview: InterviewIn, request: Request):
+    supabase = request.app.state.supabase
+    resp = supabase.table("interviews").insert(interview.dict()).execute()
+    if resp.error:
+        raise HTTPException(status_code=400, detail=resp.error.message)
+    return resp.data[0]
+
+@router.patch("/{interview_id}", response_model=InterviewOut)
+async def update_interview(interview_id: str, updates: InterviewUpdate, request: Request):
+    supabase = request.app.state.supabase
+    update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+    resp = supabase.table("interviews").update(update_dict).eq("id", interview_id).execute()
+    if resp.error:
+        raise HTTPException(status_code=400, detail=resp.error.message)
+    return resp.data[0] 

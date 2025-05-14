@@ -79,7 +79,7 @@ export default function CandidatesPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interview/send-invite`,
+        `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
