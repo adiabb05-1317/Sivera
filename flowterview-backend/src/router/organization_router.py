@@ -24,6 +24,22 @@ async def list_organizations(request: Request):
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/by-user-email/{email}")
+async def get_organization_by_user_email(email: str, request: Request):
+    try:
+        user = db.fetch_one("users", {"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        org_id = user.get("organization_id")
+        if not org_id:
+            raise HTTPException(status_code=404, detail="Organization not found for user")
+        org = db.fetch_one("organizations", {"id": org_id})
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        return {"id": org["id"], "name": org["name"]}
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{org_id}", response_model=OrganizationOut)
 async def get_organization(org_id: str, request: Request):
     try:

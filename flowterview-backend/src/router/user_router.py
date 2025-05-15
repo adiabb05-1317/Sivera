@@ -38,16 +38,6 @@ async def list_users(request: Request):
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{user_id}", response_model=UserOut)
-async def get_user(user_id: str, request: Request):
-    try:
-        user = db.fetch_one("users", {"id": user_id})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return user
-    except DatabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("/", response_model=UserOut)
 async def create_user(user: UserIn, request: Request):
     try:
@@ -89,4 +79,14 @@ async def create_user(user: UserIn, request: Request):
         created_user = db.execute_query("users", user_data)
         return created_user
     except DatabaseError as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{user_id}", response_model=UserOut)
+async def get_user(user_id: str, request: Request):
+    try:
+        user = db.fetch_one("users", {"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e)) 

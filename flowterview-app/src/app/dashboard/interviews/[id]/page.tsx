@@ -121,7 +121,7 @@ export default function InterviewDetailsPage() {
                       No candidates assigned.
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 text-sm">
                       {candidates.length} candidate(s) assigned
                     </div>
                   )}

@@ -10,7 +10,6 @@ import {
   Users,
   BarChart,
   LogOut,
-  Workflow,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Interviews", href: "/dashboard/interviews", icon: FileText },
     { name: "Candidates", href: "/dashboard/candidates", icon: Users },
-    { name: "Workflows", href: "/dashboard/workflows", icon: Workflow },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart },
   ];
 
