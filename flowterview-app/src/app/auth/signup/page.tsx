@@ -4,6 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
+function extractOrgFromEmail(email: string): string {
+  // Extracts the part between @ and . in the domain
+  // e.g., user@something.com => something
+  const match = email.match(/@([^.]+)\./);
+  return match ? match[1] : "";
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -16,26 +23,40 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      console.log("Sending magic link for signup...");
-      // Sign up with Supabase using magic link (no password)
+      // 1. Sign up with Supabase magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // Using absolute URL to ensure proper redirect
           emailRedirectTo: window.location.origin + "/auth/callback",
         },
       });
-
       if (error) {
-        console.error("Signup error:", error);
         throw error;
       }
 
-      console.log("Magic link sent successfully for signup");
-      // Show success message
+      // 2. Call backend to create user (organization row will be created if needed)
+      const name = email.split("@")[0];
+      const orgName = extractOrgFromEmail(email);
+      const resp = await fetch(
+        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            name,
+            organization_name: orgName,
+            role: "admin", // or let user pick role
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.detail || data.error || "Failed to create user");
+      }
+
       setSuccess(true);
     } catch (error: unknown) {
-      console.error("Signup failed:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -115,7 +136,6 @@ export default function SignupPage() {
               </p>
             </div>
           </div>
-
           <div>
             <button
               type="submit"

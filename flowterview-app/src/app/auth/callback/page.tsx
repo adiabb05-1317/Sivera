@@ -4,39 +4,96 @@ import { useEffect, useState } from "react";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import { supabase } from "@/lib/supabase";
 
+function extractOrgFromEmail(email: string): string {
+  // Extracts the part between @ and . in the domain
+  // e.g., user@something.com => something
+  if (!email || !email.includes("@")) return "";
+  const domain = email.split("@")[1] || "";
+  const org = domain.split(".")[0] || "";
+  return org;
+}
+
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>("");
+  const [orgLoading, setOrgLoading] = useState(false);
 
   useEffect(() => {
     // Process the auth callback
     const handleAuthCallback = async () => {
       try {
+        // 1. Wait for session
+        const sessionResp = await supabase.auth.getSession();
+        const sessionData = sessionResp.data;
+        const sessionError = sessionResp.error;
+        if (sessionError) {
+          setDebugInfo("Session error: " + sessionError.message);
+        } else if (sessionData.session) {
+          // 2. Get user info
+          const { data: userData } = await supabase.auth.getUser();
+          console.log("User data:", userData);
+          const email = userData?.user?.email || "";
+          if (!email) throw new Error("No email found for logged in user");
+          // 3. Check if user exists in backend
+          const resp = await fetch(
+            process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL +
+              "/api/v1/users?email=" +
+              encodeURIComponent(email)
+          );
+          if (resp.ok) {
+            // User exists, redirect
+            window.location.href = "/dashboard";
+            return;
+          } else {
+            // User does not exist, create user with org from domain
+            setOrgLoading(true);
+            const userId = userData?.user?.id;
+            const name = email.split("@")[0];
+            const orgName = extractOrgFromEmail(email);
+            // Defensive: fallback if orgName is empty
+            if (!orgName) {
+              setOrgLoading(false);
+              throw new Error(
+                "Could not extract organization name from email domain."
+              );
+            }
+            const createResp = await fetch(
+              process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: name,
+                  user_id: userData?.user?.id,
+                  email: email, // Use email directly
+                  organization_name: orgName,
+                  role: "admin", // default role for login
+                }),
+              }
+            );
+            setOrgLoading(false);
+            if (!createResp.ok) {
+              let data = {};
+              try {
+                data = await createResp.json();
+                console.log("Create response:", data);
+              } catch (e) {
+                // ignore
+              }
+              throw new Error(
+                (data as any).detail ||
+                  (data as any).error ||
+                  "Failed to create user"
+              );
+            }
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
         // Detailed logging for debugging
         console.log("Auth callback triggered");
         console.log("Current URL:", window.location.href);
-
-        // Try multiple approaches to handle the auth callback
-
-        // APPROACH 1: Use the automatic Supabase handling
-        console.log("Approach 1: Using Supabase getSession()");
-        const { data: sessionData, error: sessionError } =
-          await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          setDebugInfo("Session error: " + sessionError.message);
-        } else if (sessionData.session) {
-          console.log("Session found via getSession()");
-          // We have a session, redirect to dashboard
-          console.log("Authentication successful, redirecting to dashboard...");
-          window.location.href = "/dashboard";
-          return;
-        } else {
-          console.log(
-            "No session found via getSession(), trying next approach"
-          );
-        }
 
         // APPROACH 2: Try to extract token from URL hash and set session manually
         const hash = window.location.hash;
@@ -125,6 +182,24 @@ export default function AuthCallbackPage() {
 
     handleAuthCallback();
   }, []);
+
+  if (orgLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
+          <div className="text-center">
+            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              FLOWTERVIEW
+            </div>
+            <p className="mt-4 text-gray-600">Setting up your account...</p>
+            <div className="mt-6 flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

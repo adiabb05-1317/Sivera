@@ -5,10 +5,13 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from loguru import logger
+from storage.db_manager import DatabaseManager, DatabaseError
 
 from src.core.config import Config
 
 router = APIRouter(prefix="/api/v1/interviews", tags=["interviews"])
+
+db = DatabaseManager()
 
 # Pydantic models for request validation
 class GenerateFlowRequest(BaseModel):
@@ -113,33 +116,37 @@ async def send_invite(
 
 @router.get("/", response_model=List[InterviewOut])
 async def list_interviews(request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("interviews").select("*").execute()
-    if resp.error:
-        raise HTTPException(status_code=500, detail=resp.error.message)
-    return resp.data
+    try:
+        interviews = db.fetch_all("interviews")
+        return interviews
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{interview_id}", response_model=InterviewOut)
 async def get_interview(interview_id: str, request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("interviews").select("*").eq("id", interview_id).single().execute()
-    if resp.error:
-        raise HTTPException(status_code=404, detail=resp.error.message)
-    return resp.data
+    try:
+        interview = db.fetch_one("interviews", {"id": interview_id})
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        return interview
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=InterviewOut)
 async def create_interview(interview: InterviewIn, request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("interviews").insert(interview.dict()).execute()
-    if resp.error:
-        raise HTTPException(status_code=400, detail=resp.error.message)
-    return resp.data[0]
+    try:
+        created_interview = db.execute_query("interviews", interview.dict())
+        return created_interview
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.patch("/{interview_id}", response_model=InterviewOut)
 async def update_interview(interview_id: str, updates: InterviewUpdate, request: Request):
-    supabase = request.app.state.supabase
-    update_dict = {k: v for k, v in updates.dict().items() if v is not None}
-    resp = supabase.table("interviews").update(update_dict).eq("id", interview_id).execute()
-    if resp.error:
-        raise HTTPException(status_code=400, detail=resp.error.message)
-    return resp.data[0] 
+    try:
+        update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+        updated = db.update("interviews", update_dict, {"id": interview_id})
+        if not updated:
+            raise HTTPException(status_code=404, detail="Interview not found or not updated")
+        return updated[0]
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e)) 

@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
+from storage.db_manager import DatabaseManager, DatabaseError
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["candidates"])
+
+db = DatabaseManager()
 
 class CandidateIn(BaseModel):
     email: str
@@ -19,24 +22,26 @@ class CandidateOut(BaseModel):
 
 @router.get("/", response_model=List[CandidateOut])
 async def list_candidates(request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("candidates").select("*").execute()
-    if resp.error:
-        raise HTTPException(status_code=500, detail=resp.error.message)
-    return resp.data
+    try:
+        candidates = db.fetch_all("candidates")
+        return candidates
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{candidate_id}", response_model=CandidateOut)
 async def get_candidate(candidate_id: str, request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("candidates").select("*").eq("id", candidate_id).single().execute()
-    if resp.error:
-        raise HTTPException(status_code=404, detail=resp.error.message)
-    return resp.data
+    try:
+        candidate = db.fetch_one("candidates", {"id": candidate_id})
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        return candidate
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=CandidateOut)
 async def create_candidate(candidate: CandidateIn, request: Request):
-    supabase = request.app.state.supabase
-    resp = supabase.table("candidates").insert(candidate.dict()).execute()
-    if resp.error:
-        raise HTTPException(status_code=400, detail=resp.error.message)
-    return resp.data[0] 
+    try:
+        created_candidate = db.execute_query("candidates", candidate.dict())
+        return created_candidate
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e)) 
