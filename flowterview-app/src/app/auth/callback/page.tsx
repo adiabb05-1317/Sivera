@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import { supabase } from "@/lib/supabase";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
@@ -186,17 +195,22 @@ export default function AuthCallbackPage() {
   if (orgLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
-          <div className="text-center">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
-              FLOWTERVIEW
-            </div>
-            <p className="mt-4 text-gray-600">Setting up your account...</p>
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
+        <Card className="w-[450px]">
+          <CardHeader className="flex flex-col items-center justify-center">
+            <CardTitle className="tracking-widest text-2xl">
+              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+                FLOWTERVIEW
+              </div>
+            </CardTitle>
+            <CardDescription>Setting up your account...</CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="mt-6 flex justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -204,41 +218,30 @@ export default function AuthCallbackPage() {
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
-          <FloatingPaths position={-1} className="inset-0 opacity-30" />
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Flowterview</h1>
-            <p className="mt-4 text-sm font-medium text-red-600">
-              Authentication Issue
-            </p>
-            <p className="mt-2 text-gray-600">{error}</p>
-
-            <div className="mt-6">
-              <a
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              >
-                Go to Dashboard
-              </a>
-            </div>
-
-            <div className="mt-4">
-              <a
-                href="/auth/login"
-                className="text-sm text-indigo-600 hover:text-indigo-500"
-              >
-                Return to Login
-              </a>
-            </div>
-
-            {debugInfo && (
-              <div className="mt-4 rounded bg-gray-100 p-3 text-left text-xs text-gray-800 overflow-auto max-h-48">
-                <p className="font-bold">Debug Info:</p>
-                <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
+        <Card className="w-[450px]">
+          <CardHeader className="flex flex-col items-center justify-center">
+            <CardTitle className="tracking-widest text-2xl">
+              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+                FLOWTERVIEW
               </div>
-            )}
-          </div>
-        </div>
+            </CardTitle>
+            <CardDescription>Authentication Error</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 mb-4">
+              {error}
+            </div>
+            <div className="text-xs text-gray-400 whitespace-pre-wrap mt-2">
+              {debugInfo}
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center">
+            <Button asChild variant="outline">
+              <a href="/auth/login">Back to Login</a>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }

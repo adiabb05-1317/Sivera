@@ -16,9 +16,8 @@ import { Label } from "@radix-ui/react-label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { set, z } from "zod";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
 
 const emailSchema = z.string().email();
 
@@ -37,7 +36,7 @@ export default function LoginPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session) {
+      if (session && session.user.email_confirmed_at) {
         console.log("User is already logged in, redirecting to dashboard...");
         router.push("/dashboard");
       }
@@ -69,7 +68,11 @@ export default function LoginPage() {
         });
 
         if (error) {
-          throw error;
+          toast({
+            title: "Error logging in",
+            description: error.message,
+          });
+          return;
         }
 
         console.log("Login successful, redirecting...");
@@ -89,7 +92,11 @@ export default function LoginPage() {
       });
 
       if (error) {
-        throw error;
+        toast({
+          title: "Error sending magic link",
+          description: "Please try again",
+        });
+        return;
       }
 
       console.log("Magic link sent successfully");
@@ -211,7 +218,7 @@ export default function LoginPage() {
             </Button>
             <Button
               variant="outline"
-              className="w-[80%]"
+              className="w-[80%] cursor-pointer"
               onClick={() => {
                 router.push("/auth/signup");
               }}

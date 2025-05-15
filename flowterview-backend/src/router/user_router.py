@@ -51,22 +51,30 @@ async def get_user(user_id: str, request: Request):
 @router.post("/", response_model=UserOut)
 async def create_user(user: UserIn, request: Request):
     try:
+        # List of common/public email domains
+        public_domains = {"gmail", "outlook", "yahoo", "hotmail", "icloud", "aol", "protonmail", "zoho", "mail", "gmx", "yandex", "pm", "msn", "live", "comcast", "me"}
+
+        org_name = user.organization_name.lower()
+        if org_name in public_domains:
+            org_name = "personal"
+
         # Check if user already exists (idempotency)
         existing_user = db.fetch_one("users", {"id": user.user_id})
         if existing_user:
             raise HTTPException(status_code=400, detail="User with this email already exists.")
         # Check if organization exists by name
-        org = db.fetch_one("organizations", {"name": user.organization_name})
+
+        org = db.fetch_one("organizations", {"name": org_name})
         if org:
             organization_id = org["id"]
         else:
             # Create organization (idempotent: if org with name exists, fetch it)
             try:
-                org = db.execute_query("organizations", {"name": user.organization_name, "email": user.email})
+                org = db.execute_query("organizations", {"name": org_name, "email": user.email})
                 organization_id = org["id"]
             except DatabaseError as org_err:
                 # If org already exists, fetch it
-                org = db.fetch_one("organizations", {"name": user.organization_name})
+                org = db.fetch_one("organizations", {"name": org_name})
                 if not org:
                     raise HTTPException(status_code=400, detail=f"Failed to create or fetch organization: {org_err}")
                 organization_id = org["id"]
