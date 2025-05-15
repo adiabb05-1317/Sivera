@@ -42,6 +42,14 @@ class InterviewOut(BaseModel):
     created_at: str
     updated_at: str
 
+class CreateInterviewFromDescriptionRequest(BaseModel):
+    title: str
+    job_description: str
+    flow_json: dict
+    react_flow_json: dict
+    organization_id: str
+    created_by: str
+
 async def send_email_background(email: str, name: str, job: str) -> None:
     """Background task to send email"""
     try:
@@ -114,21 +122,65 @@ async def send_invite(
         logger.error(f"Error sending invite: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/", response_model=List[InterviewOut])
+@router.get("/", response_model=List[Dict[str, Any]])
 async def list_interviews(request: Request):
     try:
         interviews = db.fetch_all("interviews")
-        return interviews
+        result = []
+        for interview in interviews:
+            # Fetch job title
+            job = db.fetch_one("jobs", {"id": interview["job_id"]})
+            job_title = job["title"] if job else "Unknown"
+            # Count candidates (from candidate_interviews)
+            candidate_count = 0
+            try:
+                candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview["id"]})
+                candidate_count = len(candidate_interviews)
+            except Exception:
+                candidate_count = len(interview.get("candidates_invited", []))
+            # Format date
+            date = interview["created_at"][:10] if interview.get("created_at") else ""
+            # Status
+            status = interview.get("status", "open")
+            result.append({
+                "id": interview["id"],
+                "title": job_title,
+                "candidates": candidate_count,
+                "status": status,
+                "date": date,
+            })
+        return result
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{interview_id}", response_model=InterviewOut)
+@router.get("/{interview_id}")
 async def get_interview(interview_id: str, request: Request):
     try:
+        # 1. Get interview
         interview = db.fetch_one("interviews", {"id": interview_id})
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
-        return interview
+        # 2. Get job
+        job = db.fetch_one("jobs", {"id": interview["job_id"]})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found for interview")
+        # 3. Get flow
+        flow = db.fetch_one("interview_flows", {"id": job.get("flow_id")}) if job.get("flow_id") else None
+        # 4. Get candidates (join candidate_interviews + candidates)
+        candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview_id})
+        candidate_ids = [ci["candidate_id"] for ci in candidate_interviews]
+        candidates = []
+        for cid in candidate_ids:
+            cand = db.fetch_one("candidates", {"id": cid})
+            if cand:
+                candidates.append(cand)
+        # 5. Build response
+        return {
+            "interview": interview,
+            "job": job,
+            "flow": {"react_flow_json": flow["react_flow_json"]} if flow else None,
+            "candidates": candidates
+        }
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -148,5 +200,41 @@ async def update_interview(interview_id: str, updates: InterviewUpdate, request:
         if not updated:
             raise HTTPException(status_code=404, detail="Interview not found or not updated")
         return updated[0]
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/from-description")
+async def create_interview_from_description(request: CreateInterviewFromDescriptionRequest):
+    try:
+        # 1. Store the flow in interview_flows (now with react_flow_json)
+        flow = db.execute_query("interview_flows", {
+            "name": request.title,
+            "flow_json": request.flow_json,
+            "react_flow_json": request.react_flow_json,
+            "created_by": request.created_by
+        })
+        flow_id = flow["id"]
+        # 2. Create the job
+        job = db.execute_query("jobs", {
+            "title": request.title,
+            "description": request.job_description,
+            "organization_id": request.organization_id,
+            "flow_id": flow_id
+        })
+        job_id = job["id"]
+        # 3. Create the interview
+        interview = db.execute_query("interviews", {
+            "job_id": job_id,
+            "status": "draft"
+        })
+        # 4. Return the interview info (with job title)
+        return {
+            "id": interview["id"],
+            "title": job["title"],
+            "status": interview["status"],
+            "date": interview["created_at"][:10] if interview.get("created_at") else "",
+            "job_id": job_id,
+            "flow_id": flow_id
+        }
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e)) 

@@ -15,13 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
 
 export default function InviteCandidatesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const interviewIdFromQuery = searchParams.get("interview");
   const [selectedInterview, setSelectedInterview] = useState("");
   type CandidateRow = {
     name: string;
@@ -50,7 +51,9 @@ export default function InviteCandidatesPage() {
 
   useEffect(() => {
     loadJobs();
-  }, []);
+    if (interviewIdFromQuery) setSelectedInterview(interviewIdFromQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interviewIdFromQuery]);
 
   const addCandidateRow = () => {
     setCandidates([
@@ -186,21 +189,23 @@ export default function InviteCandidatesPage() {
                 Invite Candidates
               </h2>
               <div className="flex flex-row gap-5">
-                <Select onValueChange={setSelectedInterview}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Interview" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Interviews</SelectLabel>
-                      {jobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id}>
-                          {job.title}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {!interviewIdFromQuery && (
+                  <Select onValueChange={setSelectedInterview}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select Interview" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Interviews</SelectLabel>
+                        {jobs.map((job) => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.title}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button
                   type="button"
                   variant="outline"

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
 
 // Dynamically import ReactFlow component to avoid SSR issues
 const InterviewFlow = dynamic(() => import("@/components/flow/InterviewFlow"), {
@@ -75,9 +76,8 @@ export default function GenerateFromDescriptionPage() {
     formState: { errors },
   } = useForm<FormData>();
 
-  useEffect(() => {
-    console.log(JSON.stringify(reactFlowData));
-  }, [reactFlowData]);
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL || "http://localhost:8010";
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -120,25 +120,56 @@ export default function GenerateFromDescriptionPage() {
   };
 
   const handleSave = async () => {
-    if (!flowData) return;
+    if (!flowData || !reactFlowData) return;
 
     try {
       setSaving(true);
-      const response = await fetch("/api/interviews", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: getValues("title"),
-          flow_json: flowData,
-        }),
-      });
-
+      // Get current user info
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        toast.error("Could not determine current user");
+        setSaving(false);
+        return;
+      }
+      const created_by = userData.user.id;
+      const email = userData.user.email || "";
+      // Fetch organization_id from backend
+      let organization_id = undefined;
+      const orgResp = await fetch(
+        `${BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
+      );
+      if (orgResp.ok) {
+        const orgData = await orgResp.json();
+        if (Array.isArray(orgData) && orgData.length > 0) {
+          organization_id = orgData[0].organization_id;
+        }
+      }
+      if (!organization_id) {
+        toast.error("Could not determine organization");
+        setSaving(false);
+        return;
+      }
+      const response = await fetch(
+        `${BACKEND_URL}/api/v1/interviews/from-description`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: getValues("title"),
+            job_description: getValues("jobDescription"),
+            flow_json: flowData,
+            react_flow_json: reactFlowData,
+            organization_id,
+            created_by,
+          }),
+        }
+      );
       if (!response.ok) {
         throw new Error("Failed to save interview flow");
       }
-
       toast.success("Interview flow saved successfully!");
       router.push("/dashboard/interviews");
     } catch (error) {
@@ -195,20 +226,16 @@ export default function GenerateFromDescriptionPage() {
               <Textarea
                 title="Job description"
                 id="jobDescription"
-                {...register("jobDescription", {
-                  required: "Job description is required",
-                  minLength: {
-                    value: 50,
-                    message:
-                      "Job description should be at least 50 characters long",
-                  },
-                })}
                 className={`mt-1 block w-full rounded-md border ${
                   errors.jobDescription && "border-red-500"
                 } px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500`}
                 rows={10}
                 placeholder="Paste the job description here..."
                 disabled={loading}
+                {...register("jobDescription", {
+                  required: "Job description is required",
+                  minLength: 50,
+                })}
               />
               {errors.jobDescription && (
                 <p className="mt-1 text-sm text-red-500">
