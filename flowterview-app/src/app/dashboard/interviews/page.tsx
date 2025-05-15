@@ -132,7 +132,7 @@ export default function InterviewsPage() {
                 </li>
               ))
             ) : (
-              <div className="p-6 text-center text-gray-500">
+              <div className="p-6 text-center text-gray-500 text-sm">
                 No interviews found.
               </div>
             )}

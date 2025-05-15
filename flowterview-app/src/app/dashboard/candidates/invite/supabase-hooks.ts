@@ -27,7 +27,7 @@ export function useAddCandidate() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  async function submitCandidate(candidate: { name: string; email: string; orgEmail: string; jobTitle: string; resumeFile?: File }) {
+  async function submitCandidate(candidate: { name: string; email: string; orgEmail: string; jobId: string; resumeFile?: File; interviewId: string }) {
     setLoading(true);
     setError(null);
     setSuccess(false);

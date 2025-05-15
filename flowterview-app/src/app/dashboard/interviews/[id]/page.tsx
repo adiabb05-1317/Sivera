@@ -47,7 +47,7 @@ export default function InterviewDetailsPage() {
         if (!resp.ok) throw new Error("Failed to fetch interview details");
         const data = await resp.json();
         setJob(data.job);
-        setCandidates(data.candidates || []);
+        setCandidates(data.interview.candidates_invited || []);
         // Set up React Flow
         if (data.flow && data.flow.react_flow_json) {
           setNodes(data.flow.react_flow_json.nodes || []);

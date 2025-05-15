@@ -132,12 +132,7 @@ async def list_interviews(request: Request):
             job = db.fetch_one("jobs", {"id": interview["job_id"]})
             job_title = job["title"] if job else "Unknown"
             # Count candidates (from candidate_interviews)
-            candidate_count = 0
-            try:
-                candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview["id"]})
-                candidate_count = len(candidate_interviews)
-            except Exception:
-                candidate_count = len(interview.get("candidates_invited", []))
+            candidate_count = len(interview.get("candidates_invited", []))
             # Format date
             date = interview["created_at"][:10] if interview.get("created_at") else ""
             # Status
@@ -158,6 +153,7 @@ async def get_interview(interview_id: str, request: Request):
     try:
         # 1. Get interview
         interview = db.fetch_one("interviews", {"id": interview_id})
+        candidates = len(interview.get("candidates_invited", []))
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
         # 2. Get job
@@ -167,13 +163,6 @@ async def get_interview(interview_id: str, request: Request):
         # 3. Get flow
         flow = db.fetch_one("interview_flows", {"id": job.get("flow_id")}) if job.get("flow_id") else None
         # 4. Get candidates (join candidate_interviews + candidates)
-        candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview_id})
-        candidate_ids = [ci["candidate_id"] for ci in candidate_interviews]
-        candidates = []
-        for cid in candidate_ids:
-            cand = db.fetch_one("candidates", {"id": cid})
-            if cand:
-                candidates.append(cand)
         # 5. Build response
         return {
             "interview": interview,

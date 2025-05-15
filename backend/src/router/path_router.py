@@ -135,8 +135,7 @@ async def generate_interview_flow(
     Also generates a React Flow compatible version for visualization.
     """
     if (
-        not data["organization_id"]
-        or not data["job_description"]
+        not data["job_description"]
         or len(data["job_description"]) < 30
     ):
         raise HTTPException(
@@ -155,19 +154,7 @@ async def generate_interview_flow(
         logger.warning(f"Failed to generate React Flow JSON directly: {e}")
         react_flow_json = convert_flow_to_react_flow(flow_json)
 
-    db_manager = request.app.state.db_manager
-
-    db_manager.execute_query(
-        "interview_flows",
-        {
-            "flow_json": json.dumps(flow_json),
-            "name": "test_flow",
-            "react_flow_json": json.dumps(react_flow_json),
-        },
-    )
-
     return {
-        "organization_id": data["organization_id"],
         "flow": flow_json,
         "react_flow": react_flow_json,
     }

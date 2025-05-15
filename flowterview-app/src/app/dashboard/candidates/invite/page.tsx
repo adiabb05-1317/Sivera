@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { fetchInterviewById } from "@/lib/supabase-candidates";
 
 export default function InviteCandidatesPage() {
   const router = useRouter();
@@ -115,13 +116,22 @@ export default function InviteCandidatesPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Fetch interview to get job_id
+      let jobId = "";
+      if (selectedInterview) {
+        const interview = await fetchInterviewById(selectedInterview);
+        if (interview && interview.job_id) {
+          jobId = interview.job_id;
+        }
+      }
       for (const candidate of candidates) {
         await submitCandidate({
           name: candidate.name,
           email: candidate.email,
-          orgEmail: orgEmail, // <-- Use current user's email as orgEmail
-          jobTitle: jobs.find((j) => j.id === selectedInterview)?.title || "",
+          orgEmail: orgEmail,
+          jobId,
           resumeFile: candidate.resume || undefined,
+          interviewId: selectedInterview,
         });
       }
       setIsSent(true);
