@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,30 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useJobs } from "./invite/supabase-hooks";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CandidateViewDialog = ({
   candidate,
@@ -69,6 +93,75 @@ const CandidateViewDialog = ({
 export default function CandidatesPage() {
   const { toast } = useToast();
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
+
+  const router = useRouter();
+  const { candidates, loading, error, reload } = useCandidatesSortedByJob();
+  const { jobs, loadJobs } = useJobs();
+
+  // Status badge color mapping (for capitalized statuses)
+  const statusColors: Record<string, string> = {
+    Applied: "bg-black-100 text-black-800",
+    Screening: "bg-yellow-100 text-yellow-800",
+    Interview_Scheduled: "bg-blue-100 text-blue-800",
+    Interviewed: "bg-indigo-100 text-indigo-800",
+    Hired: "bg-green-100 text-green-800",
+    On_Hold: "bg-orange-100 text-orange-800",
+    Rejected: "bg-red-100 text-red-800",
+  };
+
+  // Status display label mapping
+  const statusLabels: Record<string, string> = {
+    Applied: "Applied",
+    Screening: "Screening",
+    Interview_scheduled: "Interview Scheduled",
+    Interviewed: "Interviewed",
+    Hired: "Hired",
+    On_Hold: "On Hold",
+    Rejected: "Rejected",
+  };
+
+  // Derive job roles from candidates
+  const jobRoles = Array.from(
+    new Set(
+      (candidates || [])
+        .filter((c: any) => c.jobs && c.jobs.id && c.jobs.title)
+        .map((c: any) => JSON.stringify({ id: c.jobs.id, title: c.jobs.title }))
+    )
+  ).map((str) => JSON.parse(str));
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  useEffect(() => {
+    if (!candidates) return;
+    let filtered = candidates;
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (c: any) =>
+          c.name?.toLowerCase().includes(lower) ||
+          c.email?.toLowerCase().includes(lower) ||
+          c.jobs?.title?.toLowerCase().includes(lower)
+      );
+    }
+    if (selectedJobIds.length > 0) {
+      filtered = filtered.filter(
+        (c: any) => c.jobs && selectedJobIds.includes(c.jobs.id)
+      );
+    }
+    if (selectedStatuses.length > 0) {
+      filtered = filtered.filter((c: any) =>
+        selectedStatuses.includes(c.status)
+      );
+    }
+    setFilteredCandidates(filtered);
+  }, [candidates, searchTerm, selectedJobIds, selectedStatuses]);
 
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
@@ -141,31 +234,6 @@ export default function CandidatesPage() {
     }
   };
 
-  const router = useRouter();
-  const { candidates, loading, error, reload } = useCandidatesSortedByJob();
-
-  // Status badge color mapping (for capitalized statuses)
-  const statusColors: Record<string, string> = {
-    Applied: "bg-black-100 text-black-800",
-    Screening: "bg-yellow-100 text-yellow-800",
-    Interview_Scheduled: "bg-blue-100 text-blue-800",
-    Interviewed: "bg-indigo-100 text-indigo-800",
-    Hired: "bg-green-100 text-green-800",
-    On_Hold: "bg-orange-100 text-orange-800",
-    Rejected: "bg-red-100 text-red-800",
-  };
-
-  // Status display label mapping
-  const statusLabels: Record<string, string> = {
-    Applied: "Applied",
-    Screening: "Screening",
-    Interview_scheduled: "Interview Scheduled",
-    Interviewed: "Interviewed",
-    Hired: "Hired",
-    On_Hold: "On Hold",
-    Rejected: "Rejected",
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
@@ -189,18 +257,103 @@ export default function CandidatesPage() {
             type="text"
             placeholder="Search candidates"
             className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            disabled
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="inline-flex">
-          <Button
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
-            disabled
-          >
-            <Filter className="mr-2 h-4 w-4 text-gray-400" />
-            Filter
-          </Button>
-        </div>
+        {/* Multi-select filter for job roles and statuses */}
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={popoverOpen}
+              className="w-[280px] justify-between"
+            >
+              {selectedJobIds.length === 0 && selectedStatuses.length === 0
+                ? "Filter by Job Role or Status"
+                : [
+                    ...jobs
+                      .filter((job: any) => selectedJobIds.includes(job.id))
+                      .map((job: any) => job.title),
+                    ...selectedStatuses.map(
+                      (status) => statusLabels[status] || status
+                    ),
+                  ].join(", ")}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[280px] p-0">
+            <Command>
+              <CommandInput placeholder="Search job or status..." />
+              <CommandEmpty>No job or status found.</CommandEmpty>
+              <CommandGroup heading="Job Roles">
+                {jobs && jobs.length > 0 ? (
+                  jobs.map((job: any) => (
+                    <CommandItem
+                      key={job.id}
+                      value={job.title}
+                      onSelect={() => {
+                        setSelectedJobIds((prev) =>
+                          prev.includes(job.id)
+                            ? prev.filter((id) => id !== job.id)
+                            : [...prev, job.id]
+                        );
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedJobIds.includes(job.id)
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      {job.title}
+                    </CommandItem>
+                  ))
+                ) : (
+                  <CommandItem disabled>No roles</CommandItem>
+                )}
+              </CommandGroup>
+              <CommandGroup heading="Status">
+                {Object.keys(statusLabels).map((status) => (
+                  <CommandItem
+                    key={status}
+                    value={statusLabels[status]}
+                    onSelect={() => {
+                      setSelectedStatuses((prev) =>
+                        prev.includes(status)
+                          ? prev.filter((s) => s !== status)
+                          : [...prev, status]
+                      );
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedStatuses.includes(status)
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                    {statusLabels[status]}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandGroup>
+                <CommandItem
+                  onSelect={() => {
+                    setSelectedJobIds([]);
+                    setSelectedStatuses([]);
+                  }}
+                >
+                  Clear Filter
+                </CommandItem>
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Candidates Table */}
@@ -240,7 +393,7 @@ export default function CandidatesPage() {
                     {error}
                   </td>
                 </tr>
-              ) : candidates && candidates.length === 0 ? (
+              ) : filteredCandidates && filteredCandidates.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16">
                     <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
@@ -268,7 +421,7 @@ export default function CandidatesPage() {
                   </td>
                 </tr>
               ) : (
-                candidates.map((candidate: any) => (
+                filteredCandidates.map((candidate: any) => (
                   <tr
                     key={candidate.id}
                     className="hover:bg-gray-50 cursor-pointer h-18 border-b border-gray-200"

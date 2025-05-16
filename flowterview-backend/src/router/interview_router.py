@@ -9,7 +9,7 @@ from storage.db_manager import DatabaseManager, DatabaseError
 
 from src.core.config import Config
 
-router = APIRouter(prefix="/api/v1/interviews", tags=["interviews"])
+router = APIRouter(prefix="/api/v1/interview", tags=["interview"])
 
 db = DatabaseManager()
 

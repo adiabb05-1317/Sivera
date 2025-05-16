@@ -180,7 +180,7 @@ export default function SignupPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Leave empty to use magic link"
+                  placeholder="********"
                 />
               </div>
               {password && (
