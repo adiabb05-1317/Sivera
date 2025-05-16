@@ -70,7 +70,7 @@ export async function generateInterviewFlow(jobDescription: string): Promise<{ f
 
     // Call your backend service
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/generate_interview_flow`,
+      `${process.env.NEXT_PUBLIC_CORE_BACKEND_URL}/api/v1/generate_interview_flow`,
       {
         method: "POST",
         headers: {
