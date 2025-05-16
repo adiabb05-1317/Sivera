@@ -171,6 +171,21 @@ export default function CandidatesPage() {
     });
 
     try {
+      // Get current user information from localStorage or session
+      const userString = localStorage.getItem('user') || sessionStorage.getItem('user');
+      const user = userString ? JSON.parse(userString) : null;
+      const organizationId = candidate.organization_id || user?.organization_id;
+      const senderId = user?.id;
+      
+      if (!organizationId) {
+        toast({
+          title: "Organization not found",
+          description: "Your organization information is missing. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,
         {
@@ -180,6 +195,8 @@ export default function CandidatesPage() {
             email: candidate.email,
             name: candidate.name,
             job: candidate.jobs ? candidate.jobs.title : "",
+            organization_id: organizationId,
+            sender_id: senderId || "system",
           }),
         }
       );
