@@ -387,13 +387,13 @@ wheels = [
 
 [[package]]
 name = "daily-python"
-version = "0.17.0"
+version = "0.18.2"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/0c/e22938201630cbc618dec049d091138643b76e664edc12ea69653389400c/daily_python-0.17.0-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:37d72bb41dcaed65f71cad529cac734d28c2c84ca1f149321b5721012608ee17", size = 13434800 },
-    { url = "https://files.pythonhosted.org/packages/d8/94/f84f98f10843b500c420e127eb1156e6e4e26aa1b333aae719763bf92fe0/daily_python-0.17.0-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:3e49983c0fb9bec9029b8b86f3155d8e42749169c61a5ee4d323e4d739eb60d9", size = 11692667 },
-    { url = "https://files.pythonhosted.org/packages/97/bc/8a06e2ce55cd8503bb24051f3117d168063b1a430322f5406070a0d4d862/daily_python-0.17.0-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:998574133581ebd8f5688aec77e94bbba69ef4462d34d6229e3caa407c53791e", size = 13762291 },
-    { url = "https://files.pythonhosted.org/packages/a7/2a/ddd5e7344396aa65afef8f325035a2c2e46cef73e70e0a5d2650dbdc0888/daily_python-0.17.0-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:5830f61a37ab4ab8624924e989ac646f10b6aff70be3e1b6003b1617b232ea74", size = 14368340 },
+    { url = "https://files.pythonhosted.org/packages/40/82/db3e45444493d7e5d8fc848382b0420994409831ed8e1274763c9b1f53e6/daily_python-0.18.2-cp37-abi3-macosx_10_15_x86_64.whl", hash = "sha256:9ffb527d9575fb42bebb0549cbe7d5bce266bb737558772215a80045bc319d28", size = 13424866 },
+    { url = "https://files.pythonhosted.org/packages/c6/ff/0abccba2809cb9eed634cd98cdaac076dc545c621e97891afc546b6f7ac3/daily_python-0.18.2-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:49c2caa0caad4637c95d4bf02d7267d0d1ff5de14f185bbdebe1ea3407ee88f7", size = 11765888 },
+    { url = "https://files.pythonhosted.org/packages/4f/75/9c74ffa83dc6b1e6d346e351b5053af828ff6c3e0174acf5c0fd85a58027/daily_python-0.18.2-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:57faaf617f95b3438bbbf61a738aeb993f3283a148e2805aa01f3393089a9c9b", size = 13801256 },
+    { url = "https://files.pythonhosted.org/packages/c1/44/70ef1833f8994637ff341577340af196ddae4a9b3ef045bc2acf6834cc25/daily_python-0.18.2-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:bacdff0cdc9f8d52c16884a65e00d80a2892e28274d6711ece5547ed42d3c316", size = 14289201 },
 ]
 
 [[package]]
@@ -856,7 +856,7 @@ requires-dist = [
     { name = "google-generativeai", specifier = ">=0.8.4" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "openai", specifier = ">=1.59" },
-    { name = "pipecat-ai", extras = ["silero", "daily", "elevenlabs", "google", "deepgram", "openai", "websocket", "cartesia"], specifier = ">=0.0.62" },
+    { name = "pipecat-ai", extras = ["silero", "daily", "elevenlabs", "google", "deepgram", "openai", "websocket", "cartesia"], specifier = ">=0.0.67" },
     { name = "pipecat-ai-flows", specifier = ">=0.0.15" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
@@ -1376,7 +1376,7 @@ wheels = [
 
 [[package]]
 name = "pipecat-ai"
-version = "0.0.63"
+version = "0.0.67"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1392,9 +1392,9 @@ dependencies = [
     { name = "resampy" },
     { name = "soxr" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/6e/a332b8ebc76948bd65e24c6477182a4a8697282d8b932c3256d71a2e5846/pipecat_ai-0.0.63.tar.gz", hash = "sha256:c0f4cd3222888551fa84583470980854ba39748f8f7d735362a6c774efd2a75f", size = 69608671 }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/8a/2c021cdc69876b38e6c4e366b24e77e3956674ee302bea6ffe3fdc499985/pipecat_ai-0.0.67.tar.gz", hash = "sha256:864657271ec6729b96d406fd85238a15eb64e14e77b1ba5794051d579f6739f1", size = 95147430 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/6f/a9440f93338189e4cdc453a77b9fd2cd83d771f5111a40b1b329fde73e85/pipecat_ai-0.0.63-py3-none-any.whl", hash = "sha256:17eaf0789eb110880df7ce224fbe64b12e7d407f2a53ac7c0b8262481ae8b310", size = 2312806 },
+    { url = "https://files.pythonhosted.org/packages/a8/a6/2231101351658d76cef77ddb0b9e750b86e5bb2f4848d776a6962bdf1687/pipecat_ai-0.0.67-py3-none-any.whl", hash = "sha256:8a61c53f7c3baf1c86e78a05fadf9f01959930165d5f5e1e92be36184797e26a", size = 2379800 },
 ]
 
 [package.optional-dependencies]
@@ -1416,6 +1416,7 @@ google = [
     { name = "google-cloud-texttospeech" },
     { name = "google-genai" },
     { name = "google-generativeai" },
+    { name = "websockets" },
 ]
 openai = [
     { name = "websockets" },

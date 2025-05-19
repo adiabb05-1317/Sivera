@@ -2,10 +2,13 @@ import asyncio
 import json
 import os
 import uuid
+import aiohttp
 from typing import Any, Dict, Optional, Literal
 
 from dotenv import load_dotenv
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
+from pipecat.audio.turn.smart_turn.fal_smart_turn import FalSmartTurnAnalyzer
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.frames.frames import BotInterruptionFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -173,29 +176,42 @@ class InterviewFlow:
         return cls(url, bot_token, session_id, flow_config_path, bot_name)
 
     async def create_transport(self):
+        self.aiohttp_session = aiohttp.ClientSession()
+
         self.transport = DailyTransport(
             room_url=self.url,
             token=self.token,
             bot_name=self.bot_name,
             params=DailyParams(
-                audio_out_enabled=True,
-                audio_out_sample_rate=48000,
-                audio_out_channels=1,
-                audio_in_enabled=True,
-                camera_out_enabled=True,
-                camera_out_width=1024,
-                camera_out_height=768,
-                camera_out_framerate=30,
-                vad_enabled=True,
+                turn_analyzer=FalSmartTurnAnalyzer(
+                    api_key=os.getenv("FAL_API_KEY"),
+                    aiohttp_session=self.aiohttp_session,
+                    params=SmartTurnParams(
+                        stop_secs=0.8,  # Time to wait after speech ends before considering turn complete
+                        pre_speech_ms=0.0,  # No delay before starting to process speech
+                        max_duration_secs=5.0,  # Maximum length of a single turn to maintain natural conversation
+                        timeout_secs=3.0,  # Maximum time to wait for turn detection API response
+                        retry_count=2,  # Number of times to retry failed turn detection requests
+                        retry_delay=0.5  # Time to wait between retry attempts
+                    )
+                ),
+                audio_out_enabled=True,  # Enable audio output for bot responses
+                audio_out_sample_rate=48000,  # High-quality audio sampling rate
+                audio_out_channels=1,  # Mono audio output for better compatibility
+                audio_in_enabled=True,  # Enable audio input for user speech
+                camera_out_enabled=True,  # Enable video output for bot
+                camera_out_width=1024,  # High-resolution video width
+                camera_out_height=768,  # High-resolution video height
+                camera_out_framerate=30,  # Smooth video frame rate
+                vad_enabled=True,  # Enable Voice Activity Detection
                 vad_analyzer=SileroVADAnalyzer(
-                    sample_rate=16000,
                     params=VADParams(
-                        threshold=0.5,
-                        min_speech_duration_ms=250,
-                        min_silence_duration_ms=100,
+                        stop_secs=0.1,  # Quick detection of speech end
+                        threshold=0.5,  # Balance between sensitivity and noise rejection
+                        min_speech_duration_ms=100  # Ignore very short sounds to reduce false positives
                     ),
                 ),
-                vad_audio_passthrough=True,
+                vad_audio_passthrough=True,  # Pass audio through VAD for real-time processing
             ),
         )
 
@@ -294,8 +310,14 @@ class InterviewFlow:
         self.task = PipelineTask(
             pipeline=pipeline,
             params=PipelineParams(
-                allow_interruptions=True,
-                auto_enable_processors=True,
+                allow_interruptions=True,  # Enable bot interruption for more natural conversation
+                auto_enable_processors=True,  # Automatically enable all processors
+                stream_processing=True,  # Process audio in real-time streams
+                parallel_processing=True,  # Enable parallel processing of frames
+                buffer_size=2048,  # Larger buffer for smoother audio processing
+                max_queue_size=50,  # Smaller queue for faster processing of frames
+                processing_timeout=5.0,  # Overall timeout for processing pipeline
+                error_handling="retry"  # Automatically retry on processing errors
             ),
             observers=[self.rtvi_observer],
         )
@@ -415,6 +437,9 @@ class InterviewFlow:
                 finally:
                     self.task = None
                     self.task_running = False
+
+            if hasattr(self, "aiohttp_session"):
+                await self.aiohttp_session.close()
 
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
