@@ -28,7 +28,7 @@ const UserTile = ({
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }) => (
   <div
-    className={`bg-indigo-200/40 rounded-xl aspect-video relative overflow-hidden shadow-md border transition-all
+    className={`bg-white/20 dark:bg-[#32344a]/60 backdrop-blur-lg border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl rounded-xl aspect-video relative overflow-hidden transition-all
       ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
     `}
   >
@@ -52,6 +52,10 @@ const UserTile = ({
 
 const BotTile = ({
   isBotSpeaking,
+  isCameraOn,
+  localVideoStream,
+  currentUserTranscript,
+  currentBotTranscript,
 }: {
   isBotSpeaking: boolean;
   isCameraOn: boolean;
@@ -60,7 +64,7 @@ const BotTile = ({
   currentBotTranscript: string | null;
 }) => (
   <div
-    className={`bg-indigo-200/40 rounded-xl aspect-video relative overflow-hidden shadow-md border transition-all
+    className={`bg-white/20 dark:bg-[#32344a]/60 backdrop-blur-lg border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl rounded-xl aspect-video relative overflow-hidden transition-all
       ${isBotSpeaking ? "ring-2 ring-[#774BE5] scale-[1.02]" : ""}
     `}
   >
@@ -162,8 +166,8 @@ const Presentation = () => {
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
-      {transportState !== "ready" && callStatus !== "left" && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/60 backdrop-blur-sm">
+      {true || transportState !== "ready" && callStatus !== "left" && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-[--meet-surface] dark:bg-[--meet-surface] bg-opacity-60 dark:bg-opacity-80 backdrop-blur-sm">
           <div className="w-10 h-10 border-4 border-indigo-500/70 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
@@ -172,7 +176,7 @@ const Presentation = () => {
           <ConclusionSection />
         </div>
       ) : (
-        <section className="relative flex-grow w-full h-full overflow-hidden bg-[#F0F8FF]">
+        <section className="relative flex-grow w-full h-full overflow-hidden bg-transparent">
           <div
             className={`absolute top-0 bottom-0 left-0 z-40 w-[65%] transition-transform duration-300 p-5 ${
               isCodeEditorOpen ? "translate-x-0" : "-translate-x-full"
@@ -261,16 +265,16 @@ const Presentation = () => {
           } bottom-[130px] transform -translate-x-1/2 max-w-2xl w-[calc(100%-32px)] md:w-auto animate-fade-in transition-all duration-300`}
         >
           <div className="relative px-4">
-            <div className="bg-indigo-300/30 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-indigo-600/40">
+            <div className="bg-indigo-300/30 dark:bg-indigo-900/40 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-indigo-600/40 dark:border-indigo-400/40">
               <div className="flex items-center mb-2">
-                <div className="w-6 h-6 rounded-full bg-indigo-700 border border-indigo-500 flex items-center justify-center mr-2 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-indigo-700 dark:bg-indigo-400 border border-indigo-500 dark:border-indigo-300 flex items-center justify-center mr-2 mt-0.5">
                   <Logo width="13" height="13" />
                 </div>
-                <span className="text-indigo-900 text-sm font-medium tracking-tight">
+                <span className="text-indigo-900 dark:text-indigo-100 text-sm font-medium tracking-tight">
                   Flotia
                 </span>
               </div>
-              <p className="text-indigo-900 text-xs ml-8 leading-relaxed tracking-tight">
+              <p className="text-indigo-900 dark:text-indigo-100 text-xs ml-8 leading-relaxed tracking-tight">
                 {currentBotTranscript}
               </p>
             </div>
@@ -282,15 +286,15 @@ const Presentation = () => {
         className={`fixed ${isCodeEditorOpen ? "left-[82.5%] bottom-8" : "left-1/2 bottom-8"} transform -translate-x-1/2 z-30 transition-all duration-300`}
       >
         {callStatus !== "left" && (
-          <Controls
-            participants={participants}
-            isCodeEditorOpen={isCodeEditorOpen}
-            toggleCodeEditor={toggleCodeEditor}
-            style={{
-              overflow: "visible",
-            }}
-            joinAndLeaveCallHandler={joinAndLeaveCallHandler}
-          />
+          <div className="rounded-full px-6 py-3 bg-white/60 dark:bg-[#292a3a]/80 border border-indigo-100/30 dark:border-indigo-800/40 shadow-lg flex gap-4 items-center backdrop-blur-xl">
+            <Controls
+              participants={participants}
+              isCodeEditorOpen={isCodeEditorOpen}
+              toggleCodeEditor={toggleCodeEditor}
+              style={{ overflow: "visible" }}
+              joinAndLeaveCallHandler={joinAndLeaveCallHandler}
+            />
+          </div>
         )}
       </div>
     </div>

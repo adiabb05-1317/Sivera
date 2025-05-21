@@ -10,21 +10,42 @@ interface FlowterviewAvatarProps {
 export const FlowterviewAvatar = ({ isTalking = false }: FlowterviewAvatarProps) => {
   const [pulseEffect, setPulseEffect] = useState(false)
   const [animationIntensity, setAnimationIntensity] = useState(0)
+  const [waveHeights, setWaveHeights] = useState<number[]>(Array(9).fill(8))
 
   // Enhanced animation effects when talking state changes
   useEffect(() => {
+    let intensityInterval: NodeJS.Timeout | null = null
+    let waveInterval: NodeJS.Timeout | null = null
     if (isTalking) {
       setPulseEffect(true)
       // Simulate voice intensity variations
-      const intensityInterval = setInterval(() => {
+      intensityInterval = setInterval(() => {
         setAnimationIntensity(Math.random())
       }, 300)
-      return () => clearInterval(intensityInterval)
+      // Generate random heights for sound waves on client only
+      const genHeights = () => {
+        setWaveHeights(
+          Array(9)
+            .fill(0)
+            .map((_, i) => {
+              const baseHeight = Math.sin((i / 8) * Math.PI) * 16
+              const variation = animationIntensity * 10
+              return Math.max(3, baseHeight + Math.random() * variation)
+            })
+        )
+      }
+      genHeights()
+      waveInterval = setInterval(genHeights, 300)
     } else {
       setPulseEffect(false)
       setAnimationIntensity(0)
+      setWaveHeights(Array(9).fill(8))
     }
-  }, [isTalking])
+    return () => {
+      if (intensityInterval) clearInterval(intensityInterval)
+      if (waveInterval) clearInterval(waveInterval)
+    }
+  }, [isTalking, animationIntensity])
 
   return (
     <div className="relative flex items-center justify-center w-36 h-36 md:w-48 md:h-48 animate-fade-in">
@@ -75,15 +96,10 @@ export const FlowterviewAvatar = ({ isTalking = false }: FlowterviewAvatarProps)
             <div className="absolute bottom-6 left-0 right-0 flex justify-center">
               <div className="flex items-end space-x-[3px] h-5">
                 {/* Generate dynamic sound waves based on animation intensity */}
-                {[...Array(9)].map((_, i) => {
-                  // Calculate height based on position and animation intensity
-                  const baseHeight = Math.sin((i / 8) * Math.PI) * 16 
-                  const variation = animationIntensity * 10
-                  const height = Math.max(3, baseHeight + (Math.random() * variation))
+                {waveHeights.map((height, i) => {
                   const delay = i * 100
-                  
                   return (
-                    <div 
+                    <div
                       key={i}
                       className="w-[3px] rounded-full animate-sound-wave"
                       style={{

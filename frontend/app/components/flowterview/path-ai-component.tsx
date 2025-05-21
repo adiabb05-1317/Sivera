@@ -1,6 +1,6 @@
 "use client";
 
-import { LogoDark } from "@/logos";
+import { Logo, LogoDark } from "@/logos";
 import AudioClient from "./audio-client";
 import Presentation from "./presentation-layer";
 import usePathStore from "@/app/store/PathStore";
@@ -13,23 +13,26 @@ export default function FlowterviewComponent() {
   };
 
   return (
-    <main className="h-full w-full bg-gradient-to-bl from-indigo-200 via-indigo-400/50 to-indigo-700/30 relative overflow-hidden">
+    <main className="h-full w-full bg-[--meet-background] dark:bg-[--meet-background] relative overflow-hidden">
       <header
-        className={`flex items-center justify-between px-6 py-4 sticky top-0 z-50 transition-all duration-300 shadow-md ${isHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}
+        className={`flex items-center justify-between px-8 py-4 sticky top-0 z-50 transition-all duration-300 shadow-md
+          bg-white/90 dark:bg-[#232336]/95 backdrop-blur-xl border-b border-[--meet-border] dark:border-indigo-900/40
+        ${isHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}
       >
         <div className="flex items-center gap-3">
           <div className="relative group cursor-pointer">
-            <div className="absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/20 blur-md"></div>
+            <div className="absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/30 blur-md dark:bg-white/10"></div>
             <div className="relative">
-              <LogoDark width="40" height="40" />
+              <span className="block dark:hidden"><LogoDark width="40" height="40" /></span>
+              <span className="hidden dark:block"><Logo width="40" height="40" /></span>
             </div>
           </div>
-          <h1 className="text-md font-medium tracking-widest hidden sm:block">
+          <h1 className="text-lg font-semibold tracking-widest hidden sm:block text-[--meet-text-primary] dark:text-[--meet-text-primary] drop-shadow-md">
             FLOWTERVIEW
           </h1>
         </div>
       </header>
-
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-800/40 via-indigo-700/30 to-[#232336]/80 dark:from-indigo-900/60 dark:via-[#292a3a]/60 dark:to-[#232336]/90 backdrop-blur-2xl" />
       <div className="h-[calc(100%-64px)]">
         <AudioClient onClearTranscripts={handleClearTranscripts} />
         <Presentation />

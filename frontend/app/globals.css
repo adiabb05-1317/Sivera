@@ -53,6 +53,22 @@
   --background-end-rgb: 216, 223, 229;
 }
 
+.dark {
+  --meet-background: #181825;
+  --meet-surface: #232336;
+  --meet-surface-light: #232336;
+  --meet-primary: #a78bfa;
+  --meet-primary-rgb: 167, 139, 250;
+  --meet-secondary: #64748b;
+  --meet-secondary-rgb: 100, 116, 139;
+  --meet-text-primary: #f3f4f6;
+  --meet-text-secondary: #cbd5e1;
+  --meet-border: rgba(167, 139, 250, 0.3);
+  --meet-hover: rgba(167, 139, 250, 0.1);
+  --purple-gradient: linear-gradient(135deg, rgba(167,139,250,0.8) 0%, rgba(39,39,42,0.7) 100%);
+  --light-gradient: linear-gradient(180deg, #232336 0%, #181825 100%);
+}
+
 body {
   font-family:
     "Plus Jakarta Sans",
@@ -70,6 +86,16 @@ html {
   color: var(--meet-text-primary);
   overflow-x: hidden;
   letter-spacing: 0.2px;
+}
+
+html.dark {
+  background: linear-gradient(180deg, var(--meet-background) 0%, #232336 100%);
+  color: var(--meet-text-primary);
+}
+
+body.dark {
+  background: var(--meet-background);
+  color: var(--meet-text-primary);
 }
 
 .meet-button {
