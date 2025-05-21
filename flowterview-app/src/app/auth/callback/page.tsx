@@ -194,16 +194,16 @@ export default function AuthCallbackPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
-        <Card className="w-[450px]">
+        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
                 FLOWTERVIEW
               </div>
             </CardTitle>
-            <CardDescription>Setting up your account...</CardDescription>
+            <CardDescription className="dark:text-gray-300">Setting up your account...</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mt-6 flex justify-center">
@@ -217,27 +217,27 @@ export default function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
-        <Card className="w-[450px]">
+        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
                 FLOWTERVIEW
               </div>
             </CardTitle>
-            <CardDescription>Authentication Error</CardDescription>
+            <CardDescription className="dark:text-gray-300">Authentication Error</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 mb-4">
+            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
               {error}
             </div>
-            <div className="text-xs text-gray-400 whitespace-pre-wrap mt-2">
+            <div className="text-xs text-gray-400 dark:text-gray-300 whitespace-pre-wrap mt-2">
               {debugInfo}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
               <a href="/auth/login">Back to Login</a>
             </Button>
           </CardFooter>
@@ -247,13 +247,13 @@ export default function AuthCallbackPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
         <div className="text-center">
-          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
             FLOWTERVIEW
           </div>
-          <p className="mt-4 text-gray-600">Signing you in...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Signing you in...</p>
           <div className="mt-6 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
           </div>

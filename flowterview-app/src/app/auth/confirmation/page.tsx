@@ -14,21 +14,21 @@ import { Button } from "@/components/ui/button";
 
 export default function ConfirmationPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <FloatingPaths position={-1} className="inset-0 opacity-30" />
-      <Card className="w-[450px]">
+      <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
               FLOWTERVIEW
             </div>
           </CardTitle>
-          <CardDescription>Confirmation Required</CardDescription>
+          <CardDescription className="dark:text-gray-300">Confirmation Required</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
             <svg
-              className="h-8 w-8 text-green-600"
+              className="h-8 w-8 text-green-600 dark:text-green-400"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -43,18 +43,18 @@ export default function ConfirmationPage() {
             </svg>
           </div>
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               We&apos;ve sent a confirmation email to your inbox. Please click
               the link in the email to confirm your account.
             </p>
-            <p className="mt-4 text-gray-600">
+            <p className="mt-4 text-gray-600 dark:text-gray-300">
               After confirming your email, your organization will be set up
               automatically.
             </p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-center">
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
             <Link href="/auth/login">Go to Login</Link>
           </Button>
         </CardFooter>

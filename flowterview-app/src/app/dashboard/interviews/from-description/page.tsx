@@ -215,27 +215,28 @@ export default function GenerateFromDescriptionPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-lg bg-white shadow">
+      <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
         <CardHeader className="flex flex-row items-end justify-between">
           <div>
-            <h2 className="text-lg font-medium tracking-tight">
+            <h2 className="text-lg font-medium tracking-tight dark:text-white">
               Interview details
             </h2>
-            <p className="text-xs text-gray-500 font-semibold">
+            <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
               Please provide the job title and description to generate an
               interview flow.
             </p>
           </div>
         </CardHeader>
-        <CardContent className="border-t border-gray-200 pt-5">
+        <CardContent className="border-t border-gray-200 dark:border-gray-800 pt-5">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium">
+              <label htmlFor="title" className="block text-sm font-medium dark:text-gray-200">
                 Role
               </label>
               <Input
                 type="text"
                 id="title"
+                className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 {...register("title", {
                   required: "Title is required",
                 })}
@@ -252,16 +253,16 @@ export default function GenerateFromDescriptionPage() {
             <div>
               <label
                 htmlFor="jobDescription"
-                className="block text-sm font-medium"
+                className="block text-sm font-medium dark:text-gray-200"
               >
                 Job description
               </label>
               <Textarea
                 title="Job description"
                 id="jobDescription"
-                className={`mt-1 block w-full rounded-md border ${
+                className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
                   errors.jobDescription && "border-red-500"
-                } px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500`}
+                } px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500`}
                 rows={10}
                 placeholder="Paste the job description here..."
                 disabled={loading}
@@ -281,7 +282,7 @@ export default function GenerateFromDescriptionPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className={`cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50`}
+                className={`cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
                 variant="outline"
               >
                 {loading && <Loader2 className="animate-spin mr-2" />}
@@ -294,13 +295,13 @@ export default function GenerateFromDescriptionPage() {
       </Card>
 
       {flowData && (
-        <Card className="h-[calc(100vh-200px)]">
+        <Card className="h-[calc(100vh-200px)] dark:bg-gray-900 dark:border-gray-800">
           <CardHeader className="flex flex-row items-end justify-between">
             <div>
-              <h2 className="text-lg font-medium tracking-tight">
+              <h2 className="text-lg font-medium tracking-tight dark:text-white">
                 Generated Interview Flow
               </h2>
-              <p className="text-xs text-gray-500 font-semibold">
+              <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
                 Review the generated interview flow below.
               </p>
             </div>
@@ -308,14 +309,14 @@ export default function GenerateFromDescriptionPage() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center rounded-md bg-indigo-200 px-4 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-400/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
+                className="inline-flex items-center rounded-md bg-indigo-200 dark:bg-indigo-900 px-4 py-2 text-sm font-medium text-indigo-900 dark:text-indigo-300 hover:bg-indigo-400/60 dark:hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer"
               >
                 <Save className="mr-1 h-4 w-4" />
                 {saving ? "Saving..." : "Save Flow"}
               </Button>
             )}
           </CardHeader>
-          <CardContent className="h-[calc(100%-3rem)] rounded-lg overflow-hidden">
+          <CardContent className="h-[calc(100%-3rem)] rounded-lg overflow-hidden dark:bg-gray-900 dark:border-gray-800">
             <InterviewFlow
               flowData={flowData}
               reactFlowData={reactFlowData || undefined}

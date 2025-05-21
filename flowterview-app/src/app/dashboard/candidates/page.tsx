@@ -374,102 +374,59 @@ export default function CandidatesPage() {
       </div>
 
       {/* Candidates Table */}
-      <Card className="overflow-hidden rounded-lg bg-white shadow p-0">
+      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
+        <div className="flex items-center justify-between px-3 py-3">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white ml-5">
+            Candidates
+          </h2>
+        </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                   Job Role
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                   Date Added
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white">
-              {/* Group by job */}
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8">
-                    Loading...
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+              {filteredCandidates.map((candidate) => (
+                <tr
+                  key={candidate.id}
+                  className="transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
+                  onClick={() => setSelectedCandidate(candidate)}
+                >
+                  <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    {candidate.name}
+                  </td>
+                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    {candidate.email}
+                  </td>
+                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    {candidate.jobs?.title || "-"}
+                  </td>
+                  <td className="px-6 py-5 whitespace-nowrap text-sm">
+                    <span className={statusColors[candidate.status] || "bg-gray-100 text-gray-800"}>
+                      {statusLabels[candidate.status] || candidate.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : "-"}
                   </td>
                 </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="text-center text-red-600 py-8">
-                    {error}
-                  </td>
-                </tr>
-              ) : filteredCandidates && filteredCandidates.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-16">
-                    <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-10 w-10 mb-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 14l9-5-9-5-9 5 9 5zm0 7v-6m0 6a9 9 0 100-18 9 9 0 000 18z"
-                        />
-                      </svg>
-                      <div className="text-lg font-medium text-gray-500">
-                        No candidates found
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        Add your first candidate to get started!
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredCandidates.map((candidate: any) => (
-                  <tr
-                    key={candidate.id}
-                    className="hover:bg-gray-50 cursor-pointer h-18 border-b border-gray-200"
-                    onClick={() => setSelectedCandidate(candidate)}
-                  >
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="font-normal text-sm tracking-tight">
-                        {candidate.name}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      {candidate.email}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      {candidate.jobs ? candidate.jobs.title : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <Badge variant="outline" className="opacity-80">
-                        {statusLabels[candidate.status] ||
-                          candidate.status ||
-                          "-"}
-                      </Badge>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
-                      {candidate.created_at
-                        ? new Date(candidate.created_at).toLocaleDateString()
-                        : "-"}
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

@@ -191,24 +191,24 @@ export default function InviteCandidatesPage() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="flex items-center gap-3 justify-between">
-              <h2 className="text-xl font-semibold opacity-70 tracking-tight">
+              <h2 className="text-xl font-semibold opacity-70 tracking-tight dark:text-white">
                 Invite Candidates
               </h2>
               <div className="flex flex-row gap-5">
                 {!interviewIdFromQuery && (
                   <Select onValueChange={setSelectedInterview}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
                       <SelectValue placeholder="Select Interview" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                       <SelectGroup>
-                        <SelectLabel>Interviews</SelectLabel>
+                        <SelectLabel className="dark:text-gray-300">Interviews</SelectLabel>
                         {jobs.map((job) => (
-                          <SelectItem key={job.id} value={job.id}>
+                          <SelectItem key={job.id} value={job.id} className="dark:text-gray-200">
                             {job.title}
                           </SelectItem>
                         ))}
@@ -221,7 +221,7 @@ export default function InviteCandidatesPage() {
                   variant="outline"
                   disabled={isUploading}
                   onClick={handleFileUpload}
-                  className="cursor-pointer"
+                  className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
                 >
                   {isUploading ? (
                     "Uploading..."
@@ -237,7 +237,7 @@ export default function InviteCandidatesPage() {
 
             <div className="space-y-6">
               {candidates.map((candidate) => (
-                <Card key={candidate.id} className="p-4">
+                <Card key={candidate.id} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                   <CardHeader className="flex items-center justify-between p-0 px-1">
                     <h3 className="text-md font-medium tracking-tight">
                       Candidate

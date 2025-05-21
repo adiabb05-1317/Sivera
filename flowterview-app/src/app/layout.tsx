@@ -3,6 +3,7 @@ import { Work_Sans } from "next/font/google";
 import "./globals.css";
 import AuthListener from "./auth-listener";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const workSans = Work_Sans({
   subsets: ["latin"],
@@ -23,8 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${workSans.variable} antialiased`}>
-        <AuthListener>{children}</AuthListener>
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthListener>{children}</AuthListener>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

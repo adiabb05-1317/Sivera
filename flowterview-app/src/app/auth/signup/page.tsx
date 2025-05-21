@@ -102,21 +102,21 @@ export default function SignupPage() {
   // If success, show confirmation message
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
-        <Card className="w-[450px]">
+        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
                 FLOWTERVIEW
               </div>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="dark:text-gray-300">
               {password ? "Account created!" : "Check your email"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mt-4 text-gray-600">
+            <p className="mt-4 text-gray-600 dark:text-gray-300">
               {password ? (
                 <>
                   Your account has been created. You can now{" "}
@@ -131,7 +131,7 @@ export default function SignupPage() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
               <Link href="/auth/login">Back to sign in</Link>
             </Button>
           </CardFooter>
@@ -141,27 +141,27 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <FloatingPaths position={-1} className="inset-0 opacity-30" />
-      <Card className="w-[450px]">
+      <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
+            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
               FLOWTERVIEW
             </div>
           </CardTitle>
-          <CardDescription>Create your account</CardDescription>
+          <CardDescription className="dark:text-gray-300">Create your account</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 mb-4">
+            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
               {error}
             </div>
           )}
           <form className="space-y-6" onSubmit={handleSignup}>
             <div className="space-y-4">
               <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="email">Email address</label>
+                <label htmlFor="email" className="dark:text-gray-200">Email address</label>
                 <Input
                   id="email"
                   name="email"
@@ -170,10 +170,11 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
+                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
                 />
               </div>
               <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="password" className="dark:text-gray-200">Password</label>
                 <Input
                   id="password"
                   name="password"
@@ -181,11 +182,12 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="********"
+                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
                 />
               </div>
               {password && (
                 <div className="flex flex-col space-y-1.5 text-sm">
-                  <label htmlFor="confirmPassword">Confirm password</label>
+                  <label htmlFor="confirmPassword" className="dark:text-gray-200">Confirm password</label>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -193,6 +195,7 @@ export default function SignupPage() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
                   />
                 </div>
               )}
@@ -202,15 +205,15 @@ export default function SignupPage() {
                 type="submit"
                 variant="outline"
                 disabled={loading}
-                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%]"
+                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%] dark:border-indigo-400/80 dark:hover:bg-indigo-400/10 dark:text-indigo-300 dark:hover:text-indigo-200 dark:focus:ring-indigo-400 dark:focus:ring-offset-zinc-900"
               >
                 {loading ? "Signing up..." : "Sign Up"}
               </Button>
-              <div className="text-sm text-gray-500 items-center justify-center">
+              <div className="text-sm text-gray-500 dark:text-gray-300 items-center justify-center">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="text-indigo-500 hover:text-indigo-600"
+                  className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   Sign in
                 </Link>

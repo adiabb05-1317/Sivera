@@ -80,18 +80,18 @@ export default function InterviewDetailsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex flex-col justify-center gap-1">
-          <h2 className="text-xl font-bold">Interview Details</h2>
-          <h4 className="text-xs font-semibold opacity-50">
+          <h2 className="text-xl font-bold dark:text-white">Interview Details</h2>
+          <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
             {job?.title || "Interview"}
           </h4>
         </div>
       </div>
       {loading ? (
-        <div className="p-6 text-center text-gray-500">
+        <div className="p-6 text-center text-gray-500 dark:text-gray-300">
           Loading interview...
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-500">{error}</div>
+        <div className="p-6 text-center text-red-500 dark:text-red-400">{error}</div>
       ) : (
         <>
           <div
@@ -99,17 +99,17 @@ export default function InterviewDetailsPage() {
             style={{ minHeight: "calc(100vh - 100px)" }}
           >
             <div className="w-full">
-              <Card>
+              <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold mb-2">Candidates</h3>
+                    <h3 className="font-semibold mb-2 dark:text-white">Candidates</h3>
                     <Button
                       onClick={() =>
                         router.push(
                           `/dashboard/candidates/invite?interview=${id}`
                         )
                       }
-                      className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+                      className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
                       variant="outline"
                     >
                       <Plus className="mr-2 h-4 w-4" />
@@ -117,20 +117,27 @@ export default function InterviewDetailsPage() {
                     </Button>
                   </div>
                   {candidates.length === 0 ? (
-                    <div className="text-gray-500 text-sm">
+                    <div className="text-gray-500 text-sm dark:text-gray-300">
                       No candidates assigned.
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2 text-sm">
-                      {candidates.length} candidate(s) assigned
+                    <div className="flex flex-col gap-2 text-sm dark:text-gray-200">
+                      {candidates.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="rounded-md px-3 py-2 transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
+                        >
+                          {candidate.name}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
             </div>
-            <div className="w-full rounded-lg border border-gray-200 overflow-hidden mt-0">
+            <div className="w-full rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mt-0 bg-white dark:bg-gray-900">
               <ReactFlowProvider>
-                <div style={{ height: "600px", width: "100%" }}>
+                <div style={{ height: "600px", width: "100%" }} className="bg-white dark:bg-gray-900">
                   <ReactFlow
                     nodes={nodes}
                     edges={edges}
