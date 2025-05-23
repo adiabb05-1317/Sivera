@@ -14,6 +14,7 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.observers.base_observer import FramePushed
 from pipecat.processors.filters.stt_mute_filter import (
     STTMuteConfig,
     STTMuteFilter,
@@ -52,19 +53,12 @@ class InterviewRTVIProcessor(RTVIProcessor):
 
 
 class InterviewRTVIObserver(RTVIObserver):
-    async def on_push_frame(
-        self,
-        src: FrameProcessor,
-        dst: FrameProcessor,
-        frame: Frame,
-        direction: FrameDirection,
-        timestamp: int,
-    ):
-        if isinstance(frame, BotInterruptionFrame):
+    async def on_push_frame(self, data: FramePushed):
+        if isinstance(data.frame, BotInterruptionFrame):
             logger.info(
-                f"Bot interruption frame detected: {frame} from {src.__class__.__name__} to {dst.__class__.__name__}"
+                f"Bot interruption frame detected: {data.frame} from {data.source.__class__.__name__} to {data.destination.__class__.__name__}"
             )
-        await super().on_push_frame(src, dst, frame, direction, timestamp)
+        await super().on_push_frame(data)
 
 
 rtvi_instance = None
@@ -144,7 +138,7 @@ class InterviewFlow:
                     You are an interviewer. Your responses should be clear, concise, and professional.
                     Keep your responses under 150 words. 
                     Your output will be converted to audio so don't include special characters in your answers. 
-                    """
+                    """,
                 }
             ]
         )
@@ -192,8 +186,8 @@ class InterviewFlow:
                         max_duration_secs=5.0,  # Maximum length of a single turn to maintain natural conversation
                         timeout_secs=3.0,  # Maximum time to wait for turn detection API response
                         retry_count=2,  # Number of times to retry failed turn detection requests
-                        retry_delay=0.5  # Time to wait between retry attempts
-                    )
+                        retry_delay=0.5,  # Time to wait between retry attempts
+                    ),
                 ),
                 audio_out_enabled=True,  # Enable audio output for bot responses
                 audio_out_sample_rate=48000,  # High-quality audio sampling rate
@@ -203,15 +197,14 @@ class InterviewFlow:
                 camera_out_width=1024,  # High-resolution video width
                 camera_out_height=768,  # High-resolution video height
                 camera_out_framerate=30,  # Smooth video frame rate
-                vad_enabled=True,  # Enable Voice Activity Detection
                 vad_analyzer=SileroVADAnalyzer(
                     params=VADParams(
                         stop_secs=0.1,  # Quick detection of speech end
                         threshold=0.5,  # Balance between sensitivity and noise rejection
-                        min_speech_duration_ms=100  # Ignore very short sounds to reduce false positives
+                        min_speech_duration_ms=100,  # Ignore very short sounds to reduce false positives
                     ),
                 ),
-                vad_audio_passthrough=True,  # Pass audio through VAD for real-time processing
+                audio_in_passthrough=True,  # Pass audio through VAD for real-time processing
             ),
         )
 
@@ -317,7 +310,7 @@ class InterviewFlow:
                 buffer_size=2048,  # Larger buffer for smoother audio processing
                 max_queue_size=50,  # Smaller queue for faster processing of frames
                 processing_timeout=5.0,  # Overall timeout for processing pipeline
-                error_handling="retry"  # Automatically retry on processing errors
+                error_handling="retry",  # Automatically retry on processing errors
             ),
             observers=[self.rtvi_observer],
         )

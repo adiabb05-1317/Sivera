@@ -80,7 +80,9 @@ export default function InterviewDetailsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex flex-col justify-center gap-1">
-          <h2 className="text-xl font-bold dark:text-white">Interview Details</h2>
+          <h2 className="text-xl font-bold dark:text-white">
+            Interview Details
+          </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
             {job?.title || "Interview"}
           </h4>
@@ -91,7 +93,9 @@ export default function InterviewDetailsPage() {
           Loading interview...
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-500 dark:text-red-400">{error}</div>
+        <div className="p-6 text-center text-red-500 dark:text-red-400">
+          {error}
+        </div>
       ) : (
         <>
           <div
@@ -102,7 +106,9 @@ export default function InterviewDetailsPage() {
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold mb-2 dark:text-white">Candidates</h3>
+                    <h3 className="font-semibold mb-2 dark:text-white">
+                      Candidates
+                    </h3>
                     <Button
                       onClick={() =>
                         router.push(
@@ -124,10 +130,10 @@ export default function InterviewDetailsPage() {
                     <div className="flex flex-col gap-2 text-sm dark:text-gray-200">
                       {candidates.map((candidate) => (
                         <div
-                          key={candidate.id}
+                          key={candidate}
                           className="rounded-md px-3 py-2 transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
                         >
-                          {candidate.name}
+                          {candidate}
                         </div>
                       ))}
                     </div>
@@ -137,7 +143,10 @@ export default function InterviewDetailsPage() {
             </div>
             <div className="w-full rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mt-0 bg-white dark:bg-gray-900">
               <ReactFlowProvider>
-                <div style={{ height: "600px", width: "100%" }} className="bg-white dark:bg-gray-900">
+                <div
+                  style={{ height: "600px", width: "100%" }}
+                  className="bg-white dark:bg-gray-900"
+                >
                   <ReactFlow
                     nodes={nodes}
                     edges={edges}
