@@ -118,7 +118,7 @@ export default function InterviewDetailsPage() {
             <div className="w-full">
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <CardContent className="py-4">
-                  <div className="m-5 flex items-center justify-between">
+                  <div className="m-5 mt-0 flex items-center justify-between">
                     <h3 className="font-semibold mb-2 dark:text-white">
                       Candidates
                     </h3>
