@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -23,7 +24,8 @@ export default function RegisterPage() {
     if (!token) {
       toast({
         title: "Invalid token",
-        description: "No verification token provided. Please check your email link.",
+        description:
+          "No verification token provided. Please check your email link.",
         variant: "destructive",
       });
       return;
@@ -32,7 +34,7 @@ export default function RegisterPage() {
     // Verify the token
     const verifyToken = async () => {
       try {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/verify-token`,
           {
             method: "POST",
@@ -52,14 +54,16 @@ export default function RegisterPage() {
         } else {
           toast({
             title: "Invalid token",
-            description: data.message || "Invalid or expired verification token.",
+            description:
+              data.message || "Invalid or expired verification token.",
             variant: "destructive",
           });
         }
       } catch (error: any) {
         toast({
           title: "Verification failed",
-          description: "An error occurred during verification. Please try again.",
+          description:
+            "An error occurred during verification. Please try again.",
           variant: "destructive",
         });
         console.error("Verification error:", error);
@@ -76,7 +80,7 @@ export default function RegisterPage() {
 
     setRegistering(true);
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/complete-registration`,
         {
           method: "POST",
@@ -91,9 +95,10 @@ export default function RegisterPage() {
         setCompleted(true);
         toast({
           title: "Registration complete",
-          description: "Your registration is complete. Redirecting to your interview.",
+          description:
+            "Your registration is complete. Redirecting to your interview.",
         });
-        
+
         // Allow time for the user to see the success message before redirecting
         setTimeout(() => {
           router.push(data.interview_url);
@@ -141,7 +146,9 @@ export default function RegisterPage() {
               <p className="mt-4 text-lg font-medium text-gray-900">
                 Registration Complete!
               </p>
-              <p className="mt-2 text-gray-600">Redirecting to your interview...</p>
+              <p className="mt-2 text-gray-600">
+                Redirecting to your interview...
+              </p>
             </div>
           ) : tokenData ? (
             <div className="space-y-6">
@@ -150,14 +157,19 @@ export default function RegisterPage() {
                   <div className="ml-3 flex-1 md:flex md:justify-between">
                     <div>
                       <p className="text-sm text-blue-700">
-                        Hello <span className="font-medium">{tokenData.name}</span>,
+                        Hello{" "}
+                        <span className="font-medium">{tokenData.name}</span>,
                       </p>
                       <p className="mt-1 text-sm text-blue-700">
                         You&apos;ve been invited to interview for the{" "}
-                        <span className="font-medium">{tokenData.job_title}</span> position.
+                        <span className="font-medium">
+                          {tokenData.job_title}
+                        </span>{" "}
+                        position.
                       </p>
                       <p className="mt-3 text-sm text-blue-700">
-                        Click &quot;Continue to Interview&quot; to complete your registration and start the interview process.
+                        Click &quot;Continue to Interview&quot; to complete your
+                        registration and start the interview process.
                       </p>
                     </div>
                   </div>
@@ -183,7 +195,8 @@ export default function RegisterPage() {
             </div>
           ) : (
             <div className="text-center text-red-600 py-4">
-              Invalid or expired verification token. Please check your email for a valid link.
+              Invalid or expired verification token. Please check your email for
+              a valid link.
             </div>
           )}
         </div>

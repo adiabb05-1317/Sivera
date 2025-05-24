@@ -42,7 +42,7 @@ export const setUserContext = async (
   let organization_id: string | null = null;
 
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${
         process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL
       }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`
@@ -133,6 +133,8 @@ export const authenticatedFetch = async (
     console.warn("Failed to get session token:", error);
   }
 
+  console.log(headers);
+
   return fetch(url, {
     ...options,
     headers,
@@ -182,8 +184,8 @@ export const signup = async (email: string, password: string) => {
 
 // Simple logout function
 export const logout = async () => {
-  const { error } = await supabase.auth.signOut();
   clearUserContext();
+  const { error } = await supabase.auth.signOut();
   return { error };
 };
 

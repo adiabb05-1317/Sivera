@@ -48,7 +48,7 @@ const InterviewNode = ({ data }: NodeProps<InterviewNodeData>) => {
 
       <div className="flex flex-col h-full">
         <div
-          className="p-2 border-b font-medium"
+          className="p-2 border-b font-medium dark:border-gray-700"
           style={{ borderColor: "#e5e7eb" }}
         >
           <div className="text-sm truncate font-bold">{displayLabel}</div>

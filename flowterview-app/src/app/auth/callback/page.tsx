@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
@@ -44,7 +45,7 @@ export default function AuthCallbackPage() {
           const email = userData?.user?.email || "";
           if (!email) throw new Error("No email found for logged in user");
           // 3. Check if user exists in backend
-          const resp = await fetch(
+          const resp = await authenticatedFetch(
             process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL +
               "/api/v1/users?email=" +
               encodeURIComponent(email)
@@ -66,7 +67,7 @@ export default function AuthCallbackPage() {
                 "Could not extract organization name from email domain."
               );
             }
-            const createResp = await fetch(
+            const createResp = await authenticatedFetch(
               process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
               {
                 method: "POST",
@@ -203,7 +204,9 @@ export default function AuthCallbackPage() {
                 FLOWTERVIEW
               </div>
             </CardTitle>
-            <CardDescription className="dark:text-gray-300">Setting up your account...</CardDescription>
+            <CardDescription className="dark:text-gray-300">
+              Setting up your account...
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mt-6 flex justify-center">
@@ -226,7 +229,9 @@ export default function AuthCallbackPage() {
                 FLOWTERVIEW
               </div>
             </CardTitle>
-            <CardDescription className="dark:text-gray-300">Authentication Error</CardDescription>
+            <CardDescription className="dark:text-gray-300">
+              Authentication Error
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
@@ -237,7 +242,11 @@ export default function AuthCallbackPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
+            <Button
+              asChild
+              variant="outline"
+              className="dark:border-zinc-700 dark:text-gray-200"
+            >
               <a href="/auth/login">Back to Login</a>
             </Button>
           </CardFooter>
@@ -253,7 +262,9 @@ export default function AuthCallbackPage() {
           <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
             FLOWTERVIEW
           </div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">Signing you in...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">
+            Signing you in...
+          </p>
           <div className="mt-6 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
           </div>

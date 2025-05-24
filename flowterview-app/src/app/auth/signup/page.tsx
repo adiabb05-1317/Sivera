@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signup } from "@/lib/auth-client";
+import { authenticatedFetch, signup } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import {
@@ -65,7 +65,7 @@ export default function SignupPage() {
       }
       const name = email.split("@")[0];
       const orgName = extractOrgFromEmail(email);
-      const resp = await fetch(
+      const resp = await authenticatedFetch(
         process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
         {
           method: "POST",
@@ -131,7 +131,11 @@ export default function SignupPage() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
+            <Button
+              asChild
+              variant="outline"
+              className="dark:border-zinc-700 dark:text-gray-200"
+            >
               <Link href="/auth/login">Back to sign in</Link>
             </Button>
           </CardFooter>
@@ -150,7 +154,9 @@ export default function SignupPage() {
               FLOWTERVIEW
             </div>
           </CardTitle>
-          <CardDescription className="dark:text-gray-300">Create your account</CardDescription>
+          <CardDescription className="dark:text-gray-300">
+            Create your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -161,7 +167,9 @@ export default function SignupPage() {
           <form className="space-y-6" onSubmit={handleSignup}>
             <div className="space-y-4">
               <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="email" className="dark:text-gray-200">Email address</label>
+                <label htmlFor="email" className="dark:text-gray-200">
+                  Email address
+                </label>
                 <Input
                   id="email"
                   name="email"
@@ -174,7 +182,9 @@ export default function SignupPage() {
                 />
               </div>
               <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="password" className="dark:text-gray-200">Password</label>
+                <label htmlFor="password" className="dark:text-gray-200">
+                  Password
+                </label>
                 <Input
                   id="password"
                   name="password"
@@ -187,7 +197,12 @@ export default function SignupPage() {
               </div>
               {password && (
                 <div className="flex flex-col space-y-1.5 text-sm">
-                  <label htmlFor="confirmPassword" className="dark:text-gray-200">Confirm password</label>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="dark:text-gray-200"
+                  >
+                    Confirm password
+                  </label>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"

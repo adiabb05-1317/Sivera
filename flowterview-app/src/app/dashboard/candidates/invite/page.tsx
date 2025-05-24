@@ -327,12 +327,12 @@ export default function InviteCandidatesPage() {
             </div>
 
             <div className="flex flex-col md:flex-row items-center justify-end space-y-3 md:space-y-0 md:space-x-4">
-              <Link
-                href="/dashboard/candidates"
-                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              <Button
+                onClick={() => router.push("/dashboard/candidates")}
+                className="cursor-pointer text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
               >
                 Cancel
-              </Link>
+              </Button>
 
               <Button
                 type="submit"

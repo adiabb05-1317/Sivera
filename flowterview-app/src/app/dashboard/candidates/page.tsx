@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 const CandidateViewDialog = ({
   candidate,
@@ -188,7 +189,7 @@ export default function CandidatesPage() {
         return;
       }
 
-      const res = await fetch(
+      const res = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,
         {
           method: "POST",

@@ -55,7 +55,9 @@ export default function InterviewDetailsPage() {
         const candidateIds = data.interview.candidates_invited || [];
         const candidateDetails = await Promise.all(
           candidateIds.map(async (cid: string) => {
-            const resp = await fetch(`${backendUrl}/api/v1/candidates/${cid}`);
+            const resp = await authenticatedFetch(
+              `${backendUrl}/api/v1/candidates/${cid}`
+            );
             if (!resp.ok) return null;
             return await resp.json();
           })

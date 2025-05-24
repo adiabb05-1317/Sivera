@@ -162,7 +162,7 @@ export async function addCandidate({
     resume_url = await uploadResume(resumeFile, name);
   }
   // 1. Insert candidate via backend
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/candidates/`,
     {
       method: "POST",
@@ -184,7 +184,7 @@ export async function addCandidate({
   const candidate = await response.json();
   // 2. Append candidate_id to candidates_invited in the interviews table
   if (interviewId) {
-    const addResp = await fetch(
+    const addResp = await authenticatedFetch(
       `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
       {
         method: "POST",
@@ -203,7 +203,7 @@ export async function addCandidate({
 }
 
 export async function fetchJobs() {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/jobs-list`
   );
   if (!response.ok) throw new Error("Failed to fetch jobs");
@@ -211,7 +211,7 @@ export async function fetchJobs() {
 }
 
 export async function fetchCandidatesSortedByJob() {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/candidates/by-job`
   );
   if (!response.ok) throw new Error("Failed to fetch candidates");
@@ -221,7 +221,7 @@ export async function fetchCandidatesSortedByJob() {
 export async function fetchInterviewById(
   interviewId: string
 ): Promise<{ id: string; job_id: string } | null> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
   );
   if (!response.ok) return null;

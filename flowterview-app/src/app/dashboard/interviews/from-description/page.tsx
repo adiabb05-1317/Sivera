@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { generateInterviewFlow } from "@/lib/supabase-candidates";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 // Dynamically import ReactFlow component to avoid SSR issues
 const InterviewFlow = dynamic(() => import("@/components/flow/InterviewFlow"), {
@@ -89,7 +90,7 @@ export default function GenerateFromDescriptionPage() {
       const email = userData.user.email || "";
       // Fetch organization_id from backend
       let organization_id = undefined;
-      const orgResp = await fetch(
+      const orgResp = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
       );
       if (orgResp.ok) {
@@ -160,7 +161,7 @@ export default function GenerateFromDescriptionPage() {
       const email = userData.user.email || "";
       // Fetch organization_id from backend
       let organization_id = undefined;
-      const orgResp = await fetch(
+      const orgResp = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
       );
       if (orgResp.ok) {
@@ -177,7 +178,7 @@ export default function GenerateFromDescriptionPage() {
         setSaving(false);
         return;
       }
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/interviews/from-description`,
         {
           method: "POST",
@@ -320,10 +321,12 @@ export default function GenerateFromDescriptionPage() {
             )}
           </CardHeader>
           <CardContent className="h-[calc(100%-3rem)] rounded-lg overflow-hidden dark:bg-gray-900 dark:border-gray-800">
-            <InterviewFlow
-              flowData={flowData}
-              reactFlowData={reactFlowData || undefined}
-            />
+            <div className="h-full w-full bg-white dark:bg-gray-900">
+              <InterviewFlow
+                flowData={flowData}
+                reactFlowData={reactFlowData || undefined}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
