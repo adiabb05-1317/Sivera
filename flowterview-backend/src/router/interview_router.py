@@ -267,9 +267,12 @@ async def send_invite(
                 if candidate["id"] not in current_invited:
                     updated_invited = current_invited + [candidate["id"]]
                     db.update("interviews", {"candidates_invited": updated_invited}, {"id": interview_id})
+            else:
+                logger.error("No active interview found for this job and organization. Cannot send interview link.")
+                raise HTTPException(status_code=404, detail="No active interview found for this job and organization.")
             
-            # Generate interview link
-            interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id if interview_id else 'latest'}"
+            # Generate interview link (never fallback to 'latest')
+            interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id}"
             
             # Send interview email
             background_tasks.add_task(
@@ -862,4 +865,4 @@ async def get_interview(interview_id: str, request: Request):
             "candidates": candidates
         }
     except DatabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))

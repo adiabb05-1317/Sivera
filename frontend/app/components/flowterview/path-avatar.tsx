@@ -1,51 +1,58 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Image from "next/image"
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
 interface FlowterviewAvatarProps {
-  isTalking: boolean
+  isTalking: boolean;
 }
 
-export const FlowterviewAvatar = ({ isTalking = false }: FlowterviewAvatarProps) => {
-  const [pulseEffect, setPulseEffect] = useState(false)
-  const [animationIntensity, setAnimationIntensity] = useState(0)
-  const [waveHeights, setWaveHeights] = useState<number[]>(Array(9).fill(8))
+export const FlowterviewAvatar = ({
+  isTalking = false,
+}: FlowterviewAvatarProps) => {
+  const [pulseEffect, setPulseEffect] = useState(false);
+  const [animationIntensity, setAnimationIntensity] = useState(0);
+  const [waveHeights, setWaveHeights] = useState<number[]>(Array(9).fill(8));
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Enhanced animation effects when talking state changes
   useEffect(() => {
-    let intensityInterval: NodeJS.Timeout | null = null
-    let waveInterval: NodeJS.Timeout | null = null
+    let intensityInterval: NodeJS.Timeout | null = null;
+    let waveInterval: NodeJS.Timeout | null = null;
     if (isTalking) {
-      setPulseEffect(true)
+      setPulseEffect(true);
       // Simulate voice intensity variations
       intensityInterval = setInterval(() => {
-        setAnimationIntensity(Math.random())
-      }, 300)
+        setAnimationIntensity(Math.random());
+      }, 300);
       // Generate random heights for sound waves on client only
       const genHeights = () => {
         setWaveHeights(
           Array(9)
             .fill(0)
             .map((_, i) => {
-              const baseHeight = Math.sin((i / 8) * Math.PI) * 16
-              const variation = animationIntensity * 10
-              return Math.max(3, baseHeight + Math.random() * variation)
+              const baseHeight = Math.sin((i / 8) * Math.PI) * 16;
+              const variation = animationIntensity * 10;
+              return Math.max(3, baseHeight + Math.random() * variation);
             })
-        )
-      }
-      genHeights()
-      waveInterval = setInterval(genHeights, 300)
+        );
+      };
+      genHeights();
+      waveInterval = setInterval(genHeights, 300);
     } else {
-      setPulseEffect(false)
-      setAnimationIntensity(0)
-      setWaveHeights(Array(9).fill(8))
+      setPulseEffect(false);
+      setAnimationIntensity(0);
+      setWaveHeights(Array(9).fill(8));
     }
     return () => {
-      if (intensityInterval) clearInterval(intensityInterval)
-      if (waveInterval) clearInterval(waveInterval)
-    }
-  }, [isTalking, animationIntensity])
+      if (intensityInterval) clearInterval(intensityInterval);
+      if (waveInterval) clearInterval(waveInterval);
+    };
+  }, [isTalking, animationIntensity]);
 
   return (
     <div className="relative flex items-center justify-center w-36 h-36 md:w-48 md:h-48 animate-fade-in">
@@ -57,59 +64,67 @@ export const FlowterviewAvatar = ({ isTalking = false }: FlowterviewAvatarProps)
           <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-[#ffa500] to-[#ffdd70] opacity-5 blur-[30px]"></div>
         </>
       )}
-      
+
       {/* Outer ring with gradient border */}
-      <div 
-        className={`absolute inset-0 rounded-full ${isTalking ? 'animate-pulse-golden' : ''}`}
+      <div
+        className={`absolute inset-0 rounded-full ${isTalking ? "animate-pulse-golden" : ""}`}
         style={{
-          background: isTalking 
-            ? 'linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #ffa500, #ffdd70, #ffa500)' 
-            : 'linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #444, #555, #444)',
-          backgroundOrigin: 'border-box',
-          backgroundClip: 'padding-box, border-box',
-          border: '2px solid transparent',
-          boxShadow: isTalking ? '0 0 15px rgba(255,165,0,0.5)' : 'none'
+          background: isTalking
+            ? "linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #ffa500, #ffdd70, #ffa500)"
+            : "linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #444, #555, #444)",
+          backgroundOrigin: "border-box",
+          backgroundClip: "padding-box, border-box",
+          border: "2px solid transparent",
+          boxShadow: isTalking ? "0 0 15px rgba(255,165,0,0.5)" : "none",
         }}
       ></div>
-      
+
       {/* Inner Circle with Gradient Background */}
       <div className="absolute inset-[6px] rounded-full overflow-hidden">
         <div className="w-full h-full relative bg-gradient-to-b from-[#2a2a2a] to-[#222] flex items-center justify-center">
           {/* Logo with golden shadow effect */}
           <div className="relative">
-            <div 
-              className={`absolute inset-0 rounded-full blur-[10px] opacity-30 ${isTalking ? 'scale-110' : 'scale-100'} transition-all duration-500`}
-              style={{ background: 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(255,140,0,0) 70%)' }}  
+            <div
+              className={`absolute inset-0 rounded-full blur-[10px] opacity-30 ${isTalking ? "scale-110" : "scale-100"} transition-all duration-500`}
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(255,140,0,0) 70%)",
+              }}
             ></div>
             <Image
               src="/Flowterviewlogo.svg"
               alt="Flowterview"
               width={80}
               height={80}
-              className={`${isTalking ? 'scale-110' : 'scale-100'} transition-all duration-500 drop-shadow-[0_0_8px_rgba(255,165,0,0.5)]`}
-              style={{ filter: isTalking ? 'drop-shadow(0 0 8px rgba(255,165,0,0.7))' : 'none' }}
+              className={`${isTalking ? "scale-110" : "scale-100"} transition-all duration-500 drop-shadow-[0_0_8px_rgba(255,165,0,0.5)]`}
+              style={{
+                filter: isTalking
+                  ? "drop-shadow(0 0 8px rgba(255,165,0,0.7))"
+                  : "none",
+              }}
             />
           </div>
-          
+
           {/* Enhanced sound wave visualization */}
-          {isTalking && (
+          {isTalking && hasMounted && (
             <div className="absolute bottom-6 left-0 right-0 flex justify-center">
               <div className="flex items-end space-x-[3px] h-5">
                 {/* Generate dynamic sound waves based on animation intensity */}
                 {waveHeights.map((height, i) => {
-                  const delay = i * 100
+                  const delay = i * 100;
                   return (
                     <div
                       key={i}
                       className="w-[3px] rounded-full animate-sound-wave"
                       style={{
                         height: `${height}px`,
-                        background: 'linear-gradient(to bottom, #ffd700, #ffa500)',
+                        background:
+                          "linear-gradient(to bottom, #ffd700, #ffa500)",
                         animationDelay: `${delay}ms`,
-                        boxShadow: '0 0 5px rgba(255,165,0,0.7)'
+                        boxShadow: "0 0 5px rgba(255,165,0,0.7)",
                       }}
                     ></div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -117,23 +132,24 @@ export const FlowterviewAvatar = ({ isTalking = false }: FlowterviewAvatarProps)
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export const FlowterviewAvatarStatic = () => {
   return (
     <div className="relative flex items-center justify-center w-36 h-36 md:w-48 md:h-48 animate-fade-in">
       {/* Outer ring with subtle gradient */}
-      <div 
+      <div
         className="absolute inset-0 rounded-full"
         style={{
-          background: 'linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #555, #666, #555)',
-          backgroundOrigin: 'border-box',
-          backgroundClip: 'padding-box, border-box',
-          border: '2px solid transparent',
+          background:
+            "linear-gradient(rgba(42,42,42,0.8), rgba(42,42,42,0.8)), linear-gradient(90deg, #555, #666, #555)",
+          backgroundOrigin: "border-box",
+          backgroundClip: "padding-box, border-box",
+          border: "2px solid transparent",
         }}
       ></div>
-      
+
       {/* Main avatar container */}
       <div className="absolute inset-[6px] rounded-full overflow-hidden">
         <div className="w-full h-full relative bg-gradient-to-b from-[#2a2a2a] to-[#222] flex items-center justify-center">
@@ -147,5 +163,5 @@ export const FlowterviewAvatarStatic = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
