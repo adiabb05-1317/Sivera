@@ -166,11 +166,12 @@ const Presentation = () => {
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
-      {true || transportState !== "ready" && callStatus !== "left" && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-[--meet-surface] dark:bg-[--meet-surface] bg-opacity-60 dark:bg-opacity-80 backdrop-blur-sm">
-          <div className="w-10 h-10 border-4 border-indigo-500/70 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {true ||
+        (transportState !== "ready" && callStatus !== "left" && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-[--meet-surface] dark:bg-[--meet-surface] bg-opacity-60 dark:bg-opacity-80 backdrop-blur-sm">
+            <div className="w-10 h-10 border-4 border-indigo-500/70 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ))}
       {callStatus === "left" ? (
         <div className="w-full h-full flex items-center justify-center">
           <ConclusionSection />

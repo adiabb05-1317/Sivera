@@ -146,26 +146,26 @@ export default function InviteCandidatesPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center">
-          <Button variant="link" className="text-xs">
+          <Button variant="link" className="text-xs dark:text-gray-300">
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Candidates
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow dark:border dark:border-gray-800">
           <div className="p-6 text-center">
-            <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <Check className="h-8 w-8 text-green-600" />
+            <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+              <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="mt-4 text-lg font-medium tracking-tight">
+            <h2 className="mt-4 text-lg font-medium tracking-tight dark:text-white">
               Candidates Saved Successfully
             </h2>
-            <p className="mt-2 text-sm tracking-tight opacity-50">
+            <p className="mt-2 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
               All candidates have been added to your organization.
             </p>
             <div className="mt-6">
               <Button
-                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:border-indigo-400/80 dark:text-indigo-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-900/20 dark:focus:ring-offset-gray-900"
                 variant="outline"
                 onClick={() => router.push("/dashboard/candidates")}
               >
@@ -206,9 +206,15 @@ export default function InviteCandidatesPage() {
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                       <SelectGroup>
-                        <SelectLabel className="dark:text-gray-300">Interviews</SelectLabel>
+                        <SelectLabel className="dark:text-gray-300">
+                          Interviews
+                        </SelectLabel>
                         {jobs.map((job) => (
-                          <SelectItem key={job.id} value={job.id} className="dark:text-gray-200">
+                          <SelectItem
+                            key={job.id}
+                            value={job.id}
+                            className="dark:text-gray-200"
+                          >
                             {job.title}
                           </SelectItem>
                         ))}
@@ -237,7 +243,10 @@ export default function InviteCandidatesPage() {
 
             <div className="space-y-6">
               {candidates.map((candidate) => (
-                <Card key={candidate.id} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                <Card
+                  key={candidate.id}
+                  className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+                >
                   <CardHeader className="flex items-center justify-between p-0 px-1">
                     <h3 className="text-md font-medium tracking-tight">
                       Candidate
