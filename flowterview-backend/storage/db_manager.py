@@ -130,20 +130,55 @@ class DatabaseManager:
         query_params: Dict = None,
         select: str = "*",
         order_by: str = None,
+        limit: int = None,
+        offset: int = None,
+        eq_filters: Dict = None,
     ) -> List[Dict]:
-        """Fetch multiple rows from a table with optional query parameters."""
+        """
+        Fetch multiple rows from a table with optional query parameters.
+
+        Args:
+            table: Table name
+            query_params: Filter conditions (DEPRECATED - use eq_filters)
+            select: Fields to select (supports JOIN syntax like "*, jobs!inner(title)")
+            order_by: Order by clause (str or tuple(column, desc))
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+            eq_filters: Advanced filter conditions (supports joined table filters like {"jobs.organization_id": "value"})
+
+        Returns:
+            List of records (supports nested data from JOINs)
+        """
         if not self.connected:
             raise ConnectionError("Supabase not connected")
 
         try:
             query = self.supabase.table(table).select(select)
 
+            # Handle legacy query_params for backward compatibility
             if query_params:
                 for key, value in query_params.items():
                     query = query.eq(key, value)
 
+            # Handle advanced eq_filters (supports joined table filtering)
+            if eq_filters:
+                for key, value in eq_filters.items():
+                    query = query.eq(key, value)
+
             if order_by:
-                query = query.order(order_by)
+                # Support both simple and complex order_by
+                if isinstance(order_by, str):
+                    query = query.order(order_by)
+                elif isinstance(order_by, tuple) and len(order_by) == 2:
+                    # Support (column, desc=True/False)
+                    column, desc = order_by
+                    query = query.order(column, desc=desc)
+
+            if limit:
+                query = query.limit(limit)
+
+            if offset:
+                query = query.offset(offset)
 
             result = query.execute()
             return result.data

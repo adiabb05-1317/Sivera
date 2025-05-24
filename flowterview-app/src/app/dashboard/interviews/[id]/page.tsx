@@ -17,6 +17,7 @@ import { improveLayout as improveLayoutUtil } from "@/utils/flowUtils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 const nodeTypes = {
   interview: InterviewNode,
@@ -44,7 +45,9 @@ export default function InterviewDetailsPage() {
         const backendUrl =
           process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
           "http://localhost:8010";
-        const resp = await fetch(`${backendUrl}/api/v1/interviews/${id}`);
+        const resp = await authenticatedFetch(
+          `${backendUrl}/api/v1/interviews/${id}`
+        );
         if (!resp.ok) throw new Error("Failed to fetch interview details");
         const data = await resp.json();
         setJob(data.job);
@@ -80,7 +83,7 @@ export default function InterviewDetailsPage() {
   }, [setNodes]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-auto">
       <div className="flex items-center m-3 ml-0">
         <Button
           onClick={() => router.push("/dashboard/interviews")}

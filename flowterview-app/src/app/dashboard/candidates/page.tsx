@@ -254,7 +254,7 @@ export default function CandidatesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-auto">
       <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
         <Button
           onClick={() => router.push("/dashboard/candidates/invite")}

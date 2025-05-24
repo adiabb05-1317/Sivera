@@ -13,12 +13,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [recentInterviews, setRecentInterviews] = useState<any[]>([]);
+  const [recentInterviews, setRecentInterviews] = useState<
+    Array<{
+      id: string;
+      title: string;
+      candidates: number;
+      status: string;
+      date: string;
+    }>
+  >([]);
 
   // Placeholder data - in a real application, this would come from an API
   const stats = [
@@ -50,14 +59,18 @@ export default function DashboardPage() {
         const backendUrl =
           process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
           "http://localhost:8010";
-        const resp = await fetch(`${backendUrl}/api/v1/interviews`);
+        const resp = await authenticatedFetch(
+          `${backendUrl}/api/v1/interviews`
+        );
         if (!resp.ok) throw new Error("Failed to fetch interviews");
         const data = await resp.json();
         setRecentInterviews(data.slice(0, 4));
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch interviews";
         toast({
           title: "Error",
-          description: err.message || "Failed to fetch interviews",
+          description: errorMessage,
         });
       } finally {
         setLoading(false);

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 export default function InterviewsPage() {
   const router = useRouter();
@@ -22,7 +23,10 @@ export default function InterviewsPage() {
         const backendUrl =
           process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
           "http://localhost:8010";
-        const resp = await fetch(`${backendUrl}/api/v1/interviews`);
+        const resp = await authenticatedFetch(
+          `${backendUrl}/api/v1/interviews`
+        );
+        console.log(resp);
         if (!resp.ok) throw new Error("Failed to fetch interviews");
         const data = await resp.json();
         setInterviews(data);
@@ -43,7 +47,7 @@ export default function InterviewsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-auto">
       <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
         <Button
           onClick={() => router.push("/dashboard/interviews/from-description")}
