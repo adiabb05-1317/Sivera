@@ -27,6 +27,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isContextInitialized, setIsContextInitialized] = useState(false);
 
   // Check for authentication on component mount
   useEffect(() => {
@@ -40,7 +41,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }
 
       // Initialize user context with cookies
-      await initializeUserContext();
+      try {
+        await initializeUserContext();
+      } catch (error) {
+        console.error("Error initializing user context:", error);
+        // Optionally, handle this error, e.g., redirect to login or show error message
+      } finally {
+        setIsContextInitialized(true);
+      }
 
       // Set user name/email
       setUserName(data.session.user?.email || "User");
@@ -155,7 +163,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-          {children}
+          {isContextInitialized ? (
+            children
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <style jsx>{`
+                .loader {
+                  border: 4px solid rgba(0, 0, 0, 0.1);
+                  border-left-color: #4f46e5; /* Indigo color */
+                  border-radius: 50%;
+                  width: 40px;
+                  height: 40px;
+                  animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                  to {
+                    transform: rotate(360deg);
+                  }
+                }
+                .dark .loader {
+                  border-left-color: #818cf8; /* Lighter Indigo for dark mode */
+                }
+              `}</style>
+              <div className="loader"></div>
+            </div>
+          )}
         </main>
       </div>
     </div>
