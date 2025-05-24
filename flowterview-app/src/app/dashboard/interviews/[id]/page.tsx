@@ -32,6 +32,7 @@ export default function InterviewDetailsPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [showAllCandidates, setShowAllCandidates] = useState(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
   // Fetch interview details
@@ -47,7 +48,16 @@ export default function InterviewDetailsPage() {
         if (!resp.ok) throw new Error("Failed to fetch interview details");
         const data = await resp.json();
         setJob(data.job);
-        setCandidates(data.interview.candidates_invited || []);
+        // Fetch candidate details for each candidate ID
+        const candidateIds = data.interview.candidates_invited || [];
+        const candidateDetails = await Promise.all(
+          candidateIds.map(async (cid: string) => {
+            const resp = await fetch(`${backendUrl}/api/v1/candidates/${cid}`);
+            if (!resp.ok) return null;
+            return await resp.json();
+          })
+        );
+        setCandidates(candidateDetails.filter(Boolean));
         // Set up React Flow
         if (data.flow && data.flow.react_flow_json) {
           setNodes(data.flow.react_flow_json.nodes || []);
@@ -105,7 +115,7 @@ export default function InterviewDetailsPage() {
             <div className="w-full">
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="m-5 flex items-center justify-between">
                     <h3 className="font-semibold mb-2 dark:text-white">
                       Candidates
                     </h3>
@@ -127,15 +137,70 @@ export default function InterviewDetailsPage() {
                       No candidates assigned.
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2 text-sm dark:text-gray-200">
-                      {candidates.map((candidate) => (
-                        <div
-                          key={candidate}
-                          className="rounded-md px-3 py-2 transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
-                        >
-                          {candidate}
+                    <div className="overflow-x-auto">
+                      <table
+                        className="min-w-full rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-800 table-fixed"
+                        style={{ borderRadius: 12, overflow: "hidden" }}
+                      >
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/4 max-w-[180px] truncate">
+                              Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/3 max-w-[220px] truncate">
+                              Email
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/5 max-w-[120px] truncate">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                          {(showAllCandidates
+                            ? candidates
+                            : candidates.slice(0, 3)
+                          ).map((candidate) => (
+                            <tr
+                              key={candidate.id}
+                              className="transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
+                            >
+                              <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
+                                {candidate.name}
+                              </td>
+                              <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 max-w-[220px] truncate overflow-hidden">
+                                {candidate.email}
+                              </td>
+                              <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
+                                <span className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 rounded-full px-2 py-1 text-xs font-semibold truncate inline-block max-w-[100px] overflow-hidden">
+                                  {candidate.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {candidates.length > 3 && !showAllCandidates && (
+                        <div className="flex justify-center mt-2">
+                          <Button
+                            variant="outline"
+                            className="text-indigo-600 dark:text-indigo-300 border-indigo-400/80 hover:bg-indigo-50/40 dark:hover:bg-indigo-900/40 cursor-pointer"
+                            onClick={() => setShowAllCandidates(true)}
+                          >
+                            View all
+                          </Button>
                         </div>
-                      ))}
+                      )}
+                      {candidates.length > 3 && showAllCandidates && (
+                        <div className="flex justify-center mt-2">
+                          <Button
+                            variant="ghost"
+                            className="text-gray-500 dark:text-gray-300 cursor-pointer"
+                            onClick={() => setShowAllCandidates(false)}
+                          >
+                            Show less
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

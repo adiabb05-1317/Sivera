@@ -172,15 +172,17 @@ export default function CandidatesPage() {
 
     try {
       // Get current user information from localStorage or session
-      const userString = localStorage.getItem('user') || sessionStorage.getItem('user');
+      const userString =
+        localStorage.getItem("user") || sessionStorage.getItem("user");
       const user = userString ? JSON.parse(userString) : null;
       const organizationId = candidate.organization_id || user?.organization_id;
       const senderId = user?.id;
-      
+
       if (!organizationId) {
         toast({
           title: "Organization not found",
-          description: "Your organization information is missing. Please log in again.",
+          description:
+            "Your organization information is missing. Please log in again.",
           variant: "destructive",
         });
         return;
@@ -418,12 +420,21 @@ export default function CandidatesPage() {
                     {candidate.jobs?.title || "-"}
                   </td>
                   <td className="px-6 py-5 whitespace-nowrap text-sm">
-                    <span className={statusColors[candidate.status] || "bg-gray-100 text-gray-800"}>
-                      {statusLabels[candidate.status] || candidate.status}
+                    <span
+                      className={
+                        statusColors[candidate.status] ||
+                        "bg-gray-100 text-gray-800"
+                      }
+                    >
+                      <Badge variant="outline">
+                        {statusLabels[candidate.status] || candidate.status}
+                      </Badge>
                     </span>
                   </td>
                   <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : "-"}
+                    {candidate.created_at
+                      ? new Date(candidate.created_at).toLocaleDateString()
+                      : "-"}
                   </td>
                 </tr>
               ))}

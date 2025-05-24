@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster } from "react-hot-toast";
+import { ModeToggle } from "@/components/dark-mode-toggle";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -122,18 +123,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-light text-gray-800 dark:text-gray-200">{userName}</p>
+                  <p className="text-sm font-light text-gray-800 dark:text-gray-200">
+                    {userName}
+                  </p>
                 </div>
               </div>
             </Card>
-            <Button
-              onClick={handleSignOut}
-              className="flex w-full h-13 items-center px-2 py-2 text-sm font-medium cursor-pointer border-l-none border-r-none border-b-none border-t rounded-none p-3 hover:bg-red-50 dark:hover:bg-red-900 dark:text-gray-200"
-              variant="outline"
-            >
-              <LogOut />
-              Sign out
-            </Button>
+            <div className="flex w-full">
+              <Button
+                onClick={handleSignOut}
+                className="flex-1 h-13 items-center px-2 py-2 text-sm font-medium cursor-pointer border-l-none border-r-none border-b-none border-t rounded-none p-3 hover:bg-red-50 dark:hover:bg-red-900 dark:text-gray-200"
+                variant="outline"
+              >
+                <LogOut />
+                <span className="ml-2">Sign out</span>
+              </Button>
+              <div className="flex-shrink-0">
+                {/* Theme toggle button */}
+                <ModeToggle />
+              </div>
+            </div>
           </div>
         </div>
       </div>

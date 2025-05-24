@@ -46,15 +46,7 @@ export default function InterviewsPage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
         <Button
-          variant="outline"
           onClick={() => router.push("/dashboard/interviews/from-description")}
-          className="cursor-pointer"
-        >
-          <Sparkles className="mr-2" />
-          From Job Description
-        </Button>
-        <Button
-          onClick={() => router.push("/dashboard/interviews/new")}
           className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
           variant="outline"
         >
@@ -89,7 +81,9 @@ export default function InterviewsPage() {
             Loading interviews...
           </div>
         ) : error ? (
-          <div className="p-6 text-center text-red-500 dark:text-red-400">{error}</div>
+          <div className="p-6 text-center text-red-500 dark:text-red-400">
+            {error}
+          </div>
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-800">
             {interviews.length > 0 ? (
@@ -113,7 +107,9 @@ export default function InterviewsPage() {
                               : "outline"
                           }
                           className={`${
-                            interview.status === "completed" ? "bg-indigo-100/90 dark:bg-indigo-900/40" : ""
+                            interview.status === "completed"
+                              ? "bg-indigo-100/90 dark:bg-indigo-900/40"
+                              : ""
                           } font-normal text-xs`}
                         >
                           {interview.status}

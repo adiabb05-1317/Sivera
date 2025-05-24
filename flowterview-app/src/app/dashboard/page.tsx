@@ -11,9 +11,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [recentInterviews, setRecentInterviews] = useState<any[]>([]);
 
   // Placeholder data - in a real application, this would come from an API
   const stats = [
@@ -37,36 +42,30 @@ export default function DashboardPage() {
     },
   ];
 
-  const recentInterviews = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      candidates: 5,
-      status: "active",
-      date: "2023-08-15",
-    },
-    {
-      id: 2,
-      title: "UX Designer",
-      candidates: 3,
-      status: "active",
-      date: "2023-08-14",
-    },
-    {
-      id: 3,
-      title: "Product Manager",
-      candidates: 7,
-      status: "completed",
-      date: "2023-08-10",
-    },
-    {
-      id: 4,
-      title: "DevOps Engineer",
-      candidates: 2,
-      status: "active",
-      date: "2023-08-08",
-    },
-  ];
+  // Fetch interviews for recentInterviews
+  useEffect(() => {
+    const fetchRecent = async () => {
+      setLoading(true);
+      try {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
+          "http://localhost:8010";
+        const resp = await fetch(`${backendUrl}/api/v1/interviews`);
+        if (!resp.ok) throw new Error("Failed to fetch interviews");
+        const data = await resp.json();
+        setRecentInterviews(data.slice(0, 4));
+      } catch (err: any) {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to fetch interviews",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -104,46 +103,60 @@ export default function DashboardPage() {
           </h2>
         </div>
         <div>
-          {recentInterviews.map((interview) => (
-            <div
-              key={interview.id}
-              className="flex items-center justify-between p-4 cursor-pointer border hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
-              onClick={() =>
-                router.push(`/dashboard/interviews/${interview.id}`)
-              }
-            >
-              <div className="flex-1 truncate">
-                <div className="flex items-center space-x-3">
-                  <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
-                    {interview.title}
-                  </h3>
-                  <Badge
-                    variant={
-                      interview.status === "active" ? "secondary" : "outline"
-                    }
-                    className={`${
-                      interview.status !== "active" ? "bg-indigo-100/90 dark:bg-indigo-900/40" : ""
-                    } font-normal text-xs`}
-                  >
-                    {interview.status}
-                  </Badge>
-                </div>
-                <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                  <span>{interview.candidates} candidates</span>
-                  <span className="mx-1">&middot;</span>
-                </div>
-              </div>
-              <div className="ml-4 flex-shrink-0">
-                <ChevronRight className="mx-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
-              </div>
+          {loading ? (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
+              Loading interviews...
             </div>
-          ))}
-          <Button
-            onClick={() => router.push("/dashboard/interviews")}
-            className="cursor-pointer w-full h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 border-0"
-          >
-            View all
-          </Button>
+          ) : recentInterviews.length > 0 ? (
+            recentInterviews.map((interview) => (
+              <div
+                key={interview.id}
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                onClick={() =>
+                  router.push(`/dashboard/interviews/${interview.id}`)
+                }
+              >
+                <div className="flex-1 truncate">
+                  <div className="flex items-center space-x-3">
+                    <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                      {interview.title}
+                    </h3>
+                    <Badge
+                      variant={
+                        interview.status === "active" ? "secondary" : "outline"
+                      }
+                      className={`${
+                        interview.status !== "active"
+                          ? "bg-indigo-100/90 dark:bg-indigo-900/40"
+                          : ""
+                      } font-normal text-xs`}
+                    >
+                      {interview.status}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
+                    <span>{interview.candidates} candidates</span>
+                    <span className="mx-1">&middot;</span>
+                  </div>
+                </div>
+                <div className="ml-4 flex-shrink-0">
+                  <ChevronRight className="mx-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
+              No interviews found.
+            </div>
+          )}
+          {recentInterviews.length === 4 && !loading && (
+            <Button
+              onClick={() => router.push("/dashboard/interviews")}
+              className="cursor-pointer w-full h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 border-0"
+            >
+              View all
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -168,7 +181,9 @@ export default function DashboardPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
           <CardHeader>
-            <CardTitle className="dark:text-white">Create from Job Description</CardTitle>
+            <CardTitle className="dark:text-white">
+              Create from Job Description
+            </CardTitle>
             <CardDescription className="dark:text-gray-300">
               Generate an AI-powered interview workflow using your job
               description.

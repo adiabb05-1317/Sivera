@@ -223,14 +223,17 @@ export default function GenerateFromDescriptionPage() {
             </h2>
             <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
               Please provide the job title and description to generate an
-              interview flow.
+              interview.
             </p>
           </div>
         </CardHeader>
         <CardContent className="border-t border-gray-200 dark:border-gray-800 pt-5">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium dark:text-gray-200">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium dark:text-gray-200"
+              >
                 Role
               </label>
               <Input
@@ -287,7 +290,7 @@ export default function GenerateFromDescriptionPage() {
               >
                 {loading && <Loader2 className="animate-spin mr-2" />}
                 {!loading && <WandSparkles className="mr-2" />}
-                Generate Flow
+                Create Interview
               </Button>
             </div>
           </form>
