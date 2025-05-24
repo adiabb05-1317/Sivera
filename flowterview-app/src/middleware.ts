@@ -17,10 +17,6 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Auth pattern and dashboard pattern
-  const isAuthPage = req.nextUrl.pathname.startsWith("/auth/");
-  const isDashboard = req.nextUrl.pathname.startsWith("/dashboard");
-
   // Home page redirect to login or dashboard based on auth status
   if (req.nextUrl.pathname === "/") {
     if (session) {
@@ -31,18 +27,6 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
   }
-
-  //   // If accessing dashboard without a session, redirect to login
-  //   if (isDashboard && !session) {
-  //     const redirectUrl = new URL("/auth/login", req.url);
-  //     return NextResponse.redirect(redirectUrl);
-  //   }
-
-  //   // If accessing auth pages with a session, redirect to dashboard (except for the callback route)
-  //   if (isAuthPage && session) {
-  //     const redirectUrl = new URL("/dashboard", req.url);
-  //     return NextResponse.redirect(redirectUrl);
-  //   }
 
   return res;
 }

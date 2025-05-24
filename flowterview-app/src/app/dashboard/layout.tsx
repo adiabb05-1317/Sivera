@@ -4,6 +4,7 @@ import { useState, ReactNode, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { initializeUserContext, logout } from "@/lib/auth-client";
 import {
   LayoutDashboard,
   FileText,
@@ -38,6 +39,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return;
       }
 
+      // Initialize user context with cookies
+      await initializeUserContext();
+
       // Set user name/email
       setUserName(data.session.user?.email || "User");
     };
@@ -53,7 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await logout();
     router.push("/auth/login");
   };
 
