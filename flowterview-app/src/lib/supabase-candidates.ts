@@ -218,9 +218,24 @@ export async function fetchCandidatesSortedByJob() {
   return await response.json();
 }
 
+export async function fetchInterviewIdFromJobId(jobId: string) {
+  const response = await authenticatedFetch(
+    `${
+      process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL
+    }/api/v1/interviews?job_id=${encodeURIComponent(jobId)}&status=active`
+  );
+  if (!response.ok) throw new Error("Failed to fetch interview id");
+  const data = await response.json();
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0].id;
+  }
+  return null;
+}
+
 export async function fetchInterviewById(
   interviewId: string
 ): Promise<{ id: string; job_id: string } | null> {
+  console.log("interviewId", interviewId);
   const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
   );

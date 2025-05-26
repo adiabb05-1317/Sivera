@@ -18,13 +18,17 @@ import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { fetchInterviewById } from "@/lib/supabase-candidates";
+import {
+  fetchInterviewById,
+  fetchInterviewIdFromJobId,
+} from "@/lib/supabase-candidates";
 
 export default function InviteCandidatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const interviewIdFromQuery = searchParams.get("interview");
   const [selectedInterview, setSelectedInterview] = useState("");
+  const [interviewError, setInterviewError] = useState("");
   type CandidateRow = {
     name: string;
     email: string;
@@ -112,18 +116,52 @@ export default function InviteCandidatesPage() {
     }, 1500);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Dropdown handler: when a job is selected, fetch the interview ID for that job
+  const handleJobSelect = async (jobId: string) => {
+    setInterviewError("");
     setIsSubmitting(true);
     try {
-      // Fetch interview to get job_id
+      const interviewId = await fetchInterviewIdFromJobId(jobId);
+      if (interviewId) {
+        setSelectedInterview(interviewId);
+      } else {
+        setInterviewError(
+          "No active interview found for this job. Please create one first."
+        );
+        setSelectedInterview("");
+      }
+    } catch (err) {
+      setInterviewError("Failed to fetch interview for selected job.");
+      setSelectedInterview("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInterviewError("");
+    setIsSubmitting(true);
+    try {
+      // Require interview selection if not from query
+      if (!selectedInterview) {
+        setInterviewError("Please select an interview/job before submitting.");
+        setIsSubmitting(false);
+        return;
+      }
+      // Always fetch jobId from interviewId
       let jobId = "";
+      let jobTitle = "";
       if (selectedInterview) {
         const interview = await fetchInterviewById(selectedInterview);
         if (interview && interview.job_id) {
           jobId = interview.job_id;
+          // Get job title from the jobs list
+          const job = jobs.find((j) => j.id === interview.job_id);
+          jobTitle = job?.title || "";
         }
       }
+      // Add candidates to database
       for (const candidate of candidates) {
         await submitCandidate({
           name: candidate.name,
@@ -136,6 +174,7 @@ export default function InviteCandidatesPage() {
       }
       setIsSent(true);
     } catch (err) {
+      console.error("Error in handleSubmit:", err);
       // You can handle error UI here
     } finally {
       setIsSubmitting(false);
@@ -200,27 +239,34 @@ export default function InviteCandidatesPage() {
               </h2>
               <div className="flex flex-row gap-5">
                 {!interviewIdFromQuery && (
-                  <Select onValueChange={setSelectedInterview}>
-                    <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
-                      <SelectValue placeholder="Select Interview" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectGroup>
-                        <SelectLabel className="dark:text-gray-300">
-                          Interviews
-                        </SelectLabel>
-                        {jobs.map((job) => (
-                          <SelectItem
-                            key={job.id}
-                            value={job.id}
-                            className="dark:text-gray-200"
-                          >
-                            {job.title}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col">
+                    <Select onValueChange={handleJobSelect}>
+                      <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
+                        <SelectValue placeholder="Select Interview" />
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                        <SelectGroup>
+                          <SelectLabel className="dark:text-gray-300">
+                            Interviews
+                          </SelectLabel>
+                          {jobs.map((job) => (
+                            <SelectItem
+                              key={job.id}
+                              value={job.id}
+                              className="dark:text-gray-200"
+                            >
+                              {job.title}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {interviewError && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {interviewError}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <Button
                   type="button"
@@ -336,12 +382,14 @@ export default function InviteCandidatesPage() {
 
               <Button
                 type="submit"
-                disabled={isSubmitting || !selectedInterview}
+                disabled={
+                  isSubmitting || (!interviewIdFromQuery && !selectedInterview)
+                }
                 variant="outline"
                 className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
               >
                 {isSubmitting ? (
-                  "Adding..."
+                  "Wait..."
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
