@@ -182,6 +182,7 @@ export async function addCandidate({
     throw new Error(err.detail || "Failed to add candidate");
   }
   const candidate = await response.json();
+
   // 2. Append candidate_id to candidates_invited in the interviews table
   if (interviewId) {
     const addResp = await authenticatedFetch(
@@ -199,6 +200,22 @@ export async function addCandidate({
       );
     }
   }
+
+  // 2. Create user in backend (role: candidate)
+  await authenticatedFetch(
+    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/create-user`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        name,
+        organization_id,
+        role: "candidate",
+      }),
+    }
+  );
+
   return candidate;
 }
 
@@ -240,5 +257,33 @@ export async function fetchInterviewById(
     `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
   );
   if (!response.ok) return null;
+  return await response.json();
+}
+
+/**
+ * Update the status of an interview.
+ *
+ * Backend PATCH /api/v1/interviews/{interview_id} expects a JSON body:
+ *   { status: "draft" | "active" | "completed" }
+ * Only send the status field. The backend uses InterviewUpdate Pydantic model.
+ *
+ * Requires authentication (cookies/headers).
+ */
+export async function updateInterviewStatus(
+  interviewId: string,
+  status: "draft" | "active" | "completed"
+) {
+  const response = await authenticatedFetch(
+    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }), // Only send the status field
+    }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || "Failed to update interview status");
+  }
   return await response.json();
 }

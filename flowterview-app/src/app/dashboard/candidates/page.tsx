@@ -19,15 +19,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useJobs } from "./invite/supabase-hooks";
 import {
   Popover,
@@ -43,7 +34,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
 
 const CandidateViewDialog = ({
   candidate,
@@ -99,7 +90,6 @@ export default function CandidatesPage() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
-
   const router = useRouter();
   const { candidates, loading, error, reload } = useCandidatesSortedByJob();
   const { jobs, loadJobs } = useJobs();
@@ -172,12 +162,11 @@ export default function CandidatesPage() {
     });
 
     try {
-      // Get current user information from localStorage or session
-      const userString =
-        localStorage.getItem("user") || sessionStorage.getItem("user");
-      const user = userString ? JSON.parse(userString) : null;
-      const organizationId = candidate.organization_id || user?.organization_id;
-      const senderId = user?.id;
+      // Get current user context from cookies
+      const userContext = getUserContext();
+      const organizationId =
+        candidate.organization_id || userContext?.organization_id;
+      const senderId = userContext?.user_id;
 
       if (!organizationId) {
         toast({
@@ -188,6 +177,10 @@ export default function CandidatesPage() {
         });
         return;
       }
+
+      console.log("candidate", candidate);
+      console.log("organizationId", organizationId);
+      console.log("senderId", senderId);
 
       const res = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,

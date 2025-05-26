@@ -18,6 +18,15 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/auth-client";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { updateInterviewStatus } from "@/lib/supabase-candidates";
+import { useToast } from "@/hooks/use-toast";
 
 const nodeTypes = {
   interview: InterviewNode,
@@ -35,6 +44,10 @@ export default function InterviewDetailsPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAllCandidates, setShowAllCandidates] = useState(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const [interviewStatus, setInterviewStatus] = useState<
+    "draft" | "active" | "completed"
+  >("draft");
+  const { toast } = useToast();
 
   // Fetch interview details
   useEffect(() => {
@@ -51,6 +64,7 @@ export default function InterviewDetailsPage() {
         if (!resp.ok) throw new Error("Failed to fetch interview details");
         const data = await resp.json();
         setJob(data.job);
+        setInterviewStatus(data.interview.status || "draft");
         // Fetch candidate details for each candidate ID
         const candidateIds = data.interview.candidates_invited || [];
         const candidateDetails = await Promise.all(
@@ -124,18 +138,51 @@ export default function InterviewDetailsPage() {
                     <h3 className="font-semibold mb-2 dark:text-white">
                       Candidates
                     </h3>
-                    <Button
-                      onClick={() =>
-                        router.push(
-                          `/dashboard/candidates/invite?interview=${id}`
-                        )
-                      }
-                      className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                      variant="outline"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Candidate
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={interviewStatus}
+                        onValueChange={async (value) => {
+                          try {
+                            await updateInterviewStatus(
+                              id as string,
+                              value as any
+                            );
+                            setInterviewStatus(value as any);
+                            toast({
+                              title: "Interview status updated",
+                              description: `Status set to ${value}`,
+                            });
+                          } catch (err: any) {
+                            toast({
+                              title: "Failed to update status",
+                              description: err.message,
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[140px] ml-2">
+                          <SelectValue placeholder="Interview Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/candidates/invite?interview=${id}`
+                          )
+                        }
+                        className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                        variant="outline"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Candidate
+                      </Button>
+                    </div>
                   </div>
                   {candidates.length === 0 ? (
                     <div className="text-gray-500 text-sm dark:text-gray-300">

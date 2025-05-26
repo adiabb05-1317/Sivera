@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional, List, Literal
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Path
 from pydantic import BaseModel, Field, EmailStr
 import aiosmtplib
 import urllib.parse
@@ -78,7 +78,6 @@ class InterviewIn(BaseModel):
 
 
 class InterviewUpdate(BaseModel):
-    title: Optional[str]
     status: Optional[Literal["draft", "active", "completed"]]
 
 
@@ -114,34 +113,31 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         message = MIMEMultipart()
         message["From"] = f"Flowterview Team <{Config.SMTP_USER}>"
         message["To"] = email
-        message["Subject"] = f"Verify Your Email to Continue with Your {job} Interview"
+        message["Subject"] = f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
 
         # Make sure the token is URL safe and properly encoded
         import urllib.parse
-
         encoded_token = urllib.parse.quote_plus(token)
-        verify_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/register?token={encoded_token}"
+        verify_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview?token={encoded_token}"
         logger.info(f"Generated verification URL with token: {encoded_token[:10]}...")
 
         html_content = f"""
         <div style="font-family: Arial, sans-serif; background: #f7f7fa; padding: 32px;">
             <div style="max-width: 540px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #e0e7ff; padding: 32px;">
-                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">Welcome to Flowterview, {name}! 🎉</h2>
+                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">Congratulations, {name}! 🎉</h2>
                 <p style="font-size: 1.1em; color: #333;">
-                    You've been invited to interview for the <b>{job}</b> position.
+                    We are excited to invite you for an interview for the <b>{job}</b> position.
                 </p>
                 <p style="font-size: 1.05em; color: #444;">
                     Your skills and experience have impressed our team, and we'd love to get to know you better!
                 </p>
-                <p style="font-size: 1.05em; color: #444;">
-                    Please verify your email to continue to the interview process:
-                </p>
                 <div style="margin: 24px 0;">
-                    <a href="{verify_url}" style="display:inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 1.1em; font-weight: bold;">Verify Email & Continue</a>
+                    <a href="{verify_url}" style="display:inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 1.1em; font-weight: bold;">Verify Email & Start Your Interview</a>
                 </div>
                 <p style="color: #555;">
+                    Please verify your email to continue to the interview process.<br>
                     This link will expire in 7 days.<br>
-                    If you have any questions, please contact us.
+                    If you have any questions, just reply to this email.
                 </p>
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
                 <p style="font-size: 0.95em; color: #888;">
@@ -169,10 +165,7 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
             logger.info(f"SMTP send operation completed for {email}")
         except Exception as smtp_error:
             logger.error(f"SMTP error: {str(smtp_error)}")
-            # Don't raise as this is a background task
-            # But log detailed error
             import traceback
-
             smtp_trace = traceback.format_exc()
             logger.error(f"SMTP error trace: {smtp_trace}")
         logger.info(f"Verification email sent successfully to {email}")
@@ -256,28 +249,39 @@ async def send_invite(
     If candidate is new, send verification link
     """
     try:
+        logger.info(f"[send-invite] Received invite request: {request.dict()}")
         # First check if candidate exists as a registered user
         user = db.fetch_one("users", {"email": request.email})
+        logger.info(f"[send-invite] User lookup for {request.email}: {user}")
 
         # Also check if candidate exists in candidates table
         candidate = db.fetch_one("candidates", {"email": request.email})
+        logger.info(f"[send-invite] Candidate lookup for {request.email}: {candidate}")
 
         # Try to find a matching interview for this job title
         matching_job = db.fetch_one(
             "jobs", {"title": request.job, "organization_id": request.organization_id}
         )
+        logger.info(f"[send-invite] Matching job for {request.job}: {matching_job}")
 
         interview_id = None
         if matching_job:
-            # Find an active interview for this job
-            matching_interview = db.fetch_one(
-                "interviews", {"job_id": matching_job["id"], "status": "active"}
+            # Find an interview for this job with status 'active' or 'draft'
+            all_interviews = db.fetch_all(
+                "interviews",
+                {"job_id": matching_job["id"]}
             )
+            logger.info(f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}")
+            matching_interview = next(
+                (i for i in all_interviews if i["status"] in ("active", "draft")),
+                None
+            )
+            logger.info(f"[send-invite] Matching interview: {matching_interview}")
             if matching_interview:
                 interview_id = matching_interview["id"]
 
-        # Only send direct link if the candidate is a registered user
         if user:
+            logger.info(f"[send-invite] Existing user path for {request.email}")
             # Candidate exists, send direct interview link
             logger.info(
                 f"Candidate {request.email} exists, sending direct interview link"
@@ -305,8 +309,13 @@ async def send_invite(
                         {"id": interview_id},
                     )
 
+            else:
+                # No interview found, return error
+                logger.error(f"No active interview found for job {request.job} in org {request.organization_id}")
+                raise HTTPException(status_code=404, detail="No active interview found for this job.")
+
             # Generate interview link
-            interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id if interview_id else 'latest'}"
+            interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id}"
 
             # Send interview email
             background_tasks.add_task(
@@ -322,6 +331,7 @@ async def send_invite(
                 "message": "Interview invitation sent to existing candidate",
             }
         else:
+            logger.info(f"[send-invite] New candidate path for {request.email}")
             # Not a registered user, create verification token (even if they exist in candidates table)
             logger.info(f"New candidate {request.email}, sending verification email")
 
@@ -441,6 +451,7 @@ async def send_invite(
             return {
                 "success": True,
                 "message": "Verification email sent to new candidate",
+                "token": token,
             }
     except HTTPException as he:
         # Pass through HTTP exceptions as-is
@@ -562,64 +573,44 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
     """
     logger.info(f"Verifying token: {request.token[:10]}...")
 
-    # For debugging, let's list all tokens in the database
     try:
-        all_tokens = db.fetch_all("verification_tokens")
-        logger.info(f"Found {len(all_tokens)} tokens in database")
-
-        # Check if the current token is in the database
-        token_found = False
-        for token_record in all_tokens:
-            # Log each token (first 10 chars only for security)
-            db_token = token_record.get("token", "")
-            logger.info(
-                f"Token in DB: {db_token[:10] if db_token else 'None'}... for {token_record.get('email')}"
-            )
-
-            # Check if this matches our current token
-            if db_token and db_token == request.token:
-                token_found = True
-                logger.info(f"Found matching token in database for verification")
-
-        if not token_found and all_tokens:
-            logger.warning(
-                f"Current token {request.token[:10]}... not found in database"
-            )
-
-    except Exception as db_error:
-        logger.error(f"Error checking all tokens: {str(db_error)}")
-
-    try:
-
+        # Try both URL-decoded and original token
         decoded_token = urllib.parse.unquote_plus(request.token)
-        logger.info(f"Searching for token (decoded): {decoded_token[:10]}...")
+        possible_tokens = [decoded_token, request.token]
 
-        # Try to find by both encoded and decoded token
-        token_data = db.fetch_one("verification_tokens", {"token": decoded_token})
-
-        if not token_data:
-            # Try the original token as well
-            logger.info(f"Token not found with decoded version, trying original")
-            token_data = db.fetch_one("verification_tokens", {"token": request.token})
+        token_data = None
+        for token in possible_tokens:
+            token_data = db.fetch_one("verification_tokens", {"token": token})
+            if token_data:
+                logger.info(f"Token found for: {token_data.get('email')}")
+                break
 
         if not token_data:
             logger.warning(f"Token not found: {request.token[:10]}...")
-            return {"valid": False, "message": "Invalid token"}
-
-        logger.info(f"Token found for: {token_data.get('email')}")
+            return {
+                "valid": False,
+                "message": "Invalid verification token. Please check your email and try again."
+            }
 
         # Check if token is expired
         try:
             expires_at = datetime.fromisoformat(token_data["expires_at"])
-            now = datetime.now()
-            logger.info(f"Token expires at: {expires_at}, current time: {now}")
+            # Make sure both datetimes are naive (no timezone info)
+            if expires_at.tzinfo is not None:
+                expires_at = expires_at.replace(tzinfo=None)
 
-            if expires_at < now:
+            if expires_at < datetime.now():
                 logger.warning(f"Token expired at {expires_at}")
-                return {"valid": False, "message": "Token has expired"}
+                return {
+                    "valid": False,
+                    "message": "This verification link has expired. Please request a new invitation."
+                }
         except Exception as date_error:
             logger.error(f"Error parsing dates: {str(date_error)}")
-            # Continue even if date parsing fails
+            return {
+                "valid": False,
+                "message": "Error validating token expiration. Please try again or request a new invitation."
+            }
 
         # Token is valid
         logger.info(f"Token validation successful for {token_data.get('email')}")
@@ -629,14 +620,16 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             "email": token_data.get("email", ""),
             "job_title": token_data.get("job_title", ""),
             "organization_id": token_data.get("organization_id", ""),
+            "interview_id": token_data.get("interview_id", "")  # Include interview_id in response
         }
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
         import traceback
-
         logger.error(f"Detailed error trace: {traceback.format_exc()}")
-        # Return a user-friendly error instead of raising an exception
-        return {"valid": False, "message": f"Error verifying token: {str(e)}"}
+        return {
+            "valid": False,
+            "message": "An error occurred while verifying your token. Please try again or request a new invitation."
+        }
 
 
 @router.post("/complete-registration")
@@ -647,53 +640,58 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
     logger.info(f"Starting complete registration with token: {request.token[:10]}...")
 
     try:
-        # Handle URL-encoded tokens just like in the verify endpoint
-        import urllib.parse
-
+        # Try both URL-decoded and original token
         decoded_token = urllib.parse.unquote_plus(request.token)
+        possible_tokens = [decoded_token, request.token]
 
-        # Try to find the token using both the decoded and original values
-        token_data = db.fetch_one("verification_tokens", {"token": decoded_token})
-        if not token_data:
-            token_data = db.fetch_one("verification_tokens", {"token": request.token})
+        token_data = None
+        for token in possible_tokens:
+            token_data = db.fetch_one("verification_tokens", {"token": token})
+            if token_data:
+                logger.info(f"Token found for registration: {token_data.get('email')}")
+                break
 
         if not token_data:
             return {
                 "success": False,
-                "message": "Invalid token. Please use the link from your email again.",
+                "message": "Invalid verification token. Please check your email and try again."
             }
 
-        logger.info(f"Token found for registration: {token_data.get('email')}")
-
-        # Check if token is expired - handle timezone-aware vs naive datetime comparison
+        # Check if token is expired
         try:
             expires_at = datetime.fromisoformat(token_data["expires_at"])
-
-            # Make sure both datetimes are naive (no timezone info)
             if expires_at.tzinfo is not None:
-                # Convert expires_at to naive by removing timezone
                 expires_at = expires_at.replace(tzinfo=None)
 
-            # Now compare with naive datetime.now()
             if expires_at < datetime.now():
                 return {
                     "success": False,
-                    "message": "This verification link has expired. Please request a new invitation.",
+                    "message": "This verification link has expired. Please request a new invitation."
                 }
         except Exception as date_error:
             logger.error(f"Error comparing dates: {str(date_error)}")
-            # Continue even if date comparison fails
+            return {
+                "success": False,
+                "message": "Error validating token expiration. Please try again or request a new invitation."
+            }
 
-        # Get organization ID
+        # Get organization ID and interview ID
         org_id = token_data.get("organization_id")
+        interview_id = token_data.get("interview_id")
+
         if not org_id:
             # Try to get any organization
             default_org = db.fetch_one("organizations", limit=1)
             if default_org:
                 org_id = default_org.get("id")
                 logger.info(f"Using default organization: {org_id}")
+            else:
+                return {
+                    "success": False,
+                    "message": "No valid organization found. Please contact support."
+                }
 
-        # Check if candidate already exists (they should, since the recruiter already added them)
+        # Check if candidate already exists
         existing_candidate = db.fetch_one(
             "candidates", {"email": token_data.get("email")}
         )
@@ -703,50 +701,53 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
             candidate_id = existing_candidate["id"]
             logger.info(f"Using existing candidate with ID: {candidate_id}")
 
-            # Get the job_id from the existing candidate
-            job_id = existing_candidate.get("job_id")
-            logger.info(f"Using job ID from existing candidate: {job_id}")
-        else:
-            # This shouldn't happen normally, but let's handle it as a fallback
-            candidate_id = str(uuid.uuid4())
-            logger.info(
-                f"Creating new candidate with ID: {candidate_id} (unexpected path)"
+            # Update candidate information if needed
+            db.update(
+                "candidates",
+                {
+                    "name": token_data.get("name", existing_candidate.get("name")),
+                    "organization_id": org_id,
+                    "updated_at": datetime.now().isoformat()
+                },
+                {"id": candidate_id}
             )
+        else:
+            # Create new candidate
+            candidate_id = str(uuid.uuid4())
+            logger.info(f"Creating new candidate with ID: {candidate_id}")
 
-            # Get job information from token data
+            # Get job information
             job_title = token_data.get("job_title")
-
-            # Find or create a job_id (since it's required and can't be null)
             job_id = None
 
             if job_title:
                 # Try to find an existing job with this title
-                existing_job = db.fetch_one("jobs", {"title": job_title})
+                existing_job = db.fetch_one(
+                    "jobs",
+                    {
+                        "title": job_title,
+                        "organization_id": org_id
+                    }
+                )
                 if existing_job:
                     job_id = existing_job.get("id")
                     logger.info(f"Found existing job with ID: {job_id}")
 
             if not job_id:
-                # Try to get any job from the database
-                any_job = db.fetch_one("jobs", limit=1)
-                if any_job:
-                    job_id = any_job.get("id")
-                    logger.info(f"Using default job ID: {job_id}")
-                else:
-                    # Need to create a job as it's required
-                    job_id = str(uuid.uuid4())
-                    db.execute_query(
-                        "jobs",
-                        {
-                            "id": job_id,
-                            "title": job_title or "Default Job",
-                            "organization_id": org_id,
-                            "created_at": datetime.now().isoformat(),
-                        },
-                    )
-                    logger.info(f"Created new job with ID: {job_id}")
+                # Create a new job
+                job_id = str(uuid.uuid4())
+                db.execute_query(
+                    "jobs",
+                    {
+                        "id": job_id,
+                        "title": job_title or "Software Engineer",
+                        "organization_id": org_id,
+                        "created_at": datetime.now().isoformat()
+                    }
+                )
+                logger.info(f"Created new job with ID: {job_id}")
 
-            # Only add to candidates table if we didn't find an existing one
+            # Create the candidate
             db.execute_query(
                 "candidates",
                 {
@@ -754,72 +755,12 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                     "name": token_data.get("name", ""),
                     "email": token_data.get("email", ""),
                     "organization_id": org_id,
-                    "job_id": job_id,  # Add the required job_id
-                    "status": "Applied",
-                },
-            )
-            logger.info(f"Added new candidate as fallback")
-
-        # Create a new user directly in the users table
-        user_id = str(uuid.uuid4())
-        logger.info(f"Creating new user with ID: {user_id}")
-
-        # Add user to users table directly
-        try:
-            # Get the name from token data
-            candidate_name = token_data.get("name", "").strip()
-            logger.info(f"Candidate name from token: '{candidate_name}'")
-
-            # Create user data object with name always included
-            user_data = {
-                "id": user_id,
-                "email": token_data.get("email"),
-                "name": candidate_name
-                or "Anonymous Candidate",  # Ensure name is never null/empty
-                "role": "candidate",
-                "candidate_id": candidate_id,
-            }
-
-            if org_id:
-                user_data["organization_id"] = org_id
-
-            logger.info(f"Adding user to users table: {user_data}")
-
-            # Insert directly into users table
-            result = db.supabase.table("users").insert(user_data).execute()
-
-            if result and result.data:
-                logger.info(f"User created successfully: {result.data}")
-            else:
-                logger.warning("User may not have been created - empty result")
-
-        except Exception as user_error:
-            logger.error(f"Error creating user: {str(user_error)}")
-
-            # Try fallback with minimal fields
-            try:
-                # Get candidate name again to be sure
-                candidate_name = token_data.get("name", "").strip()
-
-                # Create minimal user with name included
-                minimal_user = {
-                    "id": user_id,
-                    "email": token_data.get("email"),
-                    "name": candidate_name
-                    or "Anonymous Candidate",  # Ensure name is never null
-                    "role": "candidate",
+                    "job_id": job_id,
+                    "created_at": datetime.now().isoformat()
                 }
-                logger.info(f"Trying minimal user insert: {minimal_user}")
-                result = db.supabase.table("users").insert(minimal_user).execute()
-                logger.info(
-                    f"Minimal user insert result: {result.data if result else 'No result'}"
-                )
-            except Exception as minimal_error:
-                logger.error(f"Even minimal user creation failed: {str(minimal_error)}")
-                # Continue anyway - we'll have the candidate entry at least
+            )
 
         # If we have an interview_id, add candidate to it
-        interview_id = token_data.get("interview_id")
         if interview_id:
             current_interview = db.fetch_one("interviews", {"id": interview_id})
             if current_interview:
@@ -829,34 +770,32 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                     db.update(
                         "interviews",
                         {"candidates_invited": updated_invited},
-                        {"id": interview_id},
+                        {"id": interview_id}
                     )
+                logger.info(f"Added candidate {candidate_id} to interview {interview_id}")
 
         # Generate interview URL
-        interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id if interview_id else 'latest'}"
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+        interview_url = f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
 
-        # Delete the token after successful registration
-        try:
-            db.delete("verification_tokens", {"token": token_data.get("token")})
-        except Exception as delete_error:
-            logger.error(f"Error deleting token: {str(delete_error)}")
+        # Delete the used token
+        db.delete("verification_tokens", {"token": token_data["token"]})
+        logger.info(f"Deleted used token for {token_data.get('email')}")
 
         return {
             "success": True,
             "message": "Registration completed successfully",
-            "candidate_id": candidate_id,
-            "user_id": user_id,
-            "interview_url": interview_url,
-            "name": token_data.get("name"),
-            "email": token_data.get("email"),
-            "organization_id": org_id,
+            "interview_url": interview_url
         }
+
     except Exception as e:
         logger.error(f"Error completing registration: {str(e)}")
         import traceback
-
         logger.error(f"Detailed error trace: {traceback.format_exc()}")
-        return {"success": False, "message": f"Registration failed: {str(e)}"}
+        return {
+            "success": False,
+            "message": "An error occurred while completing your registration. Please try again or contact support."
+        }
 
 
 @router.post("/from-description")
@@ -1054,13 +993,23 @@ async def update_interview(
     interview_id: str, updates: InterviewUpdate, request: Request
 ):
     try:
-        update_dict = {k: v for k, v in updates.dict().items() if v is not None}
-        updated = db.update("interviews", update_dict, {"id": interview_id})
-        if not updated:
-            raise HTTPException(
-                status_code=404, detail="Interview not found or not updated"
-            )
-        return updated[0]
+        # Fetch the current interview record
+        current = db.fetch_one("interviews", {"id": interview_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        # Merge current record with updates
+        update_dict = {**current, **{k: v for k, v in updates.dict().items() if v is not None}}
+        allowed_fields = {"title", "organization_id", "created_by", "status"}
+        update_dict = {k: v for k, v in update_dict.items() if k in allowed_fields}
+        db.update("interviews", update_dict, {"id": interview_id})
+
+        # Fetch the updated record to return
+        updated = db.fetch_one("interviews", {"id": interview_id})
+        # Ensure all required fields are present and not None
+        for field in ["title", "organization_id", "created_by"]:
+            if updated.get(field) is None:
+                updated[field] = ""
+        return updated
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

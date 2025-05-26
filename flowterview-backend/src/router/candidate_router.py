@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from storage.db_manager import DatabaseManager, DatabaseError
 from datetime import datetime
+import uuid
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["candidates"])
 
@@ -62,7 +63,25 @@ async def fetch_candidates_sorted_by_job(request: Request):
 @router.post("/", response_model=CandidateOut)
 async def create_candidate(candidate: CandidateIn, request: Request):
     try:
-        created_candidate = db.execute_query("candidates", candidate.dict())
+        # Insert candidate
+        candidate_id = str(uuid.uuid4())
+        candidate_data = candidate.dict()
+        candidate_data["id"] = candidate_id
+        created_candidate = db.execute_query("candidates", candidate_data)
+
+        # Check if user exists for this email
+        user = db.fetch_one("users", {"email": candidate.email})
+        if not user:
+            user_id = str(uuid.uuid4())
+            user_data = {
+                "id": user_id,
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": "candidate",
+                "organization_id": candidate.organization_id,
+            }
+            db.supabase.table("users").insert(user_data).execute()
+
         return created_candidate
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
