@@ -181,12 +181,9 @@ class InterviewFlow:
                     api_key=os.getenv("FAL_API_KEY"),
                     aiohttp_session=self.aiohttp_session,
                     params=SmartTurnParams(
-                        stop_secs=0.8,  # Time to wait after speech ends before considering turn complete
+                        stop_secs=2.5,  # Time to wait after speech ends before considering turn complete
                         pre_speech_ms=0.0,  # No delay before starting to process speech
-                        max_duration_secs=5.0,  # Maximum length of a single turn to maintain natural conversation
-                        timeout_secs=3.0,  # Maximum time to wait for turn detection API response
-                        retry_count=2,  # Number of times to retry failed turn detection requests
-                        retry_delay=0.5,  # Time to wait between retry attempts
+                        max_duration_secs=8.0,  # Maximum length of a single turn to maintain natural conversation
                     ),
                 ),
                 audio_out_enabled=True,  # Enable audio output for bot responses
@@ -200,8 +197,6 @@ class InterviewFlow:
                 vad_analyzer=SileroVADAnalyzer(
                     params=VADParams(
                         stop_secs=0.1,  # Quick detection of speech end
-                        threshold=0.5,  # Balance between sensitivity and noise rejection
-                        min_speech_duration_ms=100,  # Ignore very short sounds to reduce false positives
                     ),
                 ),
                 audio_in_passthrough=True,  # Pass audio through VAD for real-time processing

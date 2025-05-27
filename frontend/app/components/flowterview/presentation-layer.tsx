@@ -7,7 +7,6 @@ import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
 import CodeEditor from "./CodeEditor";
 import QueryDisplay from "./now-answering";
-import { Logo } from "@/logos";
 
 const UserTile = ({
   participant,
@@ -26,68 +25,69 @@ const UserTile = ({
   isCameraOn: boolean;
   localVideoStream: MediaStream | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
-}) => (
-  <div
-    className={`bg-white/20 dark:bg-[#32344a]/60 backdrop-blur-lg border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl rounded-xl aspect-video relative overflow-hidden transition-all
-      ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
-    `}
-  >
-    <div className="absolute inset-0 flex items-center justify-center">
-      {isCameraOn && localVideoStream && videoRef ? (
-        <video
-          autoPlay
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-          ref={videoRef}
-        />
-      ) : (
-        <div className="w-24 h-24 rounded-full bg-indigo-500/50 text-white text-2xl font-medium flex items-center justify-center border-2 border-indigo-500">
-          {participant.name.charAt(0).toUpperCase()}
-        </div>
-      )}
-    </div>
-  </div>
-);
+}) => {
+  // Ensure video stream is connected when component mounts or stream changes
+  useEffect(() => {
+    if (videoRef.current && localVideoStream && isCameraOn) {
+      if (videoRef.current.srcObject !== localVideoStream) {
+        videoRef.current.srcObject = localVideoStream;
+      }
+    }
+  }, [localVideoStream, isCameraOn, videoRef]);
 
-const BotTile = ({
-  isBotSpeaking,
-  isCameraOn,
-  localVideoStream,
-  currentUserTranscript,
-  currentBotTranscript,
-}: {
-  isBotSpeaking: boolean;
-  isCameraOn: boolean;
-  localVideoStream: MediaStream | null;
-  currentUserTranscript: string | null;
-  currentBotTranscript: string | null;
-}) => (
-  <div
-    className={`bg-white/20 dark:bg-[#32344a]/60 backdrop-blur-lg border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl rounded-xl aspect-video relative overflow-hidden transition-all
-      ${isBotSpeaking ? "ring-2 ring-[#774BE5] scale-[1.02]" : ""}
-    `}
-  >
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="w-24 h-24 rounded-full bg-indigo-500/50 flex items-center justify-center border-2 border-[#774BE5]">
-        <Logo width="60" height="60" />
+  return (
+    <div
+      className={`bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
+        ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
+      `}
+      style={{ aspectRatio: "16/9" }}
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        {isCameraOn && localVideoStream && videoRef ? (
+          <video
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            ref={videoRef}
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-full bg-indigo-500/50 text-white text-2xl font-medium flex items-center justify-center border-2 border-indigo-500">
+            {participant.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
+
+      {/* Header similar to coding challenge */}
+      <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-indigo-50/90 dark:bg-[--meet-surface]/90 backdrop-blur-sm border-b border-indigo-200 dark:border-indigo-700">
+        <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
+          <Icons.Video className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+          <span>Video Feed</span>
+        </h3>
+        <div
+          className={`w-2 h-2 rounded-full ${isCameraOn ? "bg-green-500" : "bg-red-500"}`}
+        />
       </div>
     </div>
-    <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-indigo-600/70 px-4 py-1.5 rounded-lg text-white text-sm flex items-center gap-3 shadow-md">
-      {isBotSpeaking && <SoundWave />}
-      <span className="text-xs opacity-75">Flotia</span>
-    </div>
-  </div>
-);
+  );
+};
 
-const SoundWave = () => (
-  <div className="flex space-x-[2px]">
-    {[1.2, 1.5, 1.3].map((d, i) => (
-      <div
-        key={i}
-        className={`w-[3px] h-3 bg-[#774BE5] rounded-full animate-[sound-wave_${d}s_ease-in-out_infinite_${0.2 + i * 0.1}s]`}
-      />
-    ))}
+const TranscriptionsBox = () => (
+  <div className="h-full flex flex-col bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
+    {/* Header similar to coding challenge */}
+    <div className="flex justify-between items-center py-4 px-6 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200 dark:border-indigo-700">
+      <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-lg flex items-center gap-2 tracking-tight">
+        <Icons.Chat className="w-5 h-5 text-indigo-500 dark:text-indigo-300" />
+        <span>Transcriptions</span>
+      </h3>
+    </div>
+
+    {/* Content area */}
+    <div className="flex-1 p-6 bg-white dark:bg-[--meet-surface]">
+      <div className="text-sm text-gray-700 dark:text-gray-200">
+        <p>Live transcriptions will appear here...</p>
+      </div>
+    </div>
   </div>
 );
 
@@ -95,10 +95,8 @@ const Presentation = () => {
   const {
     setCallStatus,
     showToast,
-    isBotSpeaking,
     isCameraOn,
     isUserSpeaking,
-    currentBotTranscript,
     currentUserTranscript,
     resetStore,
     isCaptionEnabled,
@@ -145,24 +143,22 @@ const Presentation = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (isCameraOn) {
-      if (videoRef.current) {
+    if (isCameraOn && videoRef.current && localVideoStream) {
+      if (videoRef.current.srcObject !== localVideoStream) {
         videoRef.current.srcObject = localVideoStream;
       }
-    } else {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    } else if (!isCameraOn && videoRef.current) {
+      videoRef.current.srcObject = null;
     }
-  }, [isCameraOn]);
+  }, [isCameraOn, localVideoStream]);
 
   useEffect(() => {
-    if (videoRef.current && localVideoStream) {
+    if (videoRef.current && localVideoStream && isCameraOn) {
       if (videoRef.current.srcObject !== localVideoStream) {
         videoRef.current.srcObject = localVideoStream;
       }
     }
-  }, [localVideoStream]);
+  }, [localVideoStream, isCameraOn, isCodeEditorOpen]);
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
@@ -178,126 +174,107 @@ const Presentation = () => {
         </div>
       ) : (
         <section className="relative flex-grow w-full h-full overflow-hidden bg-transparent">
+          {/* QueryDisplay for user transcripts */}
           <div
-            className={`absolute top-0 bottom-0 left-0 z-40 w-[65%] transition-transform duration-300 p-5 ${
-              isCodeEditorOpen ? "translate-x-0" : "-translate-x-full"
+            className={`absolute z-50 top-4 transition-all duration-500 ease-in-out max-w-md ${
+              isCodeEditorOpen
+                ? "left-1/2 -translate-x-1/2"
+                : "left-1/2 -translate-x-1/2"
             }`}
           >
-            <CodeEditor
-              isOpen={isCodeEditorOpen}
-              onClose={() => setIsCodeEditorOpen(false)}
-            />
+            {currentUserTranscript && <QueryDisplay />}
           </div>
 
           <div
-            className={`absolute z-50 top-4 ${isCodeEditorOpen ? "left-[82.5%]" : "left-1/2"} transform -translate-x-1/2 max-w-md transition-all duration-300`}
+            className={`absolute inset-0 p-6 z-10 transition-all duration-500 ease-in-out ${
+              isCodeEditorOpen ? "left-0 right-0" : "left-0 right-0"
+            }`}
           >
-            {currentUserTranscript && isBotSpeaking && <QueryDisplay />}
-          </div>
+            {!isCodeEditorOpen ? (
+              // Normal Mode Layout
+              <div className="w-full h-full grid grid-cols-12 grid-rows-12 gap-6">
+                {/* Transcriptions - Left side, smaller width */}
+                <div className="col-span-3 row-span-12">
+                  <TranscriptionsBox />
+                </div>
 
-          {connectionStatus !== "bot_connected" ? (
-            <div
-              className={`absolute p-4 z-10 transition-all duration-300 flex justify-center -m-16 ${
-                isCodeEditorOpen ? "left-[50%] right-0" : "left-0 right-0"
-              }`}
-            >
-              <div className="w-full flex justify-center">
-                {participants
-                  .filter((p) => p.id === "user")
-                  .map((p) => (
-                    <UserTile
-                      key={p.id}
-                      participant={p}
-                      isUserSpeaking={isUserSpeaking}
-                      isCameraOn={isCameraOn}
-                      localVideoStream={localVideoStream}
-                      videoRef={videoRef}
-                    />
-                  ))}
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`absolute inset-0 p-4 z-10 transition-all duration-300 flex justify-center items-center -mt-16 ${
-                isCodeEditorOpen ? "left-[65%] right-0" : "left-0 right-0"
-              }`}
-            >
-              <div
-                className={`w-full ${
-                  isCodeEditorOpen
-                    ? "flex flex-col gap-6"
-                    : "grid grid-cols-2 gap-6"
-                }`}
-              >
-                {participants
-                  .filter((p) => p.id === "user" || p.id === "bot")
-                  .map((p) =>
-                    p.id === "user" ? (
+                {/* Video Feed - Top right, more space */}
+                <div className="col-span-9 row-span-9">
+                  {participants
+                    .filter((p) => p.id === "user")
+                    .map((p) => (
                       <UserTile
-                        key={p.id}
+                        key={`normal-${p.id}`}
                         participant={p}
                         isUserSpeaking={isUserSpeaking}
                         isCameraOn={isCameraOn}
                         localVideoStream={localVideoStream}
                         videoRef={videoRef}
                       />
-                    ) : (
-                      <BotTile
-                        key={p.id}
-                        isBotSpeaking={isBotSpeaking}
-                        isCameraOn={isCameraOn}
-                        localVideoStream={localVideoStream}
-                        currentUserTranscript={currentUserTranscript}
-                        currentBotTranscript={currentBotTranscript}
-                      />
-                    )
-                  )}
+                    ))}
+                </div>
+
+                {/* Controls - Bottom right */}
+                <div className="col-span-9 row-span-3 flex items-center justify-center">
+                  <Controls
+                    participants={participants}
+                    isCodeEditorOpen={isCodeEditorOpen}
+                    toggleCodeEditor={toggleCodeEditor}
+                    style={{ overflow: "visible" }}
+                    joinAndLeaveCallHandler={joinAndLeaveCallHandler}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              // Coding Mode Layout
+              <div className="w-full h-full grid grid-cols-12 grid-rows-12 gap-6">
+                {/* Left Column - Video Feed (top) + Transcriptions (bottom) */}
+                <div className="col-span-3 row-span-12 flex flex-col gap-5">
+                  {/* Video Feed - Top left */}
+                  <div>
+                    {participants
+                      .filter((p) => p.id === "user")
+                      .map((p) => (
+                        <UserTile
+                          key={`coding-${p.id}`}
+                          participant={p}
+                          isUserSpeaking={isUserSpeaking}
+                          isCameraOn={isCameraOn}
+                          localVideoStream={localVideoStream}
+                          videoRef={videoRef}
+                        />
+                      ))}
+                  </div>
+
+                  {/* Transcriptions - Bottom left */}
+                  <div className="h-full rounded-xl border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl">
+                    <TranscriptionsBox />
+                  </div>
+                </div>
+
+                {/* Code Editor - Right side, more space */}
+                <div className="col-span-9 row-span-11">
+                  <CodeEditor
+                    isOpen={isCodeEditorOpen}
+                    onClose={() => setIsCodeEditorOpen(false)}
+                  />
+                </div>
+
+                {/* Controls - Bottom right */}
+                <div className="col-span-9 row-span-1 flex items-center justify-center">
+                  <Controls
+                    participants={participants}
+                    isCodeEditorOpen={isCodeEditorOpen}
+                    toggleCodeEditor={toggleCodeEditor}
+                    style={{ overflow: "visible" }}
+                    joinAndLeaveCallHandler={joinAndLeaveCallHandler}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       )}
-
-      {/* Transcript overlay - positioned above controls */}
-      {isCaptionEnabled && currentBotTranscript && callStatus !== "left" && (
-        <div
-          className={`fixed z-30 ${
-            isCodeEditorOpen ? "left-[82.5%]" : "left-1/2"
-          } bottom-[130px] transform -translate-x-1/2 max-w-2xl w-[calc(100%-32px)] md:w-auto animate-fade-in transition-all duration-300`}
-        >
-          <div className="relative px-4">
-            <div className="bg-indigo-300/30 dark:bg-indigo-900/40 backdrop-blur-md p-4 rounded-2xl text-left shadow-lg border border-indigo-600/40 dark:border-indigo-400/40">
-              <div className="flex items-center mb-2">
-                <div className="w-6 h-6 rounded-full bg-indigo-700 dark:bg-indigo-400 border border-indigo-500 dark:border-indigo-300 flex items-center justify-center mr-2 mt-0.5">
-                  <Logo width="13" height="13" />
-                </div>
-                <span className="text-indigo-900 dark:text-indigo-100 text-sm font-medium tracking-tight">
-                  Flotia
-                </span>
-              </div>
-              <p className="text-indigo-900 dark:text-indigo-100 text-xs ml-8 leading-relaxed tracking-tight">
-                {currentBotTranscript}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div
-        className={`fixed ${isCodeEditorOpen ? "left-[82.5%] bottom-8" : "left-1/2 bottom-8"} transform -translate-x-1/2 z-30 transition-all duration-300`}
-      >
-        {callStatus !== "left" && (
-          <div className="rounded-full px-6 py-3 bg-white/60 dark:bg-[#292a3a]/80 border border-indigo-100/30 dark:border-indigo-800/40 shadow-lg flex gap-4 items-center backdrop-blur-xl">
-            <Controls
-              participants={participants}
-              isCodeEditorOpen={isCodeEditorOpen}
-              toggleCodeEditor={toggleCodeEditor}
-              style={{ overflow: "visible" }}
-              joinAndLeaveCallHandler={joinAndLeaveCallHandler}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 };
