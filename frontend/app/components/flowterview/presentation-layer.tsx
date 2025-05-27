@@ -37,10 +37,9 @@ const UserTile = ({
 
   return (
     <div
-      className={`bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
+      className={`h-full w-full bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
         ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
       `}
-      style={{ aspectRatio: "16/9" }}
     >
       <div className="absolute inset-0 flex items-center justify-center">
         {isCameraOn && localVideoStream && videoRef ? (
@@ -59,9 +58,9 @@ const UserTile = ({
       </div>
 
       {/* Header similar to coding challenge */}
-      <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-indigo-50/90 dark:bg-[--meet-surface]/90 backdrop-blur-sm border-b border-indigo-200 dark:border-indigo-700">
-        <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
-          <Icons.Video className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+      <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-indigo-50/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-indigo-200/60 dark:border-slate-600/60">
+        <h3 className="text-indigo-800 dark:text-slate-100 font-semibold text-sm flex items-center gap-2 tracking-tight">
+          <Icons.Video className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
           <span>Video Feed</span>
         </h3>
         <div
@@ -199,7 +198,7 @@ const Presentation = () => {
                 </div>
 
                 {/* Video Feed - Top right, more space */}
-                <div className="col-span-9 row-span-9">
+                <div className="col-span-9 row-span-10">
                   {participants
                     .filter((p) => p.id === "user")
                     .map((p) => (
@@ -215,7 +214,7 @@ const Presentation = () => {
                 </div>
 
                 {/* Controls - Bottom right */}
-                <div className="col-span-9 row-span-3 flex items-center justify-center">
+                <div className="col-span-9 row-span-2 flex items-center justify-center">
                   <Controls
                     participants={participants}
                     isCodeEditorOpen={isCodeEditorOpen}
@@ -229,31 +228,33 @@ const Presentation = () => {
               // Coding Mode Layout
               <div className="w-full h-full grid grid-cols-12 grid-rows-12 gap-6">
                 {/* Left Column - Video Feed (top) + Transcriptions (bottom) */}
-                <div className="col-span-3 row-span-12 flex flex-col gap-5">
+                <div className="col-span-3 row-span-12 flex flex-col gap-3">
                   {/* Video Feed - Top left */}
-                  <div>
-                    {participants
-                      .filter((p) => p.id === "user")
-                      .map((p) => (
-                        <UserTile
-                          key={`coding-${p.id}`}
-                          participant={p}
-                          isUserSpeaking={isUserSpeaking}
-                          isCameraOn={isCameraOn}
-                          localVideoStream={localVideoStream}
-                          videoRef={videoRef}
-                        />
-                      ))}
+                  <div className="h-56">
+                    <div className="h-full w-full">
+                      {participants
+                        .filter((p) => p.id === "user")
+                        .map((p) => (
+                          <UserTile
+                            key={`coding-${p.id}`}
+                            participant={p}
+                            isUserSpeaking={isUserSpeaking}
+                            isCameraOn={isCameraOn}
+                            localVideoStream={localVideoStream}
+                            videoRef={videoRef}
+                          />
+                        ))}
+                    </div>
                   </div>
 
-                  {/* Transcriptions - Bottom left */}
-                  <div className="h-full rounded-xl border border-indigo-100/20 dark:border-indigo-800/40 shadow-xl">
+                  {/* Transcriptions - Bottom left - takes up remaining space */}
+                  <div className="flex-1">
                     <TranscriptionsBox />
                   </div>
                 </div>
 
                 {/* Code Editor - Right side, more space */}
-                <div className="col-span-9 row-span-11">
+                <div className="col-span-9 row-span-10">
                   <CodeEditor
                     isOpen={isCodeEditorOpen}
                     onClose={() => setIsCodeEditorOpen(false)}
@@ -261,7 +262,7 @@ const Presentation = () => {
                 </div>
 
                 {/* Controls - Bottom right */}
-                <div className="col-span-9 row-span-1 flex items-center justify-center">
+                <div className="col-span-9 row-span-2 flex items-center justify-center">
                   <Controls
                     participants={participants}
                     isCodeEditorOpen={isCodeEditorOpen}

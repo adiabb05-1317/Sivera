@@ -16,7 +16,7 @@ const ControlTooltip = ({
   return (
     isHovered && (
       <Badge
-        className="absolute bottom-[-2rem] left-1/2 transform -translate-x-1/2 text-indigo-900/70 dark:text-indigo-100 bg-white/80 dark:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
+        className="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 text-indigo-900/70 dark:text-indigo-100 bg-white/80 dark:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
         variant="default"
       >
         {text}
@@ -109,13 +109,13 @@ const Controls = ({
 
   return (
     <section
-      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-5 relative z-20 bg-white/70 dark:bg-indigo-100/20 border border-indigo-200 dark:border-indigo-400/20 backdrop-blur-xl transition-all duration-300"
+      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-5 relative z-20 bg-white/70 dark:bg-slate-800/80 border border-indigo-200 dark:border-slate-600/30 backdrop-blur-xl transition-all duration-300"
       style={style}
     >
       {/* Code Editor toggle button */}
       <button
         className={`p-3.5 rounded-full text-white transition-colors duration-200 shadow-md
-          ${isCodeEditorOpen ? "bg-indigo-500" : "bg-indigo-300/80 dark:bg-indigo-400/40 text-indigo-900/70 dark:text-indigo-100"}
+          ${isCodeEditorOpen ? "bg-indigo-500" : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"}
         `}
         onClick={(e) => {
           e.preventDefault();
@@ -139,7 +139,7 @@ const Controls = ({
         {/* Captions toggle */}
         <button
           className={`p-3.5 rounded-full transition-colors duration-200 shadow-md
-            ${isCaptionEnabled ? "bg-indigo-500 text-white" : "bg-indigo-300/80 dark:bg-indigo-400/40 text-indigo-900/70 dark:text-indigo-100"}
+            ${isCaptionEnabled ? "bg-indigo-500 text-white" : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"}
           `}
           onClick={() => setIsCaptionEnabled(!isCaptionEnabled)}
           onMouseEnter={() => setIsHovered("captions")}
@@ -159,10 +159,10 @@ const Controls = ({
           className={`p-4 rounded-full transition-colors duration-200 shadow-md
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-200/80 dark:bg-indigo-400/20 cursor-not-allowed text-indigo-300 dark:text-indigo-200"
+                ? "bg-indigo-200/80 dark:bg-indigo-600/40 cursor-not-allowed text-indigo-300 dark:text-indigo-300/60"
                 : isMicMuted
                   ? "bg-indigo-500 text-white"
-                  : "bg-indigo-300/80 dark:bg-indigo-400/40 text-indigo-900/70 dark:text-indigo-100"
+                  : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"
             }
           `}
           onClick={() => {
@@ -192,9 +192,9 @@ const Controls = ({
           className={`p-4 rounded-full transition-colors duration-200 shadow-md
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-200/80 dark:bg-indigo-400/20 cursor-not-allowed text-indigo-300 dark:text-indigo-200"
+                ? "bg-indigo-200/80 dark:bg-indigo-600/40 cursor-not-allowed text-indigo-300 dark:text-indigo-300/60"
                 : isCameraOn
-                  ? "bg-indigo-300/80 dark:bg-indigo-400/40 text-indigo-900/70 dark:text-indigo-100"
+                  ? "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"
                   : "bg-indigo-500 text-white"
             }
           `}

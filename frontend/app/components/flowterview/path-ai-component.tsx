@@ -15,19 +15,23 @@ export default function FlowterviewComponent() {
   return (
     <main className="h-full w-full bg-[--meet-background] dark:bg-[--meet-background] relative overflow-hidden">
       <header
-        className={`flex items-center justify-between px-8 py-4 sticky top-0 z-50 transition-all duration-300 shadow-md
-          bg-white/90 dark:bg-[#232336]/95 backdrop-blur-xl border-b border-[--meet-border] dark:border-indigo-900/40
+        className={`flex items-center justify-between px-8 py-4 sticky top-0 z-50 transition-all duration-300 shadow-lg
+          bg-gradient-to-r from-indigo-50/95 to-white/95 dark:bg-gradient-to-r dark:from-indigo-900/40 dark:to-indigo-900/80 backdrop-blur-xl border-b border-indigo-600/80 dark:border-indigo-800/50
         ${isHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}
       >
         <div className="flex items-center gap-3">
           <div className="relative group cursor-pointer">
-            <div className="absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/30 blur-md dark:bg-white/10"></div>
+            <div className="absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-indigo-500/20 blur-md"></div>
             <div className="relative">
-              <span className="block dark:hidden"><LogoDark width="40" height="40" /></span>
-              <span className="hidden dark:block"><Logo width="40" height="40" /></span>
+              <span className="block dark:hidden">
+                <LogoDark width="40" height="40" />
+              </span>
+              <span className="hidden dark:block">
+                <Logo width="40" height="40" />
+              </span>
             </div>
           </div>
-          <h1 className="text-lg font-semibold tracking-widest hidden sm:block text-[--meet-text-primary] dark:text-[--meet-text-primary] drop-shadow-md">
+          <h1 className="text-lg font-semibold tracking-widest hidden sm:block text-indigo-800 dark:text-indigo-200 drop-shadow-sm">
             FLOWTERVIEW
           </h1>
         </div>
