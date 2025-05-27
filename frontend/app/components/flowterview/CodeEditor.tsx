@@ -8,6 +8,7 @@ import { editor } from "monaco-editor";
 import { Fira_Code } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
+import { useTheme } from "next-themes";
 
 const firaCode = Fira_Code({ subsets: ["latin"], weight: "400" });
 
@@ -28,21 +29,40 @@ export default function CodeEditor({
 }: CodeEditorProps) {
   const { codingProblem, sendCodeMessage, sendSubmittedMessage } =
     usePathStore();
+  const { theme, resolvedTheme } = useTheme();
   const [selectedLang, setSelectedLang] = useState(SUPPORTED_LANGUAGES[0].id);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [monacoTheme, setMonacoTheme] = useState("light");
   const [codes, setCodes] = useState<Record<string, string>>({
     js: "",
     py: "",
     java: "",
   });
 
-  // Helper to get Monaco theme based on dark mode
-  const getMonacoTheme = () => {
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "vs-dark";
-    }
-    return "light";
+  // Helper to get Monaco theme based on resolved theme
+  const getMonacoTheme = (currentTheme?: string) => {
+    return currentTheme === "dark" ? "vs-dark" : "light";
   };
+
+  // Initialize theme on mount
+  useEffect(() => {
+    const initialTheme = getMonacoTheme(resolvedTheme);
+    setMonacoTheme(initialTheme);
+  }, []);
+
+  // Update Monaco theme when theme changes
+  useEffect(() => {
+    const newTheme = getMonacoTheme(resolvedTheme);
+    setMonacoTheme(newTheme);
+
+    // Update existing editor theme if editor is mounted
+    if (editorRef.current) {
+      // Use Monaco's editor API to update theme
+      import("monaco-editor").then((monaco) => {
+        monaco.editor.setTheme(newTheme);
+      });
+    }
+  }, [resolvedTheme]);
 
   const getMonacoLang = (lang: string) => {
     switch (lang) {
@@ -183,7 +203,7 @@ export default function CodeEditor({
           language={getMonacoLang(selectedLang)}
           value={codes[selectedLang]}
           onChange={handleEditorChange}
-          theme={getMonacoTheme()}
+          theme={monacoTheme}
           options={{
             fontSize: 18,
             automaticLayout: true,

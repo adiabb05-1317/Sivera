@@ -5,6 +5,22 @@ import { useEffect, useRef, useState } from "react";
 import { Participant } from "../ui/AvatarStack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { LucideVolume2, Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Separator } from "@/components/ui/separator";
 
 const ControlTooltip = ({
   text,
@@ -42,7 +58,14 @@ const Controls = ({
 }) => {
   // State for UI interactions
   const [isHovered, setIsHovered] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const participantsRef = useRef<HTMLDivElement>(null);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
+  const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>("");
+  const [selectedOutputDevice, setSelectedOutputDevice] = useState<string>("");
 
   // Store states
   const { showToast } = usePathStore();
@@ -60,6 +83,47 @@ const Controls = ({
     setConnectionStatus,
     connectionStatus,
   } = usePathStore();
+
+  // Theme states
+  const { theme, setTheme } = useTheme();
+
+  // Get available media devices
+  useEffect(() => {
+    const getDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+
+        const audioInputs = devices.filter(
+          (device) => device.kind === "audioinput"
+        );
+        const videoInputs = devices.filter(
+          (device) => device.kind === "videoinput"
+        );
+        const audioOutputs = devices.filter(
+          (device) => device.kind === "audiooutput"
+        );
+
+        setAudioDevices(audioInputs);
+        setVideoDevices(videoInputs);
+        setOutputDevices(audioOutputs);
+
+        // Set default selections if none selected
+        if (audioInputs.length > 0 && !selectedAudioDevice) {
+          setSelectedAudioDevice(audioInputs[0].deviceId);
+        }
+        if (videoInputs.length > 0 && !selectedVideoDevice) {
+          setSelectedVideoDevice(videoInputs[0].deviceId);
+        }
+        if (audioOutputs.length > 0 && !selectedOutputDevice) {
+          setSelectedOutputDevice(audioOutputs[0].deviceId);
+        }
+      } catch (error) {
+        console.error("Error getting media devices:", error);
+      }
+    };
+
+    getDevices();
+  }, [selectedAudioDevice, selectedVideoDevice, selectedOutputDevice]);
 
   const handleConnectCallAndPlayFirstSpeech = async () => {
     if (!permissionGranted) {
@@ -109,43 +173,51 @@ const Controls = ({
 
   return (
     <section
-      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-5 relative z-20 bg-white/70 dark:bg-slate-800/80 border border-indigo-200 dark:border-slate-600/30 backdrop-blur-xl transition-all duration-300"
+      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-4 relative z-20 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-slate-700"
       style={style}
     >
-      {/* Code Editor toggle button */}
-      <button
-        className={`p-3.5 rounded-full text-white transition-colors duration-200 shadow-md
-          ${isCodeEditorOpen ? "bg-indigo-500" : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"}
-        `}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleCodeEditor?.();
-        }}
-        onMouseEnter={() => setIsHovered("codeEditor")}
-        onMouseLeave={() => setIsHovered(null)}
-      >
-        <Icons.Code className="h-4 w-4" />
-        {isHovered === "codeEditor" && (
-          <ControlTooltip
-            text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
-            isHovered
-          />
-        )}
-      </button>
+      {/* Left group: Code editor and captions */}
+      <div className="flex items-center gap-4">
+        {/* Code Editor toggle */}
+        <button
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              isCodeEditorOpen
+                ? "bg-indigo-500 text-white"
+                : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+            }
+          `}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleCodeEditor?.();
+          }}
+          onMouseEnter={() => setIsHovered("codeEditor")}
+          onMouseLeave={() => setIsHovered(null)}
+        >
+          <Icons.Code className="h-5 w-5" />
+          {isHovered === "codeEditor" && (
+            <ControlTooltip
+              text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
+              isHovered
+            />
+          )}
+        </button>
 
-      {/* Center controls */}
-      <div className="flex items-center gap-6">
         {/* Captions toggle */}
         <button
-          className={`p-3.5 rounded-full transition-colors duration-200 shadow-md
-            ${isCaptionEnabled ? "bg-indigo-500 text-white" : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"}
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              isCaptionEnabled
+                ? "bg-indigo-500 text-white"
+                : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+            }
           `}
           onClick={() => setIsCaptionEnabled(!isCaptionEnabled)}
           onMouseEnter={() => setIsHovered("captions")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.ClosedCaptions className="w-4 h-4" />
+          <Icons.ClosedCaptions className="w-5 h-5" />
           {isHovered === "captions" && (
             <ControlTooltip
               text={isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
@@ -153,16 +225,201 @@ const Controls = ({
             />
           )}
         </button>
+      </div>
 
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Middle group: Settings and theme */}
+      <div className="flex items-center gap-4">
+        {/* Settings */}
+        <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+                ${
+                  isSettingsOpen
+                    ? "bg-indigo-500 text-white hover:bg-indigo-500 hover:text-white"
+                    : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 dark:hover:bg-indigo-500/30 dark:hover:text-indigo-400"
+                }`}
+              onMouseEnter={() => setIsHovered("settings")}
+              onMouseLeave={() => setIsHovered(null)}
+            >
+              <Icons.Settings className="h-5 w-5" />
+              <span className="sr-only">Settings</span>
+              {isHovered === "settings" && (
+                <ControlTooltip text="Settings" isHovered />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[400px] overflow-hidden rounded-3xl shadow-lg p-0 border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl0"
+            align="end"
+          >
+            <div className="flex justify-between items-center py-3 px-3 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200 dark:border-indigo-700">
+              <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-lg flex items-center gap-2 tracking-tight">
+                <Icons.Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+                <span className="text-sm">Settings</span>
+              </h3>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Audio Settings */}
+              <div className="flex flex-row gap-3 items-center">
+                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
+                  <Volume2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
+                      Input
+                    </Label>
+                    <Select
+                      value={selectedAudioDevice}
+                      onValueChange={(value) => {
+                        setSelectedAudioDevice(value);
+                        console.log("Audio input changed:", value);
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
+                        <SelectValue placeholder="Select microphone" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
+                        {audioDevices.map((device) => (
+                          <SelectItem
+                            key={device.deviceId}
+                            value={device.deviceId}
+                            className="text-sm"
+                          >
+                            {device.label ||
+                              `Microphone ${device.deviceId.slice(0, 8)}...`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
+                      Output
+                    </Label>
+                    <Select
+                      value={selectedOutputDevice}
+                      onValueChange={(value) => {
+                        setSelectedOutputDevice(value);
+                        console.log("Audio output changed:", value);
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
+                        <SelectValue placeholder="Select speaker" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
+                        {outputDevices.map((device) => (
+                          <SelectItem
+                            key={device.deviceId}
+                            value={device.deviceId}
+                            className="text-sm"
+                          >
+                            {device.label ||
+                              `Speaker ${device.deviceId.slice(0, 8)}...`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              {/* Video Settings */}
+              <div className="flex flex-row gap-3 items-center">
+                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
+                  <Icons.Video className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
+                    Camera
+                  </Label>
+                  <Select
+                    value={selectedVideoDevice}
+                    onValueChange={(value) => {
+                      setSelectedVideoDevice(value);
+                      console.log("Video device changed:", value);
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
+                      <SelectValue placeholder="Select camera" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
+                      {videoDevices.map((device) => (
+                        <SelectItem
+                          key={device.deviceId}
+                          value={device.deviceId}
+                          className="text-sm"
+                        >
+                          {device.label ||
+                            `Camera ${device.deviceId.slice(0, 8)}...`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              {/* Theme Settings */}
+              <div className="flex flex-row gap-3 items-center">
+                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
+                  {theme === "dark" ? (
+                    <Sun className="w-4 h-4" />
+                  ) : (
+                    <Moon className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
+                    Theme
+                  </Label>
+                  <Select
+                    value={theme}
+                    onValueChange={(value) => setTheme(value)}
+                  >
+                    <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
+                      <SelectItem value="light" className="text-sm">
+                        Light
+                      </SelectItem>
+                      <SelectItem value="dark" className="text-sm">
+                        Dark
+                      </SelectItem>
+                      <SelectItem value="system" className="text-sm">
+                        System
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Right group: Call controls */}
+      <div className="flex items-center gap-4">
         {/* Mic */}
         <button
-          className={`p-4 rounded-full transition-colors duration-200 shadow-md
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-200/80 dark:bg-indigo-600/40 cursor-not-allowed text-indigo-300 dark:text-indigo-300/60"
+                ? "bg-indigo-100/50 dark:bg-indigo-500/10 cursor-not-allowed text-indigo-300 dark:text-indigo-500/40"
                 : isMicMuted
                   ? "bg-indigo-500 text-white"
-                  : "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"
+                  : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
             }
           `}
           onClick={() => {
@@ -175,9 +432,9 @@ const Controls = ({
           onMouseLeave={() => setIsHovered(null)}
         >
           {isMicMuted ? (
-            <Icons.MicOff className="w-4 h-4" />
+            <Icons.MicOff className="w-5 h-5" />
           ) : (
-            <Icons.MicrophoneIcon className="w-4 h-4" />
+            <Icons.MicrophoneIcon className="w-5 h-5" />
           )}
           {isHovered === "microphone" && (
             <ControlTooltip
@@ -189,12 +446,12 @@ const Controls = ({
 
         {/* Camera */}
         <button
-          className={`p-4 rounded-full transition-colors duration-200 shadow-md
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-200/80 dark:bg-indigo-600/40 cursor-not-allowed text-indigo-300 dark:text-indigo-300/60"
+                ? "bg-indigo-100/50 dark:bg-indigo-500/10 cursor-not-allowed text-indigo-300 dark:text-indigo-500/40"
                 : isCameraOn
-                  ? "bg-indigo-300/80 dark:bg-indigo-500/60 text-indigo-900/70 dark:text-indigo-200/80"
+                  ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
                   : "bg-indigo-500 text-white"
             }
           `}
@@ -208,9 +465,9 @@ const Controls = ({
           onMouseLeave={() => setIsHovered(null)}
         >
           {isCameraOn ? (
-            <Icons.Video className="w-4 h-4" />
+            <Icons.Video className="w-5 h-5" />
           ) : (
-            <Icons.VideoOff className="w-4 h-4" />
+            <Icons.VideoOff className="w-5 h-5" />
           )}
           {isHovered === "camera" && (
             <ControlTooltip
@@ -222,12 +479,12 @@ const Controls = ({
 
         {/* End call */}
         <button
-          className="p-4 rounded-full bg-red-500/90 hover:bg-red-600/90 text-white transition-colors shadow-md"
+          className="p-4 rounded-full w-12 h-12 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-colors"
           onClick={handleEndCall}
           onMouseEnter={() => setIsHovered("endCall")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.PhoneOff className="w-4 h-4" />
+          <Icons.PhoneOff className="w-5 h-5" />
           {isHovered === "endCall" && (
             <ControlTooltip text="End call" isHovered />
           )}

@@ -5,68 +5,85 @@
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Fira+Code&display=swap");
 
-:root {
-  /* New Color Palette */
-  --accent-purple: 119, 75, 229; /* #774BE5 */
-  --secondary-blue-gray: 94, 120, 143; /* #5E788F */
-  --dark-blue: 14, 28, 41; /* #0E1C29 */
-  --ui-blue: 50, 61, 104; /* #323D68 */
-  --light-gray: 216, 223, 229; /* #D8DFE5 */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262 83.3% 57.8%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83.3% 57.8%;
+    --radius: 0.5rem;
 
-  /* Main theme colors */
-  --meet-background: #f0f8ff;
-  --meet-surface: #ffffff;
-  --meet-surface-light: #d8dfe5;
+    /* Custom Meet Variables */
+    --accent-purple: 119, 75, 229;
+    --secondary-blue-gray: 94, 120, 143;
+    --dark-blue: 14, 28, 41;
+    --ui-blue: 50, 61, 104;
+    --light-gray: 216, 223, 229;
+    --meet-background: #f0f8ff;
+    --meet-surface: #ffffff;
+    --meet-surface-light: #d8dfe5;
+    --meet-primary: #774be5;
+    --meet-primary-rgb: var(--accent-purple);
+    --meet-secondary: #5e788f;
+    --meet-secondary-rgb: var(--secondary-blue-gray);
+    --meet-error: #ea4335;
+    --meet-success: #34a853;
+    --meet-warning: #fbbc04;
+    --meet-text-primary: #0e1c29;
+    --meet-text-secondary: #323d68;
+    --meet-border: rgba(119, 75, 229, 0.3);
+    --meet-hover: rgba(119, 75, 229, 0.1);
+  }
 
-  /* Primary colors */
-  --meet-primary: #774be5; /* Accent Purple */
-  --meet-primary-rgb: var(--accent-purple);
-  --meet-secondary: #5e788f;
-  --meet-secondary-rgb: var(--secondary-blue-gray);
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263 70% 50%;
 
-  /* Status colors */
-  --meet-error: #ea4335;
-  --meet-success: #34a853;
-  --meet-warning: #fbbc04;
-
-  /* Text and borders */
-  --meet-text-primary: #0e1c29;
-  --meet-text-secondary: #323d68;
-  --meet-border: rgba(119, 75, 229, 0.3);
-  --meet-hover: rgba(119, 75, 229, 0.1);
-
-  /* Gradient backgrounds */
-  --purple-gradient: linear-gradient(
-    135deg,
-    rgba(var(--accent-purple), 0.8) 0%,
-    rgba(var(--ui-blue), 0.7) 100%
-  );
-  --light-gradient: linear-gradient(
-    180deg,
-    var(--meet-surface) 0%,
-    var(--meet-background) 100%
-  );
-
-  /* System colors */
-  --foreground-rgb: var(--meet-text-primary);
-  --background-start-rgb: 240, 248, 255;
-  --background-end-rgb: 216, 223, 229;
-}
-
-.dark {
-  --meet-background: #181825;
-  --meet-surface: #232336;
-  --meet-surface-light: #232336;
-  --meet-primary: #a78bfa;
-  --meet-primary-rgb: 167, 139, 250;
-  --meet-secondary: #64748b;
-  --meet-secondary-rgb: 100, 116, 139;
-  --meet-text-primary: #f3f4f6;
-  --meet-text-secondary: #cbd5e1;
-  --meet-border: rgba(167, 139, 250, 0.3);
-  --meet-hover: rgba(167, 139, 250, 0.1);
-  --purple-gradient: linear-gradient(135deg, rgba(167,139,250,0.8) 0%, rgba(39,39,42,0.7) 100%);
-  --light-gradient: linear-gradient(180deg, #232336 0%, #181825 100%);
+    /* Custom Dark Mode Meet Variables */
+    --meet-background: #181825;
+    --meet-surface: #232336;
+    --meet-surface-light: #232336;
+    --meet-primary: #a78bfa;
+    --meet-primary-rgb: 167, 139, 250;
+    --meet-secondary: #64748b;
+    --meet-secondary-rgb: 100, 116, 139;
+    --meet-text-primary: #f3f4f6;
+    --meet-text-secondary: #cbd5e1;
+    --meet-border: rgba(167, 139, 250, 0.3);
+    --meet-hover: rgba(167, 139, 250, 0.1);
+  }
 }
 
 body {

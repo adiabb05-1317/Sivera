@@ -15,6 +15,7 @@ import {
   Code,
   VideoOffIcon,
   Video,
+  Settings,
 } from "lucide-react";
 import ClientOnly from "@/app/components/client-only";
 
@@ -36,6 +37,7 @@ export const Icons = {
   Crown: Crown,
   Code: Code,
   PhoneOff: PhoneOff,
+  Settings: Settings,
   Mic: () => {
     return (
       <svg
@@ -89,7 +91,13 @@ export const Icons = {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle cx="13" cy="13" r="10" stroke="currentColor" strokeWidth="2" />
+            <circle
+              cx="13"
+              cy="13"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
           </svg>
         }
       >
