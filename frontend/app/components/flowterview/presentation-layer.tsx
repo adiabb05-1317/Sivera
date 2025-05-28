@@ -1,12 +1,12 @@
 "use client";
 
+import React, { useEffect, useRef, useMemo, memo } from "react";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
-import { useEffect, useRef } from "react";
 import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
 import CodeEditor from "./CodeEditor";
-import QueryDisplay from "./now-answering";
+import TranscriptionInterface from "@/components/ui/transcription-interface";
 
 const UserTile = ({
   participant,
@@ -71,24 +71,76 @@ const UserTile = ({
   );
 };
 
-const TranscriptionsBox = () => (
-  <div className="h-full flex flex-col bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
-    {/* Header similar to coding challenge */}
-    <div className="flex justify-between items-center py-4 px-6 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200 dark:border-indigo-700">
-      <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-lg flex items-center gap-2 tracking-tight">
-        <Icons.Chat className="w-5 h-5 text-indigo-500 dark:text-indigo-300" />
-        <span>Transcriptions</span>
-      </h3>
-    </div>
+const TranscriptionsBox = memo(() => {
+  const {
+    currentBotTranscript,
+    currentUserTranscript,
+    currentChatHistory,
+    isBotSpeaking,
+    isUserSpeaking,
+  } = usePathStore();
 
-    {/* Content area */}
-    <div className="flex-1 p-6 bg-white dark:bg-[--meet-surface]">
-      <div className="text-sm text-gray-700 dark:text-gray-200">
-        <p>Live transcriptions will appear here...</p>
+  // Memoize messages conversion to prevent unnecessary recalculations
+  const messages = useMemo(
+    () =>
+      currentChatHistory.map((msg, index) => ({
+        id: `${index}`,
+        sender:
+          msg.role === "assistant" ? ("Flotia" as const) : ("You" as const),
+        content: msg.content,
+        timestamp: new Date().toISOString(),
+      })),
+    [currentChatHistory]
+  );
+
+  // Memoize speaker logic to prevent unnecessary recalculations
+  const { currentSpeaker, liveTranscription, isTranscribing } = useMemo(() => {
+    let speaker: "Flotia" | "You" | null = null;
+    let transcript = "";
+
+    if (isUserSpeaking && currentUserTranscript) {
+      speaker = "You";
+      transcript = currentUserTranscript;
+    } else if (isBotSpeaking && currentBotTranscript) {
+      speaker = "Flotia";
+      transcript = currentBotTranscript;
+    }
+
+    return {
+      currentSpeaker: speaker,
+      liveTranscription: transcript,
+      isTranscribing: isBotSpeaking || isUserSpeaking,
+    };
+  }, [
+    isUserSpeaking,
+    currentUserTranscript,
+    isBotSpeaking,
+    currentBotTranscript,
+  ]);
+
+  return (
+    <div className="h-full flex flex-col bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
+      {/* Header */}
+      <div className="flex justify-between items-center py-3 px-4 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200/60 dark:border-indigo-700/60">
+        <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
+          <Icons.Chat className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+          <span>Conversation</span>
+        </h3>
       </div>
+
+      {/* Content area with TranscriptionInterface */}
+      <TranscriptionInterface
+        messages={messages}
+        liveTranscription={liveTranscription}
+        isTranscribing={isTranscribing}
+        currentSpeaker={currentSpeaker}
+        className="h-full"
+      />
     </div>
-  </div>
-);
+  );
+});
+
+TranscriptionsBox.displayName = "TranscriptionsBox";
 
 const Presentation = () => {
   const {
@@ -173,17 +225,6 @@ const Presentation = () => {
         </div>
       ) : (
         <section className="relative flex-grow w-full h-full overflow-hidden bg-transparent">
-          {/* QueryDisplay for user transcripts */}
-          <div
-            className={`absolute z-50 top-4 transition-all duration-500 ease-in-out max-w-md ${
-              isCodeEditorOpen
-                ? "left-1/2 -translate-x-1/2"
-                : "left-1/2 -translate-x-1/2"
-            }`}
-          >
-            {currentUserTranscript && <QueryDisplay />}
-          </div>
-
           <div
             className={`absolute inset-0 p-6 z-10 transition-all duration-500 ease-in-out ${
               isCodeEditorOpen ? "left-0 right-0" : "left-0 right-0"
