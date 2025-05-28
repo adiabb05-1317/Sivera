@@ -220,6 +220,29 @@ class DatabaseManager:
             logger.error(f"Error deleting data: {e}")
             raise DatabaseError(f"Data deletion failed: {e}")
 
+    def update_array_field(
+        self, table: str, field: str, values: List[str], query_params: Dict
+    ) -> List[Dict]:
+        """Update an array field in PostgreSQL with proper array handling."""
+        if not self.connected:
+            raise ConnectionError("Supabase not connected")
+
+        try:
+            # Convert Python list to PostgreSQL array format
+            array_value = values if isinstance(values, list) else []
+
+            query = self.supabase.table(table).update({field: array_value})
+
+            for key, value in query_params.items():
+                query = query.eq(key, value)
+
+            result = query.execute()
+            logger.debug(f"Array field {field} updated successfully in {table}")
+            return result.data
+        except Exception as e:
+            logger.error(f"Error updating array field {field}: {e}")
+            raise DatabaseError(f"Array field update failed: {e}")
+
     def fetch_scalar(self, table: str, column: str, query_params: Dict = None) -> Any:
         """Fetch a single value from a table."""
         if not self.connected:

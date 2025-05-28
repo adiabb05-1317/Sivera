@@ -113,10 +113,13 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         message = MIMEMultipart()
         message["From"] = f"Flowterview Team <{Config.SMTP_USER}>"
         message["To"] = email
-        message["Subject"] = f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
+        message["Subject"] = (
+            f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
+        )
 
         # Make sure the token is URL safe and properly encoded
         import urllib.parse
+
         encoded_token = urllib.parse.quote_plus(token)
         verify_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview?token={encoded_token}"
         logger.info(f"Generated verification URL with token: {encoded_token[:10]}...")
@@ -166,6 +169,7 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         except Exception as smtp_error:
             logger.error(f"SMTP error: {str(smtp_error)}")
             import traceback
+
             smtp_trace = traceback.format_exc()
             logger.error(f"SMTP error trace: {smtp_trace}")
         logger.info(f"Verification email sent successfully to {email}")
@@ -267,14 +271,12 @@ async def send_invite(
         interview_id = None
         if matching_job:
             # Find an interview for this job with status 'active' or 'draft'
-            all_interviews = db.fetch_all(
-                "interviews",
-                {"job_id": matching_job["id"]}
+            all_interviews = db.fetch_all("interviews", {"job_id": matching_job["id"]})
+            logger.info(
+                f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}"
             )
-            logger.info(f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}")
             matching_interview = next(
-                (i for i in all_interviews if i["status"] in ("active", "draft")),
-                None
+                (i for i in all_interviews if i["status"] in ("active", "draft")), None
             )
             logger.info(f"[send-invite] Matching interview: {matching_interview}")
             if matching_interview:
@@ -311,8 +313,12 @@ async def send_invite(
 
             else:
                 # No interview found, return error
-                logger.error(f"No active interview found for job {request.job} in org {request.organization_id}")
-                raise HTTPException(status_code=404, detail="No active interview found for this job.")
+                logger.error(
+                    f"No active interview found for job {request.job} in org {request.organization_id}"
+                )
+                raise HTTPException(
+                    status_code=404, detail="No active interview found for this job."
+                )
 
             # Generate interview link
             interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id}"
@@ -589,7 +595,7 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             logger.warning(f"Token not found: {request.token[:10]}...")
             return {
                 "valid": False,
-                "message": "Invalid verification token. Please check your email and try again."
+                "message": "Invalid verification token. Please check your email and try again.",
             }
 
         # Check if token is expired
@@ -603,13 +609,13 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                 logger.warning(f"Token expired at {expires_at}")
                 return {
                     "valid": False,
-                    "message": "This verification link has expired. Please request a new invitation."
+                    "message": "This verification link has expired. Please request a new invitation.",
                 }
         except Exception as date_error:
             logger.error(f"Error parsing dates: {str(date_error)}")
             return {
                 "valid": False,
-                "message": "Error validating token expiration. Please try again or request a new invitation."
+                "message": "Error validating token expiration. Please try again or request a new invitation.",
             }
 
         # Token is valid
@@ -620,15 +626,18 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             "email": token_data.get("email", ""),
             "job_title": token_data.get("job_title", ""),
             "organization_id": token_data.get("organization_id", ""),
-            "interview_id": token_data.get("interview_id", "")  # Include interview_id in response
+            "interview_id": token_data.get(
+                "interview_id", ""
+            ),  # Include interview_id in response
         }
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
         import traceback
+
         logger.error(f"Detailed error trace: {traceback.format_exc()}")
         return {
             "valid": False,
-            "message": "An error occurred while verifying your token. Please try again or request a new invitation."
+            "message": "An error occurred while verifying your token. Please try again or request a new invitation.",
         }
 
 
@@ -654,7 +663,7 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
         if not token_data:
             return {
                 "success": False,
-                "message": "Invalid verification token. Please check your email and try again."
+                "message": "Invalid verification token. Please check your email and try again.",
             }
 
         # Check if token is expired
@@ -666,13 +675,13 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
             if expires_at < datetime.now():
                 return {
                     "success": False,
-                    "message": "This verification link has expired. Please request a new invitation."
+                    "message": "This verification link has expired. Please request a new invitation.",
                 }
         except Exception as date_error:
             logger.error(f"Error comparing dates: {str(date_error)}")
             return {
                 "success": False,
-                "message": "Error validating token expiration. Please try again or request a new invitation."
+                "message": "Error validating token expiration. Please try again or request a new invitation.",
             }
 
         # Get organization ID and interview ID
@@ -688,7 +697,7 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
             else:
                 return {
                     "success": False,
-                    "message": "No valid organization found. Please contact support."
+                    "message": "No valid organization found. Please contact support.",
                 }
 
         # Check if candidate already exists
@@ -707,9 +716,9 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                 {
                     "name": token_data.get("name", existing_candidate.get("name")),
                     "organization_id": org_id,
-                    "updated_at": datetime.now().isoformat()
+                    "updated_at": datetime.now().isoformat(),
                 },
-                {"id": candidate_id}
+                {"id": candidate_id},
             )
         else:
             # Create new candidate
@@ -723,11 +732,7 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
             if job_title:
                 # Try to find an existing job with this title
                 existing_job = db.fetch_one(
-                    "jobs",
-                    {
-                        "title": job_title,
-                        "organization_id": org_id
-                    }
+                    "jobs", {"title": job_title, "organization_id": org_id}
                 )
                 if existing_job:
                     job_id = existing_job.get("id")
@@ -742,8 +747,8 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                         "id": job_id,
                         "title": job_title or "Software Engineer",
                         "organization_id": org_id,
-                        "created_at": datetime.now().isoformat()
-                    }
+                        "created_at": datetime.now().isoformat(),
+                    },
                 )
                 logger.info(f"Created new job with ID: {job_id}")
 
@@ -756,8 +761,8 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                     "email": token_data.get("email", ""),
                     "organization_id": org_id,
                     "job_id": job_id,
-                    "created_at": datetime.now().isoformat()
-                }
+                    "created_at": datetime.now().isoformat(),
+                },
             )
 
         # If we have an interview_id, add candidate to it
@@ -770,13 +775,17 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                     db.update(
                         "interviews",
                         {"candidates_invited": updated_invited},
-                        {"id": interview_id}
+                        {"id": interview_id},
                     )
-                logger.info(f"Added candidate {candidate_id} to interview {interview_id}")
+                logger.info(
+                    f"Added candidate {candidate_id} to interview {interview_id}"
+                )
 
         # Generate interview URL
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
-        interview_url = f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
+        interview_url = (
+            f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
+        )
 
         # Delete the used token
         db.delete("verification_tokens", {"token": token_data["token"]})
@@ -785,16 +794,17 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
         return {
             "success": True,
             "message": "Registration completed successfully",
-            "interview_url": interview_url
+            "interview_url": interview_url,
         }
 
     except Exception as e:
         logger.error(f"Error completing registration: {str(e)}")
         import traceback
+
         logger.error(f"Detailed error trace: {traceback.format_exc()}")
         return {
             "success": False,
-            "message": "An error occurred while completing your registration. Please try again or contact support."
+            "message": "An error occurred while completing your registration. Please try again or contact support.",
         }
 
 
@@ -921,7 +931,7 @@ async def list_interviews(request: Request):
         # This will use idx_jobs_org_id_optimized and idx_interviews_job_id_optimized
         interviews = db.fetch_all(
             table="interviews",
-            select="id, status, created_at, candidates_invited, jobs!inner(id, title)",
+            select="id, status, created_at, candidates_invited, job_id, jobs!inner(id, title)",
             eq_filters={"jobs.organization_id": user_context.organization_id},
             order_by=(
                 "created_at",
@@ -953,6 +963,7 @@ async def list_interviews(request: Request):
                     "candidates": candidate_count,
                     "status": interview.get("status", "open"),
                     "date": date,
+                    "job_id": interview.get("job_id"),
                 }
             )
 
@@ -998,7 +1009,10 @@ async def update_interview(
         if not current:
             raise HTTPException(status_code=404, detail="Interview not found")
         # Merge current record with updates
-        update_dict = {**current, **{k: v for k, v in updates.dict().items() if v is not None}}
+        update_dict = {
+            **current,
+            **{k: v for k, v in updates.dict().items() if v is not None},
+        }
         allowed_fields = {"title", "organization_id", "created_by", "status"}
         update_dict = {k: v for k, v in update_dict.items() if k in allowed_fields}
         db.update("interviews", update_dict, {"id": interview_id})
@@ -1024,7 +1038,7 @@ async def get_interview(interview_id: str, request: Request):
         # Optimized query with single JOIN (interviews + jobs + interview_flows)
         interviews = db.fetch_all(
             table="interviews",
-            select="id,status,created_at,candidates_invited,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(react_flow_json))",
+            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(react_flow_json))",
             query_params={"id": interview_id},
             limit=1,  # Ensure only one record is fetched
         )
@@ -1042,6 +1056,58 @@ async def get_interview(interview_id: str, request: Request):
                 detail="Access denied: Interview not in your organization",
             )
 
+        # Fetch ALL candidates for this job using JOIN for better performance
+        job_candidates = db.fetch_all(
+            table="candidates",
+            select="id,name,email,status,job_id,created_at",
+            eq_filters={"job_id": job_data.get("id")},
+            order_by=("created_at", True),  # Most recent first
+        )
+
+        # Fetch candidate_interviews to get room_url and bot_token for invited candidates
+        candidate_interviews = db.fetch_all(
+            table="candidate_interviews",
+            select="candidate_id,status,room_url,bot_token,scheduled_at,started_at,completed_at",
+            eq_filters={"interview_id": interview_id},
+        )
+
+        # Create a map of candidate_id to interview details
+        candidate_interview_map = {
+            ci["candidate_id"]: ci for ci in candidate_interviews
+        }
+
+        # Enhance candidates with interview status and room details
+        enhanced_candidates = []
+        invited_candidate_ids = set(interview_data.get("candidates_invited", []))
+
+        for candidate in job_candidates:
+            candidate_id = candidate["id"]
+            interview_details = candidate_interview_map.get(candidate_id)
+
+            enhanced_candidate = {
+                **candidate,
+                "is_invited": candidate_id in invited_candidate_ids,
+                "interview_status": (
+                    interview_details.get("status") if interview_details else None
+                ),
+                "room_url": (
+                    interview_details.get("room_url") if interview_details else None
+                ),
+                "bot_token": (
+                    interview_details.get("bot_token") if interview_details else None
+                ),
+                "scheduled_at": (
+                    interview_details.get("scheduled_at") if interview_details else None
+                ),
+                "started_at": (
+                    interview_details.get("started_at") if interview_details else None
+                ),
+                "completed_at": (
+                    interview_details.get("completed_at") if interview_details else None
+                ),
+            }
+            enhanced_candidates.append(enhanced_candidate)
+
         # Extract flow data from the nested structure within job_data
         flow_data = None
         # The 'interview_flows' object is now expected to be part of job_data
@@ -1055,8 +1121,9 @@ async def get_interview(interview_id: str, request: Request):
                 "react_flow_json": flow_details_from_job.get("react_flow_json")
             }
 
-        # Calculate candidate count
-        candidate_count = len(interview_data.get("candidates_invited", []))
+        # Separate invited and available candidates
+        invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
+        available_candidates = [c for c in enhanced_candidates if not c["is_invited"]]
 
         # Build optimized response
         response = {
@@ -1065,6 +1132,7 @@ async def get_interview(interview_id: str, request: Request):
                 "status": interview_data.get("status", "draft"),
                 "created_at": interview_data.get("created_at"),
                 "candidates_invited": interview_data.get("candidates_invited", []),
+                "job_id": interview_data.get("job_id"),
             },
             "job": {
                 "id": job_data.get("id"),
@@ -1074,11 +1142,18 @@ async def get_interview(interview_id: str, request: Request):
                 "flow_id": job_data.get("flow_id"),
             },
             "flow": flow_data,
-            "candidates": candidate_count,
+            "candidates": {
+                "invited": invited_candidates,
+                "available": available_candidates,
+                "total_job_candidates": len(enhanced_candidates),
+                "invited_count": len(invited_candidates),
+                "available_count": len(available_candidates),
+            },
         }
 
         logger.info(
-            f"Retrieved interview {interview_id} for organization {user_context.organization_id}"
+            f"Retrieved interview {interview_id} for organization {user_context.organization_id} "
+            f"with {len(invited_candidates)} invited and {len(available_candidates)} available candidates"
         )
         return response
 

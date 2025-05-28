@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, ArrowRight, Sparkles } from "lucide-react";
+import { Search, Filter, ArrowRight, Mail, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -8,12 +8,41 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
+import { useToast } from "@/hooks/use-toast";
+
+interface Interview {
+  id: string;
+  title: string;
+  status: "draft" | "active" | "completed";
+  candidates: number;
+  job_id: string;
+  date: string;
+  created_at: string;
+}
+
+interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  status?: string;
+  job_id?: string;
+}
 
 export default function InterviewsPage() {
   const router = useRouter();
-  const [interviews, setInterviews] = useState<any[]>([]);
+  const { toast } = useToast();
+  const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(
+    null
+  );
+  const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
+    []
+  );
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   useEffect(() => {
     const fetchInterviews = async () => {
@@ -28,10 +57,12 @@ export default function InterviewsPage() {
         );
         console.log(resp);
         if (!resp.ok) throw new Error("Failed to fetch interviews");
-        const data = await resp.json();
+        const data: Interview[] = await resp.json();
         setInterviews(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch interviews");
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch interviews";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -39,11 +70,96 @@ export default function InterviewsPage() {
     fetchInterviews();
   }, []);
 
+  // Fetch available candidates for bulk invite
+  const fetchAvailableCandidates = async (interview: Interview) => {
+    setLoadingCandidates(true);
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
+        "http://localhost:8010";
+
+      if (!interview.job_id) {
+        throw new Error("No job_id found for this interview");
+      }
+
+      // Directly fetch candidates by job_id - much simpler approach
+      const candidatesResp = await authenticatedFetch(
+        `${backendUrl}/api/v1/candidates/by-job/${interview.job_id}`
+      );
+
+      if (!candidatesResp.ok) {
+        if (candidatesResp.status === 404) {
+          // No candidates found for this job
+          setAvailableCandidates([]);
+          setSelectedInterview(interview);
+          setBulkInviteOpen(true);
+          return;
+        }
+        throw new Error(`Failed to fetch candidates: ${candidatesResp.status}`);
+      }
+
+      const allCandidates = await candidatesResp.json();
+
+      // Show all candidates - the dialog can handle filtering if needed
+      setAvailableCandidates(allCandidates || []);
+      setSelectedInterview(interview);
+      setBulkInviteOpen(true);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch candidates";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  const handleBulkInviteClick = (e: React.MouseEvent, interview: Interview) => {
+    e.stopPropagation();
+    fetchAvailableCandidates(interview);
+  };
+
+  const handleInvitesSent = () => {
+    // Refresh the interviews list
+    setBulkInviteOpen(false);
+    setSelectedInterview(null);
+    setAvailableCandidates([]);
+
+    // Optionally refresh the interviews list to update candidate counts
+    const fetchInterviews = async () => {
+      try {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
+          "http://localhost:8010";
+        const resp = await authenticatedFetch(
+          `${backendUrl}/api/v1/interviews`
+        );
+        if (resp.ok) {
+          const data: Interview[] = await resp.json();
+          setInterviews(data);
+        }
+      } catch (err) {
+        console.error("Failed to refresh interviews:", err);
+      }
+    };
+    fetchInterviews();
+  };
+
   // Status badge color mapping
-  const statusColors = {
-    active: "bg-green-100 text-green-800",
-    completed: "bg-blue-100 text-blue-800",
-    draft: "bg-gray-100 text-gray-800",
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300";
+      case "completed":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300";
+      case "draft":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+    }
   };
 
   return (
@@ -105,27 +221,69 @@ export default function InterviewsPage() {
                           {interview.title}
                         </h3>
                         <Badge
-                          variant={
-                            interview.status === "completed"
-                              ? "secondary"
-                              : "outline"
-                          }
-                          className={`${
-                            interview.status === "completed"
-                              ? "bg-indigo-100/90 dark:bg-indigo-900/40"
-                              : ""
-                          } font-normal text-xs`}
+                          variant="outline"
+                          className={`${getStatusBadgeClass(
+                            interview.status
+                          )} font-normal text-xs border-0`}
                         >
                           {interview.status}
                         </Badge>
                       </div>
                       <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                        <span>{interview.candidates} candidates</span>
-                        <span className="mx-1">&middot;</span>
+                        <Users className="mr-1 h-3 w-3" />
+                        <span>{interview.candidates || 0} candidates</span>
+                        <span className="mx-2">&middot;</span>
+                        <span className="text-xs">
+                          {new Date(interview.created_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <ArrowRight className="mx-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                    <div className="ml-4 flex-shrink-0 flex items-center gap-2">
+                      {interview.status === "active" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-600 dark:hover:bg-green-900/20"
+                            onClick={(e) => handleBulkInviteClick(e, interview)}
+                            disabled={loadingCandidates}
+                          >
+                            <Mail className="mr-1 h-3 w-3" />
+                            {loadingCandidates ? "Loading..." : "Bulk Invite"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/dashboard/interviews/${interview.id}`
+                              );
+                            }}
+                          >
+                            <Users className="mr-1 h-3 w-3" />
+                            View
+                          </Button>
+                        </>
+                      )}
+                      {interview.status !== "active" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(
+                              `/dashboard/interviews/${interview.id}`
+                            );
+                          }}
+                        >
+                          <Users className="mr-1 h-3 w-3" />
+                          View
+                        </Button>
+                      )}
+                      <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     </div>
                   </CardContent>
                 </li>
@@ -138,6 +296,18 @@ export default function InterviewsPage() {
           </ul>
         )}
       </Card>
+
+      {/* Bulk Invite Dialog */}
+      {selectedInterview && (
+        <BulkInviteDialog
+          open={bulkInviteOpen}
+          onOpenChange={setBulkInviteOpen}
+          interviewId={selectedInterview.id}
+          jobTitle={selectedInterview.title}
+          availableCandidates={availableCandidates}
+          onInvitesSent={handleInvitesSent}
+        />
+      )}
     </div>
   );
 }
