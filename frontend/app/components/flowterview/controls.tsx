@@ -60,12 +60,6 @@ const Controls = ({
   const [isHovered, setIsHovered] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const participantsRef = useRef<HTMLDivElement>(null);
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
-  const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>("");
-  const [selectedOutputDevice, setSelectedOutputDevice] = useState<string>("");
 
   // Store states
   const { showToast } = usePathStore();
@@ -86,44 +80,6 @@ const Controls = ({
 
   // Theme states
   const { theme, setTheme } = useTheme();
-
-  // Get available media devices
-  useEffect(() => {
-    const getDevices = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-
-        const audioInputs = devices.filter(
-          (device) => device.kind === "audioinput"
-        );
-        const videoInputs = devices.filter(
-          (device) => device.kind === "videoinput"
-        );
-        const audioOutputs = devices.filter(
-          (device) => device.kind === "audiooutput"
-        );
-
-        setAudioDevices(audioInputs);
-        setVideoDevices(videoInputs);
-        setOutputDevices(audioOutputs);
-
-        // Set default selections if none selected
-        if (audioInputs.length > 0 && !selectedAudioDevice) {
-          setSelectedAudioDevice(audioInputs[0].deviceId);
-        }
-        if (videoInputs.length > 0 && !selectedVideoDevice) {
-          setSelectedVideoDevice(videoInputs[0].deviceId);
-        }
-        if (audioOutputs.length > 0 && !selectedOutputDevice) {
-          setSelectedOutputDevice(audioOutputs[0].deviceId);
-        }
-      } catch (error) {
-        console.error("Error getting media devices:", error);
-      }
-    };
-
-    getDevices();
-  }, [selectedAudioDevice, selectedVideoDevice, selectedOutputDevice]);
 
   const handleConnectCallAndPlayFirstSpeech = async () => {
     if (!permissionGranted) {
@@ -227,8 +183,6 @@ const Controls = ({
         </button>
       </div>
 
-      <Separator orientation="vertical" className="h-8" />
-
       {/* Middle group: Settings and theme */}
       <div className="flex items-center gap-4">
         {/* Settings */}
@@ -254,122 +208,17 @@ const Controls = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[400px] overflow-hidden rounded-3xl shadow-lg p-0 border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl0"
+            className="w-[400px] overflow-hidden rounded-2xl shadow-lg p-0 border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl0"
             align="end"
           >
-            <div className="flex justify-between items-center py-3 px-3 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200 dark:border-indigo-700">
-              <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-lg flex items-center gap-2 tracking-tight">
+            <div className="flex justify-between items-center py-2.5 px-3 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200/60 dark:border-indigo-700/60">
+              <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-xs flex items-center gap-2 tracking-tight">
                 <Icons.Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
-                <span className="text-sm">Settings</span>
+                <span>Settings</span>
               </h3>
             </div>
 
-            <div className="p-5 space-y-4">
-              {/* Audio Settings */}
-              <div className="flex flex-row gap-3 items-center">
-                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
-                  <Volume2 className="w-4 h-4" />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
-                      Input
-                    </Label>
-                    <Select
-                      value={selectedAudioDevice}
-                      onValueChange={(value) => {
-                        setSelectedAudioDevice(value);
-                        console.log("Audio input changed:", value);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
-                        <SelectValue placeholder="Select microphone" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
-                        {audioDevices.map((device) => (
-                          <SelectItem
-                            key={device.deviceId}
-                            value={device.deviceId}
-                            className="text-sm"
-                          >
-                            {device.label ||
-                              `Microphone ${device.deviceId.slice(0, 8)}...`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
-                      Output
-                    </Label>
-                    <Select
-                      value={selectedOutputDevice}
-                      onValueChange={(value) => {
-                        setSelectedOutputDevice(value);
-                        console.log("Audio output changed:", value);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
-                        <SelectValue placeholder="Select speaker" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
-                        {outputDevices.map((device) => (
-                          <SelectItem
-                            key={device.deviceId}
-                            value={device.deviceId}
-                            className="text-sm"
-                          >
-                            {device.label ||
-                              `Speaker ${device.deviceId.slice(0, 8)}...`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-px bg-border" />
-
-              {/* Video Settings */}
-              <div className="flex flex-row gap-3 items-center">
-                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
-                  <Icons.Video className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
-                    Camera
-                  </Label>
-                  <Select
-                    value={selectedVideoDevice}
-                    onValueChange={(value) => {
-                      setSelectedVideoDevice(value);
-                      console.log("Video device changed:", value);
-                    }}
-                  >
-                    <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
-                      <SelectValue placeholder="Select camera" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
-                      {videoDevices.map((device) => (
-                        <SelectItem
-                          key={device.deviceId}
-                          value={device.deviceId}
-                          className="text-sm"
-                        >
-                          {device.label ||
-                            `Camera ${device.deviceId.slice(0, 8)}...`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="h-px bg-border" />
-
+            <div className="p-5">
               {/* Theme Settings */}
               <div className="flex flex-row gap-3 items-center">
                 <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
@@ -408,6 +257,8 @@ const Controls = ({
           </PopoverContent>
         </Popover>
       </div>
+
+      <Separator orientation="vertical" className="h-8" />
 
       {/* Right group: Call controls */}
       <div className="flex items-center gap-4">

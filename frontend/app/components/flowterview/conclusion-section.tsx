@@ -52,7 +52,7 @@ const ConclusionSection = () => {
               Session Complete
             </h2>
             <p className="text-indigo-500/80 dark:text-gray-300 font-medium mb-4">
-              Your Flowterview session has been successfully completed.
+              Your interview session has been successfully completed.
             </p>
 
             {/* Session stats */}

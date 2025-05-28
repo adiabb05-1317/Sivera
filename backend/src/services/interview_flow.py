@@ -181,8 +181,8 @@ class InterviewFlow:
                     api_key=os.getenv("FAL_API_KEY"),
                     aiohttp_session=self.aiohttp_session,
                     params=SmartTurnParams(
-                        stop_secs=2.5,  # Time to wait after speech ends before considering turn complete
-                        pre_speech_ms=0.0,  # No delay before starting to process speech
+                        stop_secs=2,  # Time to wait after speech ends before considering turn complete
+                        pre_speech_ms=0.3,  # No delay before starting to process speech
                         max_duration_secs=8.0,  # Maximum length of a single turn to maintain natural conversation
                     ),
                 ),

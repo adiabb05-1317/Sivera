@@ -143,6 +143,10 @@ type TPathStore = {
   // Local video stream
   localVideoStream: MediaStream | null;
   setLocalVideoStream: (stream: MediaStream | null) => void;
+
+  // Editor settings
+  editorFontSize: number;
+  setEditorFontSize: (size: number) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -176,7 +180,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Multi-user participants state
   participants: [
     { id: "user", name: "User", isTalking: false, color: "#FFA500" },
-    { id: "bot", name: "Flowterview", isTalking: false, color: "#29e9ac" },
+    { id: "bot", name: "Flotia", isTalking: false, color: "#29e9ac" },
   ],
   setParticipants: (participants: Participant[]) => set({ participants }),
   addParticipant: (participant: Participant) =>
@@ -256,11 +260,15 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setLocalVideoStream: (stream: MediaStream | null) =>
     set({ localVideoStream: stream }),
 
+  // Editor settings
+  editorFontSize: 18,
+  setEditorFontSize: (size: number) => set({ editorFontSize: size }),
+
   resetStore: () => {
     set({
       participants: [
         { id: "user", name: "User", isTalking: false, color: "#FFA500" },
-        { id: "bot", name: "Flowterview", isTalking: false, color: "#29e9ac" },
+        { id: "bot", name: "Flotia", isTalking: false, color: "#29e9ac" },
       ],
       toasts: [],
       sources: [],
@@ -296,6 +304,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       codingProblem: null,
       rtviClient: null,
       localVideoStream: null,
+      editorFontSize: 18,
     });
   },
 
