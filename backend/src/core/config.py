@@ -32,6 +32,7 @@ class Config:
     # API Keys and Sensitive Data (from .env)
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
     DAILY_API_KEY = os.getenv("DAILY_API_KEY", "")
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
     DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
@@ -71,8 +72,8 @@ class Config:
     KEYWORD_WEIGHT = 0.3
 
     # LLM Configuration
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
-    LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.0-flash")
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
+    LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
 
     # CORS Configuration
     CORS_ORIGINS = ["*"]  # Allow all origins in development
@@ -104,6 +105,12 @@ class Config:
                 "speed": float(os.getenv("CARTESIA_SPEED", "-0.5")),
                 "emotion": os.getenv("CARTESIA_EMOTION", "positivity:high").split(","),
             },
+        },
+        "rime": {
+            "api_key": os.getenv("RIME_API_KEY"),
+            "voice_id": os.getenv("RIME_VOICE_ID"),
+            "model": os.getenv("RIME_MODEL", "mistv2"),
+            "sample_rate": int(os.getenv("RIME_SAMPLE_RATE", "48000")),
         },
     }
 

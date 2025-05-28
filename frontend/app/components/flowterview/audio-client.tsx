@@ -19,7 +19,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const { sources, setSources } = usePathStore();
   const { setCurrentChatHistory } = usePathStore();
   const { currentBotTranscript, setCurrentBotTranscript } = usePathStore();
-  // const { setCurrentUserTranscript } = usePathStore();
+  const { setCurrentUserTranscript } = usePathStore();
   const { isSpeakerOn, isMicMuted } = usePathStore();
   const { connectionStatus, setConnectionStatus } = usePathStore();
   const {
@@ -48,7 +48,29 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const updateThrottleMs = 50; // Throttle updates to every 50ms
+
+  // Track the current messages being built
   const currentBotMessageRef = useRef<string>("");
+  const latestUserTranscriptRef = useRef<string>("");
+
+  // Track complete messages from start to finish
+  const completeUserMessageRef = useRef<string>("");
+  const completeBotMessageRef = useRef<string>("");
+  const botJustStoppedRef = useRef<boolean>(false);
+
+  // Throttled transcript update function
+  const throttledTranscriptUpdate = useCallback(
+    (updateFn: () => void, forceUpdate = false) => {
+      const now = Date.now();
+      if (forceUpdate || now - lastUpdateTimeRef.current > updateThrottleMs) {
+        updateFn();
+        lastUpdateTimeRef.current = now;
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -176,14 +198,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
     client.on(RTVIEvent.UserTranscript, (data) => {
       console.log("User:", data.text);
-
+      // Just update our ref with the latest transcript
       if (data.final) {
-        const currentHistory = usePathStore.getState().currentChatHistory;
-        const newMessage: Message = {
-          role: "user",
-          content: data.text,
-        };
-        setCurrentChatHistory([...currentHistory, newMessage]);
       }
     });
 
@@ -191,7 +207,21 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       console.log("User stopped speaking - triggering UI update");
       setIsUserSpeaking(false);
       setBotState("thinking");
-      // setCurrentUserTranscript(""); // Clear the live transcript
+
+      // Now append the final transcript to chat history
+      const finalTranscript = latestUserTranscriptRef.current.trim();
+      if (finalTranscript) {
+        const currentHistory = usePathStore.getState().currentChatHistory;
+        const newMessage: Message = {
+          role: "user",
+          content: finalTranscript,
+        };
+        setCurrentChatHistory([...currentHistory, newMessage]);
+      }
+
+      // Clear everything
+      // setCurrentUserTranscript("");
+      latestUserTranscriptRef.current = "";
     });
 
     client.on(RTVIEvent.BotStartedSpeaking, () => {
@@ -348,6 +378,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
             try {
               const message =
                 typeof data === "string" ? JSON.parse(data) : data;
+              if (message?.text && message?.text !== "") {
+                setCurrentUserTranscript(message.text);
+              }
 
               if (message && typeof message === "object") {
                 if (message?.sources?.length > 0) {
