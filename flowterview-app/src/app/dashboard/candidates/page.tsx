@@ -178,10 +178,6 @@ export default function CandidatesPage() {
         return;
       }
 
-      console.log("candidate", candidate);
-      console.log("organizationId", organizationId);
-      console.log("senderId", senderId);
-
       const res = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,
         {
@@ -404,16 +400,16 @@ export default function CandidatesPage() {
                   className="transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
                   onClick={() => setSelectedCandidate(candidate)}
                 >
-                  <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {candidate.name}
                   </td>
-                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {candidate.email}
                   </td>
-                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {candidate.jobs?.title || "-"}
                   </td>
-                  <td className="px-6 py-5 whitespace-nowrap text-sm">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm">
                     <span
                       className={
                         statusColors[candidate.status] ||
@@ -425,7 +421,7 @@ export default function CandidatesPage() {
                       </Badge>
                     </span>
                   </td>
-                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {candidate.created_at
                       ? new Date(candidate.created_at).toLocaleDateString()
                       : "-"}

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, Users, CheckCircle, Loader2 } from "lucide-react";
+import { Mail, Users, Loader2, Check } from "lucide-react";
 import { authenticatedFetch } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -98,7 +98,6 @@ export function BulkInviteDialog({
       toast({
         title: "No candidates selected",
         description: "Please select at least one candidate to send invites.",
-        variant: "destructive",
       });
       return;
     }
@@ -240,7 +239,7 @@ export function BulkInviteDialog({
             </div>
 
             {/* Candidates List */}
-            <Card className="max-h-60 overflow-y-auto">
+            <Card className="max-h-60 overflow-y-auto p-0">
               <CardContent className="p-0">
                 {availableCandidates.length === 0 ? (
                   <div className="p-6 text-center text-gray-500 dark:text-gray-400">
@@ -280,7 +279,7 @@ export function BulkInviteDialog({
                                   }`}
                                 >
                                   {isSelected && (
-                                    <CheckCircle className="w-3 h-3 text-white" />
+                                    <Check className="w-3 h-3 text-white" />
                                   )}
                                 </div>
                                 <div>
@@ -311,11 +310,11 @@ export function BulkInviteDialog({
           /* Status Display */
           <div className="space-y-4">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-4">
                   {inviteStatus?.scheduled_count ===
                   selectedCandidates.length ? (
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <Check className="h-6 w-6 text-green-600" />
                   ) : (
                     <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
                   )}

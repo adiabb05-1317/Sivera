@@ -122,6 +122,7 @@ export default function InterviewDetailsPage() {
         );
         if (!resp.ok) throw new Error("Failed to fetch interview details");
         const data: InterviewData = await resp.json();
+        console.log(data);
 
         setJob(data.job);
         setInterviewStatus(data.interview.status || "draft");
@@ -177,10 +178,10 @@ export default function InterviewDetailsPage() {
         </Button>
         <div className="flex flex-col justify-center gap-1">
           <h2 className="text-xl font-bold dark:text-white">
-            Interview Details
+            {job?.title || "Loading..."}
           </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
-            {job?.title || "Interview"}
+            Interview Details
           </h4>
         </div>
       </div>
@@ -276,28 +277,6 @@ export default function InterviewDetailsPage() {
                       <p className="text-gray-500 dark:text-gray-400 mb-4">
                         Get started by adding candidates to this interview.
                       </p>
-                      <div className="flex justify-center gap-3">
-                        {availableCandidates.length > 0 && (
-                          <Button
-                            onClick={() => setBulkInviteOpen(true)}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Bulk Invite {availableCandidates.length} Candidates
-                          </Button>
-                        )}
-                        <Button
-                          onClick={() =>
-                            router.push(
-                              `/dashboard/candidates/invite?interview=${id}`
-                            )
-                          }
-                          variant="outline"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Individual Candidate
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">

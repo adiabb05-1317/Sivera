@@ -55,7 +55,6 @@ export default function InterviewsPage() {
         const resp = await authenticatedFetch(
           `${backendUrl}/api/v1/interviews`
         );
-        console.log(resp);
         if (!resp.ok) throw new Error("Failed to fetch interviews");
         const data: Interview[] = await resp.json();
         setInterviews(data);
@@ -224,7 +223,7 @@ export default function InterviewsPage() {
                           variant="outline"
                           className={`${getStatusBadgeClass(
                             interview.status
-                          )} font-normal text-xs border-0`}
+                          )} font-normal text-xs border-0 opacity-80`}
                         >
                           {interview.status}
                         </Badge>
@@ -233,54 +232,22 @@ export default function InterviewsPage() {
                         <Users className="mr-1 h-3 w-3" />
                         <span>{interview.candidates || 0} candidates</span>
                         <span className="mx-2">&middot;</span>
-                        <span className="text-xs">
-                          {new Date(interview.created_at).toLocaleDateString()}
+                        <span className="text-xs opacity-90">
+                          {interview.date}
                         </span>
                       </div>
                     </div>
                     <div className="ml-4 flex-shrink-0 flex items-center gap-2">
                       {interview.status === "active" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-600 dark:hover:bg-green-900/20"
-                            onClick={(e) => handleBulkInviteClick(e, interview)}
-                            disabled={loadingCandidates}
-                          >
-                            <Mail className="mr-1 h-3 w-3" />
-                            {loadingCandidates ? "Loading..." : "Bulk Invite"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(
-                                `/dashboard/interviews/${interview.id}`
-                              );
-                            }}
-                          >
-                            <Users className="mr-1 h-3 w-3" />
-                            View
-                          </Button>
-                        </>
-                      )}
-                      {interview.status !== "active" && (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(
-                              `/dashboard/interviews/${interview.id}`
-                            );
-                          }}
+                          variant="outline"
+                          className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                          onClick={(e) => handleBulkInviteClick(e, interview)}
+                          disabled={loadingCandidates}
                         >
-                          <Users className="mr-1 h-3 w-3" />
-                          View
+                          <Mail className="mr-1 h-3 w-3" />
+                          {loadingCandidates ? "Loading..." : "Bulk Invite"}
                         </Button>
                       )}
                       <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
