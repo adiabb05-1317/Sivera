@@ -16,7 +16,7 @@ export default function FlowterviewComponent() {
     <main className="h-full w-full bg-[--meet-background] dark:bg-[--meet-background] relative overflow-hidden">
       <header
         className={`flex items-center justify-between px-8 py-4 sticky top-0 z-50 transition-all duration-300 shadow-lg
-          bg-gradient-to-r from-indigo-50/95 to-white/95 dark:bg-gradient-to-r dark:from-indigo-900/40 dark:to-indigo-900/80 backdrop-blur-xl 
+          bg-gradient-to-r from-indigo-50/95 to-white/95 dark:bg-gradient-to-r dark:from-indigo-900/40 dark:to-indigo-900/80 backdrop-blur-xl
         ${isHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}
       >
         <div className="flex items-center gap-3">

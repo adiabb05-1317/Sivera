@@ -1,0 +1,46 @@
+repos:
+  # Python linting with Ruff for backend directories
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.11
+    hooks:
+      - id: ruff
+        name: Run Ruff linter on Python backends
+        args: [--fix, --ignore=E501, B904, ARG001, ARG002, SIM102, SIM103]
+        files: ^(backend|flowterview-backend)/.*\.py$
+
+      - id: ruff-format
+        name: Run Ruff formatter on Python backends
+        files: ^(backend|flowterview-backend)/.*\.py$
+
+  # Next.js/TypeScript linting with ESLint for frontend directories
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: ESLint for frontend
+        entry: bash -c 'cd frontend && pnpm lint'
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
+
+      - id: eslint-flowterview-app
+        name: ESLint for flowterview-app
+        entry: bash -c 'cd flowterview-app && pnpm lint'
+        language: system
+        files: ^flowterview-app/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
+
+  # General hooks for all files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^.*\.(md|json|yaml|yml)$
+      - id: end-of-file-fixer
+        exclude: ^.*\.(md|json|yaml|yml)$
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: debug-statements
+        files: ^(backend|flowterview-backend)/.*\.py$
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]

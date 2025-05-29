@@ -60,9 +60,7 @@ def intercept_standard_logging():
 
             # Only emit if it's not a WatchFiles message
             if "WatchFiles" not in record.getMessage():
-                logger.opt(depth=depth, exception=record.exc_info).log(
-                    level, record.getMessage()
-                )
+                logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
     # Replace all handlers with the InterceptHandler
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)

@@ -1,12 +1,15 @@
 from datetime import datetime
+from typing import List, Literal
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Optional, Literal
-from storage.db_manager import DatabaseManager, DatabaseError
+
+from storage.db_manager import DatabaseError, DatabaseManager
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 db = DatabaseManager()
+
 
 class UserIn(BaseModel):
     user_id: str
@@ -15,12 +18,14 @@ class UserIn(BaseModel):
     organization_name: str
     role: Literal["admin", "interviewer", "candidate"] = "interviewer"
 
+
 class UserOut(BaseModel):
     id: str
     email: str
     organization_id: str
     role: Literal["admin", "interviewer", "candidate"]
     created_at: datetime
+
 
 @router.get("/", response_model=List[UserOut])
 async def list_users(request: Request):
@@ -38,11 +43,29 @@ async def list_users(request: Request):
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/", response_model=UserOut)
 async def create_user(user: UserIn, request: Request):
     try:
         # List of common/public email domains
-        public_domains = {"gmail", "outlook", "yahoo", "hotmail", "icloud", "aol", "protonmail", "zoho", "mail", "gmx", "yandex", "pm", "msn", "live", "comcast", "me"}
+        public_domains = {
+            "gmail",
+            "outlook",
+            "yahoo",
+            "hotmail",
+            "icloud",
+            "aol",
+            "protonmail",
+            "zoho",
+            "mail",
+            "gmx",
+            "yandex",
+            "pm",
+            "msn",
+            "live",
+            "comcast",
+            "me",
+        }
 
         org_name = user.organization_name.lower()
         if org_name in public_domains:
@@ -66,7 +89,9 @@ async def create_user(user: UserIn, request: Request):
                 # If org already exists, fetch it
                 org = db.fetch_one("organizations", {"name": org_name})
                 if not org:
-                    raise HTTPException(status_code=400, detail=f"Failed to create or fetch organization: {org_err}")
+                    raise HTTPException(
+                        status_code=400, detail=f"Failed to create or fetch organization: {org_err}"
+                    )
                 organization_id = org["id"]
         # Create user with organization_id
         user_data = {
@@ -81,6 +106,7 @@ async def create_user(user: UserIn, request: Request):
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user(user_id: str, request: Request):
     try:
@@ -89,4 +115,4 @@ async def get_user(user_id: str, request: Request):
             raise HTTPException(status_code=404, detail="User not found")
         return user
     except DatabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))

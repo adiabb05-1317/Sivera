@@ -1,5 +1,6 @@
 import json
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 from src.constants.prompts import (
     INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE,
     REACT_FLOW_GENERATION_PROMPT_TEMPLATE,
@@ -49,11 +50,7 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
     if not isinstance(node["functions"], list):
         raise ValueError(f"Node {node_name} functions must be a list")
     for func in node["functions"]:
-        if (
-            not isinstance(func, dict)
-            or "type" not in func
-            or func["type"] != "function"
-        ):
+        if not isinstance(func, dict) or "type" not in func or func["type"] != "function":
             raise ValueError(f"Node {node_name} has invalid function format")
         if "function" not in func:
             raise ValueError(f"Node {node_name} function missing function object")
@@ -71,9 +68,7 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
                 raise ValueError(f"Node {node_name} function missing {field}")
 
         if function_obj["handler"] not in VALID_HANDLERS:
-            raise ValueError(
-                f"Node {node_name} has invalid handler: {function_obj['handler']}"
-            )
+            raise ValueError(f"Node {node_name} has invalid handler: {function_obj['handler']}")
 
     # Validate end node specific requirements
     if node_name == "end":
@@ -81,9 +76,7 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
             raise ValueError("End node missing post_actions")
         if not isinstance(node["post_actions"], list):
             raise ValueError("End node post_actions must be a list")
-        if not any(
-            action.get("type") == "end_conversation" for action in node["post_actions"]
-        ):
+        if not any(action.get("type") == "end_conversation" for action in node["post_actions"]):
             raise ValueError("End node must have end_conversation post action")
 
 
@@ -158,9 +151,7 @@ async def generate_interview_flow_from_jd(job_description: str) -> Dict[str, Any
         try:
             flow_json = json.loads(llm_response)
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON format: {str(e)}\nResponse: {llm_response[:100]}..."
-            )
+            raise ValueError(f"Invalid JSON format: {str(e)}\nResponse: {llm_response[:100]}...")
 
         validate_flow_json(flow_json)
         return flow_json
@@ -189,9 +180,7 @@ async def generate_react_flow_json(flow_json: Dict[str, Any] = None) -> Dict[str
     # If flow_json is provided, use it
     if flow_json:
         flow_json_str = json.dumps(flow_json)
-        prompt = REACT_FLOW_GENERATION_PROMPT_TEMPLATE.replace(
-            "{flow_json}", flow_json_str
-        )
+        prompt = REACT_FLOW_GENERATION_PROMPT_TEMPLATE.replace("{flow_json}", flow_json_str)
     else:
         # Fallback to using job description (old method)
         prompt = REACT_FLOW_GENERATION_PROMPT_TEMPLATE.replace("{flow_json}", "{}")
@@ -218,9 +207,7 @@ async def generate_react_flow_json(flow_json: Dict[str, Any] = None) -> Dict[str
 
             # Basic validation
             if "nodes" not in react_flow_json or "edges" not in react_flow_json:
-                raise ValueError(
-                    "React Flow JSON must contain 'nodes' and 'edges' arrays"
-                )
+                raise ValueError("React Flow JSON must contain 'nodes' and 'edges' arrays")
 
             return react_flow_json
 
@@ -310,9 +297,7 @@ def convert_flow_to_react_flow(flow_json: Dict[str, Any]) -> Dict[str, Any]:
 
             # Get the task message
             task_message = (
-                node_data["task_messages"][0]["content"]
-                if node_data.get("task_messages")
-                else ""
+                node_data["task_messages"][0]["content"] if node_data.get("task_messages") else ""
             )
 
             # Get the handler
@@ -355,9 +340,7 @@ def convert_flow_to_react_flow(flow_json: Dict[str, Any]) -> Dict[str, Any]:
 
             # Get the task message
             task_message = (
-                node_data["task_messages"][0]["content"]
-                if node_data.get("task_messages")
-                else ""
+                node_data["task_messages"][0]["content"] if node_data.get("task_messages") else ""
             )
 
             # Get the handler
@@ -403,14 +386,10 @@ def convert_flow_to_react_flow(flow_json: Dict[str, Any]) -> Dict[str, Any]:
     edge_types = ["default"]
     for node_id, node_data in flow_json["nodes"].items():
         if node_id != "end" and node_data.get("functions"):
-            transition_to = node_data["functions"][0]["function"].get(
-                "transition_to", ""
-            )
+            transition_to = node_data["functions"][0]["function"].get("transition_to", "")
             if transition_to:
                 # Get color from source node for consistency
-                node_index = next(
-                    (i for i, node in enumerate(nodes) if node["id"] == node_id), 0
-                )
+                node_index = next((i for i, node in enumerate(nodes) if node["id"] == node_id), 0)
                 color = nodes[node_index]["data"]["style"]["borderColor"]
 
                 # Create edge with improved styling

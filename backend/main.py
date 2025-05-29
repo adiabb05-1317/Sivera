@@ -1,14 +1,14 @@
-import logging
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
 from src.core.config import Config
 from src.lib.manager import ConnectionManager
 from src.router.path_router import router
-from storage.db_manager import DatabaseManager
 from src.utils.logger import intercept_standard_logging, logger
+from storage.db_manager import DatabaseManager
 
 intercept_standard_logging()
 

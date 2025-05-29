@@ -3,7 +3,6 @@ import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ToastAction } from "@/components/ui/toast";
 import { Logo } from "@/logos";
 import { LogoDark } from "@/logos";
 import { Sparkles } from "lucide-react";

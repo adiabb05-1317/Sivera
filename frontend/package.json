@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^2.1.9",
@@ -39,6 +40,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.1.7",
+    "@eslint/eslintrc": "^3",
     "husky": "^9.1.7",
     "ignore-loader": "^0.1.2",
     "lint-staged": "^15.5.0",

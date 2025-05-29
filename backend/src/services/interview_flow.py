@@ -1,46 +1,45 @@
 import asyncio
 import json
 import os
-import uuid
-import aiohttp
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional
 
+import aiohttp
 from dotenv import load_dotenv
-from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
-from pipecat.audio.turn.smart_turn.fal_smart_turn import FalSmartTurnAnalyzer
 from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.audio.turn.smart_turn.fal_smart_turn import FalSmartTurnAnalyzer
+from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import BotInterruptionFrame
+from pipecat.observers.base_observer import FramePushed
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.observers.base_observer import FramePushed
 from pipecat.processors.filters.stt_mute_filter import (
     STTMuteConfig,
     STTMuteFilter,
     STTMuteStrategy,
 )
-from pipecat.processors.frame_processor import Frame, FrameDirection, FrameProcessor
+from pipecat.processors.frame_processor import FrameDirection
 from pipecat.processors.frameworks.rtvi import (
+    RTVI_MESSAGE_LABEL,
     ActionResult,
+    RTVIAction,
+    RTVIActionArgument,
     RTVIConfig,
+    RTVIMessageLiteral,
     RTVIObserver,
     RTVIProcessor,
     TransportMessageUrgentFrame,
-    RTVI_MESSAGE_LABEL,
-    RTVIMessageLiteral,
-    RTVIAction,
-    RTVIActionArgument,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
-from pipecat_flows import FlowArgs, FlowManager
+from pipecat_flows import FlowManager
+from pydantic import BaseModel
+
 from src.constants.ai_models import LLMModels
 from src.services.tts_factory import TTSFactory
 from src.utils.logger import logger
-from pydantic import BaseModel
-
 
 load_dotenv(override=True)
 
@@ -91,9 +90,8 @@ async def send_message_to_client(message):
         return
 
     try:
-
         message_model = RTVISourcesMessage(data=message)
-        logger.info(f"Sending message to client using model approach")
+        logger.info("Sending message to client using model approach")
         await rtvi_instance.push_frame(
             TransportMessageUrgentFrame(message=message_model.model_dump()),
             FrameDirection.DOWNSTREAM,
@@ -136,8 +134,8 @@ class InterviewFlow:
                     "role": "system",
                     "content": """
                     You are an interviewer. Your responses should be clear, concise, and professional.
-                    Keep your responses under 150 words. 
-                    Your output will be converted to audio so don't include special characters in your answers. 
+                    Keep your responses under 150 words.
+                    Your output will be converted to audio so don't include special characters in your answers.
                     """,
                 }
             ]
@@ -145,9 +143,7 @@ class InterviewFlow:
         self.context_aggregator = self.llm.create_context_aggregator(context)
         self.stt_mute_filter = STTMuteFilter(
             stt_service=self.stt,
-            config=STTMuteConfig(
-                strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE}
-            ),
+            config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE}),
         )
         self.rtvi_config = RTVIConfig(
             config=[
@@ -262,9 +258,7 @@ class InterviewFlow:
 
                         await self.stop()
                     elif message.get("msg") == "interrupt":
-                        logger.info(
-                            "Interrupt message received, triggering bot interruption"
-                        )
+                        logger.info("Interrupt message received, triggering bot interruption")
                         try:
                             await self.rtvi.interrupt_bot()
                             logger.info("Bot interruption triggered successfully")
@@ -353,21 +347,15 @@ class InterviewFlow:
 
         try:
             logger.info("Starting interview flow pipeline...")
-            logger.info(
-                f"- Allow interruptions: {self.task.params.allow_interruptions}"
-            )
-            logger.info(
-                f"- STT mute strategy: {self.stt_mute_filter._config.strategies}"
-            )
+            logger.info(f"- Allow interruptions: {self.task.params.allow_interruptions}")
+            logger.info(f"- STT mute strategy: {self.stt_mute_filter._config.strategies}")
 
             logger.info(f"Starting interview flow for session {self.session_id}")
 
             await self.runner.run(self.task)
             self.task_running = True
 
-            logger.info(
-                f"Interview flow pipeline running for session {self.session_id}"
-            )
+            logger.info(f"Interview flow pipeline running for session {self.session_id}")
 
         except Exception as e:
             logger.error(f"Failed to start interview flow: {e}")
@@ -409,9 +397,7 @@ class InterviewFlow:
                         f"Chat history saved to session_history table for session {self.session_id}"
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to save chat history during pipeline cancellation: {e}"
-                    )
+                    logger.error(f"Failed to save chat history during pipeline cancellation: {e}")
 
             if self.task:
                 logger.info("Canceling pipeline task")

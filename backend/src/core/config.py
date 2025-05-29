@@ -1,5 +1,5 @@
-import os
 from enum import Enum
+import os
 
 from dotenv import load_dotenv
 
@@ -46,9 +46,7 @@ class Config:
 
     # Daily.co Configuration
     DAILY_ROOM_EXPIRY_MINUTES = 30  # Hardcoded instead of env
-    DAILY_CLEANUP_ON_STARTUP = (
-        os.getenv("DAILY_CLEANUP_ON_STARTUP", "true").lower() == "true"
-    )
+    DAILY_CLEANUP_ON_STARTUP = os.getenv("DAILY_CLEANUP_ON_STARTUP", "true").lower() == "true"
     DAILY_ROOM_SETTINGS = {
         "privacy": "public",
         "properties": {

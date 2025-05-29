@@ -44,10 +44,7 @@ class ConnectionManager:
                 if await is_room_expired(room):
                     expired_rooms.append(room_name)
 
-                elif (
-                    "flowterview" in room_name.lower()
-                    or "flowterview" in room_url.lower()
-                ):
+                elif "flowterview" in room_name.lower() or "flowterview" in room_url.lower():
                     flowterview_rooms.append(room_name)
 
             rooms_to_delete = expired_rooms + flowterview_rooms
@@ -112,18 +109,14 @@ class ConnectionManager:
                             name=unique_name,
                             privacy=Config.DAILY_ROOM_SETTINGS["privacy"],
                             properties=DailyRoomProperties(
-                                enable_chat=Config.DAILY_ROOM_SETTINGS["properties"][
-                                    "enable_chat"
+                                enable_chat=Config.DAILY_ROOM_SETTINGS["properties"]["enable_chat"],
+                                exp=int(time.time() + Config.DAILY_ROOM_EXPIRY_MINUTES * 60),
+                                start_video_off=Config.DAILY_ROOM_SETTINGS["properties"][
+                                    "start_video_off"
                                 ],
-                                exp=int(
-                                    time.time() + Config.DAILY_ROOM_EXPIRY_MINUTES * 60
-                                ),
-                                start_video_off=Config.DAILY_ROOM_SETTINGS[
-                                    "properties"
-                                ]["start_video_off"],
-                                start_audio_off=Config.DAILY_ROOM_SETTINGS[
-                                    "properties"
-                                ]["start_audio_off"],
+                                start_audio_off=Config.DAILY_ROOM_SETTINGS["properties"][
+                                    "start_audio_off"
+                                ],
                             ),
                         )
                     )
@@ -136,30 +129,22 @@ class ConnectionManager:
                     bot_token = await helper.get_token(room_url=room.url, owner=True)
 
                     if not bot_token:
-                        raise HTTPException(
-                            status_code=503, detail="Failed to get bot token"
-                        )
+                        raise HTTPException(status_code=503, detail="Failed to get bot token")
 
                     logger.info(f"Successfully created new room: {room.url}")
                     return room.url, bot_token
 
             except Exception as e:
-                logger.error(
-                    f"Error creating room (attempt {attempt + 1}/{max_retries}): {e}"
-                )
+                logger.error(f"Error creating room (attempt {attempt + 1}/{max_retries}): {e}")
 
                 if attempt < max_retries - 1:
                     # Check if we need to clean up rooms before retrying
                     if "limit of 50 rooms reached" in str(e):
                         try:
-                            logger.warning(
-                                "Daily rooms limit reached, cleaning up before retry"
-                            )
+                            logger.warning("Daily rooms limit reached, cleaning up before retry")
                             await self.cleanup_daily_rooms()
                         except Exception as cleanup_error:
-                            logger.error(
-                                f"Error during emergency cleanup: {cleanup_error}"
-                            )
+                            logger.error(f"Error during emergency cleanup: {cleanup_error}")
 
                     # Exponential backoff
                     await asyncio.sleep(retry_delay * (2**attempt))

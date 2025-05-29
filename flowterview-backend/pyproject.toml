@@ -24,12 +24,12 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "C4", "ARG", "SIM"]
-ignore = []
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501", "B904", "ARG001"]
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
@@ -42,4 +42,4 @@ combine-as-imports = true
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
-skip-magic-trailing-comma = false 
+skip-magic-trailing-comma = false

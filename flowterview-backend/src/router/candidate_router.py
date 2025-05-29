@@ -1,13 +1,16 @@
+from datetime import datetime
+from typing import List
+import uuid
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import List
-from storage.db_manager import DatabaseManager, DatabaseError
-from datetime import datetime
-import uuid
+
+from storage.db_manager import DatabaseError, DatabaseManager
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["candidates"])
 
 db = DatabaseManager()
+
 
 class CandidateIn(BaseModel):
     email: str
@@ -16,6 +19,7 @@ class CandidateIn(BaseModel):
     job_id: str
     resume_url: str = None
     status: str = "Applied"
+
 
 class CandidateOut(BaseModel):
     id: str
@@ -28,6 +32,7 @@ class CandidateOut(BaseModel):
     created_at: str
     updated_at: str
 
+
 @router.get("/", response_model=List[CandidateOut])
 async def list_candidates(request: Request):
     try:
@@ -35,6 +40,7 @@ async def list_candidates(request: Request):
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/by-job")
 async def fetch_candidates_sorted_by_job(request: Request):
@@ -44,6 +50,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
         # Attach job object to each candidate if job_id exists
         for c in candidates:
             c["jobs"] = {"title": jobs.get(c.get("job_id"), "-")}
+
         def parse_created_at(dt_str):
             try:
                 return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S.%f%z").timestamp()
@@ -54,11 +61,13 @@ async def fetch_candidates_sorted_by_job(request: Request):
                     try:
                         return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S").timestamp()
                     except Exception:
-                        return float('-inf')
+                        return float("-inf")
+
         candidates.sort(key=lambda x: (x.get("job_id"), -parse_created_at(x["created_at"])))
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/", response_model=CandidateOut)
 async def create_candidate(candidate: CandidateIn, request: Request):
@@ -86,6 +95,7 @@ async def create_candidate(candidate: CandidateIn, request: Request):
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.get("/{candidate_id}", response_model=CandidateOut)
 async def get_candidate(candidate_id: str, request: Request):
     try:
@@ -94,4 +104,4 @@ async def get_candidate(candidate_id: str, request: Request):
             raise HTTPException(status_code=404, detail="Candidate not found")
         return candidate
     except DatabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))

@@ -18,14 +18,14 @@ const Avatar = ({
   size = "normal",
 }: AvatarProps) => {
   const [pulseAnimation, setPulseAnimation] = useState(false)
-  
+
   // Set size based on prop
   const dimensions = {
     small: { container: "min-w-[32px] min-h-[32px]", image: 22 },
     normal: { container: "min-w-[40px] min-h-[40px]", image: 28 },
     large: { container: "min-w-[48px] min-h-[48px]", image: 34 },
   }
-  
+
   // Toggle pulse animation when talking state changes
   useEffect(() => {
     if (isTalking) {
@@ -34,7 +34,7 @@ const Avatar = ({
       setPulseAnimation(false)
     }
   }, [isTalking])
-  
+
   return (
     <div className="flex items-center">
       <div
@@ -46,7 +46,7 @@ const Avatar = ({
         {pulseAnimation && (
           <div className="absolute inset-0 rounded-full animate-pulse-golden opacity-75"></div>
         )}
-        
+
         <div
           className={`
             transition-all duration-300 ease-in-out
@@ -54,8 +54,8 @@ const Avatar = ({
             ${ isTalking ? "shadow-lg" : "shadow-md" }
           `}
           style={{
-            background: id === "bot" 
-              ? `linear-gradient(135deg, #ffa500, #ffc457)` 
+            background: id === "bot"
+              ? `linear-gradient(135deg, #ffa500, #ffc457)`
               : (color || `linear-gradient(135deg, #8ab4f8, #4285f4)`),
           }}
         >
@@ -66,8 +66,8 @@ const Avatar = ({
                 alt="Flowterview Logo"
                 width={dimensions[size].image}
                 height={dimensions[size].image}
-                style={{ 
-                  width: dimensions[size].image, 
+                style={{
+                  width: dimensions[size].image,
                   height: dimensions[size].image,
                   filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.1))"
                 }}

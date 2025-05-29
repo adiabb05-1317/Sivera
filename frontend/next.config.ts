@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
   output: "standalone",
-  
+
   // Fix source map issues but allow Daily.js and Pipecat to function properly
   webpack: (config, { isServer }) => {
     // Only modify source maps for non-server code
@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
         { message: /Failed to parse source map/ },
       ];
     }
-    
+
     return config;
   },
 }

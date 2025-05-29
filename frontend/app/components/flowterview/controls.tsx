@@ -75,7 +75,6 @@ const Controls = ({
     permissionGranted,
     setTtsConnecting,
     setConnectionStatus,
-    connectionStatus,
   } = usePathStore();
 
   // Theme states
@@ -116,7 +115,7 @@ const Controls = ({
     if (callStatus === "joining" && permissionGranted) {
       handleConnectCallAndPlayFirstSpeech();
     }
-  }, [callStatus, permissionGranted]);
+  }, [callStatus, permissionGranted, handleConnectCallAndPlayFirstSpeech]);
 
   // Auto-connect on component mount if needed
   useEffect(() => {
@@ -125,7 +124,7 @@ const Controls = ({
       // Auto-start connection on first load
       handleConnectCallAndPlayFirstSpeech();
     }
-  }, []);
+  }, [callStatus, handleConnectCallAndPlayFirstSpeech, permissionGranted]);
 
   return (
     <section

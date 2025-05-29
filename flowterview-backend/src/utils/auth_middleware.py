@@ -1,8 +1,8 @@
-from fastapi import Request, HTTPException
-from typing import Optional, Dict, Any
+from typing import Optional
+
+from fastapi import HTTPException, Request
 import jwt
 from loguru import logger
-from src.core.config import Config
 
 
 class UserContext:
@@ -44,9 +44,7 @@ def extract_user_context(request: Request) -> Optional[UserContext]:
                 logger.warning(f"Invalid Supabase token for user {email}")
                 return None
 
-        return UserContext(
-            user_id=user_id, email=email, organization_id=organization_id
-        )
+        return UserContext(user_id=user_id, email=email, organization_id=organization_id)
 
     except Exception as e:
         logger.error(f"Error extracting user context: {e}")

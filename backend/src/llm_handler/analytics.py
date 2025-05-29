@@ -1,8 +1,7 @@
-from typing import Dict, List, Any
 import json
+from typing import Any, Dict, List
 
 # from src.llm_handler.generic_llm import GenericLLM
-from src.core.config import Config
 from src.utils.logger import logger
 
 
@@ -15,9 +14,9 @@ class InterviewAnalytics:
 
     def _prepare_prompt(self, chat_history: List[Dict[str, str]]) -> str:
         """Prepare the prompt for the LLM to analyze the interview."""
-        context = f"""
+        context = """
         You are an expert interview analyzer. Review the following interview conversation and provide detailed analytics.
-        
+
         Analyze the following aspects:
         1. Overall summary of the interview (2-3 sentences)
         2. Key technical topics discussed
@@ -25,9 +24,9 @@ class InterviewAnalytics:
         4. Areas of improvement for the candidate
         5. Communication style assessment
         6. Technical proficiency assessment
-        
+
         Format your response as a JSON with the following structure:
-        {{
+        {
             "summary": "Brief summary here",
             "technical_topics": ["topic1", "topic2", ...],
             "strengths": ["strength1", "strength2", ...],
@@ -35,10 +34,10 @@ class InterviewAnalytics:
             "communication_score": X (1-10 scale),
             "technical_score": X (1-10 scale),
             "overall_assessment": "Brief overall assessment"
-        }}
-        
+        }
+
         Here is the interview conversation:
-        
+
         """
 
         for message in chat_history:
@@ -47,9 +46,7 @@ class InterviewAnalytics:
 
         return context
 
-    async def analyze_interview(
-        self, chat_history: List[Dict[str, str]]
-    ) -> Dict[str, Any]:
+    async def analyze_interview(self, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Analyze the interview chat history and return structured analytics.
 

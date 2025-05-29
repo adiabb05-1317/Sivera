@@ -1,5 +1,5 @@
-import time
 import asyncio
+import time
 from typing import Dict, List, Optional, Tuple
 
 import aiohttp
@@ -58,9 +58,7 @@ async def ensure_valid_session(
     return session, helper
 
 
-async def get_rooms(
-    session: aiohttp.ClientSession, api_key: str, limit: int = 50
-) -> List[Dict]:
+async def get_rooms(session: aiohttp.ClientSession, api_key: str, limit: int = 50) -> List[Dict]:
     """
     Get a list of all rooms directly from Daily.co API using aiohttp.
     """
@@ -77,9 +75,7 @@ async def get_rooms(
         async with session.get(url, headers=headers, timeout=timeout) as response:
             if response.status != 200:
                 error_text = await response.text()
-                logger.error(
-                    f"Error listing rooms: HTTP {response.status} - {error_text}"
-                )
+                logger.error(f"Error listing rooms: HTTP {response.status} - {error_text}")
                 return []
 
             data = await response.json()
@@ -123,9 +119,7 @@ async def delete_rooms_batch(
         async with session.delete(url, headers=headers, json=payload) as response:
             if response.status != 200:
                 error_text = await response.text()
-                logger.error(
-                    f"Error in batch delete: HTTP {response.status} - {error_text}"
-                )
+                logger.error(f"Error in batch delete: HTTP {response.status} - {error_text}")
                 return False
 
             await response.json()

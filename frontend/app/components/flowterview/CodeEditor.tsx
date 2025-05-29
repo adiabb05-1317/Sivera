@@ -41,7 +41,7 @@ export default function CodeEditor({
     editorFontSize,
     setEditorFontSize,
   } = usePathStore();
-  const { theme, resolvedTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [selectedLang, setSelectedLang] = useState(SUPPORTED_LANGUAGES[0].id);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [monacoTheme, setMonacoTheme] = useState("light");
@@ -60,7 +60,7 @@ export default function CodeEditor({
   useEffect(() => {
     const initialTheme = getMonacoTheme(resolvedTheme);
     setMonacoTheme(initialTheme);
-  }, []);
+  }, [resolvedTheme]);
 
   // Update Monaco theme when theme changes
   useEffect(() => {

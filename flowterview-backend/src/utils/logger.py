@@ -1,12 +1,12 @@
 import logging
 import sys
-from typing import Any, Dict
 
 from loguru import logger
 
+
 class InterceptHandler(logging.Handler):
     """Intercept standard logging messages and forward them to loguru"""
-    
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
             level = logger.level(record.levelname).name
@@ -18,17 +18,16 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
 
 def intercept_standard_logging() -> None:
     """Configure logging to intercept standard library logging"""
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
-    
+
     # Remove default loguru handler
     logger.remove()
-    
+
     # Add custom handler with better formatting
     logger.add(
         sys.stdout,
@@ -36,7 +35,7 @@ def intercept_standard_logging() -> None:
         level="INFO",
         colorize=True,
     )
-    
+
     # Add file handler for production
     logger.add(
         "app.log",
@@ -44,4 +43,4 @@ def intercept_standard_logging() -> None:
         retention="10 days",
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
         level="DEBUG",
-    ) 
+    )
