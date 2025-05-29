@@ -148,7 +148,7 @@ export default function InterviewDetailsPage() {
       }
     };
     if (id) fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [id]);
 
   // Layout utility

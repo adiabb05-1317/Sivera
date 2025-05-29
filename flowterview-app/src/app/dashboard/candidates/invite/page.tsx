@@ -57,7 +57,7 @@ export default function InviteCandidatesPage() {
   useEffect(() => {
     loadJobs();
     if (interviewIdFromQuery) setSelectedInterview(interviewIdFromQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [interviewIdFromQuery]);
 
   const addCandidateRow = () => {

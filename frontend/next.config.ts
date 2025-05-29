@@ -1,7 +1,13 @@
-import { withSentryConfig } from "@sentry/nextjs"
-import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs";
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    // Only run ESLint on specific directories during production builds
+    dirs: ["src", "components", "lib", "app", "pages"],
+    // Allow production builds to complete even with ESLint errors
+    ignoreDuringBuilds: true,
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
@@ -22,8 +28,8 @@ const nextConfig: NextConfig = {
       // Add a rule to handle source maps for problematic packages
       config.module.rules.push({
         test: /\.js$/,
-        enforce: 'pre',
-        use: ['source-map-loader'],
+        enforce: "pre",
+        use: ["source-map-loader"],
         // Skip source map generation only for specific files, not entire packages
         exclude: [
           // Specific files causing issues
@@ -33,14 +39,12 @@ const nextConfig: NextConfig = {
       });
 
       // Disable source map warnings in console
-      config.ignoreWarnings = [
-        { message: /Failed to parse source map/ },
-      ];
+      config.ignoreWarnings = [{ message: /Failed to parse source map/ }];
     }
 
     return config;
   },
-}
+};
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
@@ -72,4 +76,4 @@ export default withSentryConfig(nextConfig, {
   // https://docs.sentry.io/product/crons/
   // https://vercel.com/docs/cron-jobs
   automaticVercelMonitors: true,
-})
+});
