@@ -10,12 +10,14 @@ import ReactFlow, {
   Background,
   ReactFlowInstance,
   ConnectionLineType,
+  Node,
+  Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import InterviewNode from "@/components/flow/InterviewNode";
 import { improveLayout as improveLayoutUtil } from "@/utils/flowUtils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/auth-client";
 import {
@@ -27,10 +29,61 @@ import {
 } from "@/components/ui/select";
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
+import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 
 const nodeTypes = {
   interview: InterviewNode,
 };
+
+interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  status?: string;
+  job_id?: string;
+  is_invited?: boolean;
+  interview_status?: string;
+  room_url?: string;
+  bot_token?: string;
+  scheduled_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  created_at?: string;
+}
+
+interface Job {
+  id: string;
+  title: string;
+  description?: string;
+  organization_id?: string;
+}
+
+interface Interview {
+  id: string;
+  status: "draft" | "active" | "completed";
+  candidates_invited: string[];
+  job_id: string;
+}
+
+interface CandidatesData {
+  invited: Candidate[];
+  available: Candidate[];
+  total_job_candidates: number;
+  invited_count: number;
+  available_count: number;
+}
+
+interface InterviewData {
+  job: Job;
+  interview: Interview;
+  candidates: CandidatesData;
+  flow?: {
+    react_flow_json?: {
+      nodes: Node[];
+      edges: Edge[];
+    };
+  };
+}
 
 export default function InterviewDetailsPage() {
   const router = useRouter();
@@ -38,18 +91,22 @@ export default function InterviewDetailsPage() {
   const { id } = params;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [job, setJob] = useState<any>(null);
-  const [candidates, setCandidates] = useState<any[]>([]);
+  const [job, setJob] = useState<Job | null>(null);
+  const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
+  const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
+    []
+  );
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAllCandidates, setShowAllCandidates] = useState(false);
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
   const { toast } = useToast();
 
-  // Fetch interview details
+  // Fetch interview details and candidates
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -58,33 +115,33 @@ export default function InterviewDetailsPage() {
         const backendUrl =
           process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
           "http://localhost:8010";
+
+        // Fetch interview details
         const resp = await authenticatedFetch(
           `${backendUrl}/api/v1/interviews/${id}`
         );
         if (!resp.ok) throw new Error("Failed to fetch interview details");
-        const data = await resp.json();
+        const data: InterviewData = await resp.json();
+
         setJob(data.job);
         setInterviewStatus(data.interview.status || "draft");
-        // Fetch candidate details for each candidate ID
-        const candidateIds = data.interview.candidates_invited || [];
-        const candidateDetails = await Promise.all(
-          candidateIds.map(async (cid: string) => {
-            const resp = await authenticatedFetch(
-              `${backendUrl}/api/v1/candidates/${cid}`
-            );
-            if (!resp.ok) return null;
-            return await resp.json();
-          })
-        );
-        setCandidates(candidateDetails.filter(Boolean));
+
+        // Set candidates from the new API response structure
+        setInvitedCandidates(data.candidates.invited || []);
+        setAvailableCandidates(data.candidates.available || []);
+
         // Set up React Flow
         if (data.flow && data.flow.react_flow_json) {
           setNodes(data.flow.react_flow_json.nodes || []);
           setEdges(data.flow.react_flow_json.edges || []);
           improveLayout();
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch interview details");
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch interview details";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -97,6 +154,16 @@ export default function InterviewDetailsPage() {
   const improveLayout = useCallback(() => {
     improveLayoutUtil(setNodes, reactFlowInstanceRef);
   }, [setNodes]);
+
+  const handleInvitesSent = () => {
+    // Refresh the data after invites are sent
+    window.location.reload();
+  };
+
+  // Get candidates available for bulk invite (not already invited)
+  const getAvailableCandidates = () => {
+    return availableCandidates;
+  };
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -136,26 +203,29 @@ export default function InterviewDetailsPage() {
                 <CardContent className="py-4">
                   <div className="m-5 mt-0 flex items-center justify-between">
                     <h3 className="font-semibold mb-2 dark:text-white">
-                      Candidates
+                      Candidates ({invitedCandidates.length})
                     </h3>
                     <div className="flex items-center gap-2">
                       <Select
                         value={interviewStatus}
-                        onValueChange={async (value) => {
+                        onValueChange={async (
+                          value: "draft" | "active" | "completed"
+                        ) => {
                           try {
-                            await updateInterviewStatus(
-                              id as string,
-                              value as any
-                            );
-                            setInterviewStatus(value as any);
+                            await updateInterviewStatus(id as string, value);
+                            setInterviewStatus(value);
                             toast({
                               title: "Interview status updated",
                               description: `Status set to ${value}`,
                             });
-                          } catch (err: any) {
+                          } catch (err) {
+                            const errorMessage =
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to update status";
                             toast({
                               title: "Failed to update status",
-                              description: err.message,
+                              description: errorMessage,
                               variant: "destructive",
                             });
                           }
@@ -170,6 +240,19 @@ export default function InterviewDetailsPage() {
                           <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Bulk Invite Button */}
+                      {getAvailableCandidates().length > 0 && (
+                        <Button
+                          onClick={() => setBulkInviteOpen(true)}
+                          className="cursor-pointer border border-green-500/80 dark:border-green-400/80 hover:bg-green-500/10 dark:hover:bg-green-900/20 text-green-600 dark:text-green-300 hover:text-green-700 dark:hover:text-green-200 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                          variant="outline"
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          Bulk Invite ({getAvailableCandidates().length})
+                        </Button>
+                      )}
+
                       <Button
                         onClick={() =>
                           router.push(
@@ -184,9 +267,37 @@ export default function InterviewDetailsPage() {
                       </Button>
                     </div>
                   </div>
-                  {candidates.length === 0 ? (
-                    <div className="text-gray-500 text-sm dark:text-gray-300">
-                      No candidates assigned.
+                  {invitedCandidates.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        No candidates assigned
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-400 mb-4">
+                        Get started by adding candidates to this interview.
+                      </p>
+                      <div className="flex justify-center gap-3">
+                        {availableCandidates.length > 0 && (
+                          <Button
+                            onClick={() => setBulkInviteOpen(true)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Mail className="mr-2 h-4 w-4" />
+                            Bulk Invite {availableCandidates.length} Candidates
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/candidates/invite?interview=${id}`
+                            )
+                          }
+                          variant="outline"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Individual Candidate
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -209,8 +320,8 @@ export default function InterviewDetailsPage() {
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                           {(showAllCandidates
-                            ? candidates
-                            : candidates.slice(0, 3)
+                            ? invitedCandidates
+                            : invitedCandidates.slice(0, 3)
                           ).map((candidate) => (
                             <tr
                               key={candidate.id}
@@ -224,14 +335,16 @@ export default function InterviewDetailsPage() {
                               </td>
                               <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
                                 <span className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 rounded-full px-2 py-1 text-xs font-semibold truncate inline-block max-w-[100px] overflow-hidden">
-                                  {candidate.status}
+                                  {candidate.interview_status ||
+                                    candidate.status ||
+                                    "scheduled"}
                                 </span>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                      {candidates.length > 3 && !showAllCandidates && (
+                      {invitedCandidates.length > 3 && !showAllCandidates && (
                         <div className="flex justify-center mt-2">
                           <Button
                             variant="outline"
@@ -242,7 +355,7 @@ export default function InterviewDetailsPage() {
                           </Button>
                         </div>
                       )}
-                      {candidates.length > 3 && showAllCandidates && (
+                      {invitedCandidates.length > 3 && showAllCandidates && (
                         <div className="flex justify-center mt-2">
                           <Button
                             variant="ghost"
@@ -294,6 +407,16 @@ export default function InterviewDetailsPage() {
               </ReactFlowProvider>
             </div>
           </div>
+
+          {/* Bulk Invite Dialog */}
+          <BulkInviteDialog
+            open={bulkInviteOpen}
+            onOpenChange={setBulkInviteOpen}
+            interviewId={id as string}
+            jobTitle={job?.title || "Interview"}
+            availableCandidates={getAvailableCandidates()}
+            onInvitesSent={handleInvitesSent}
+          />
         </>
       )}
     </div>

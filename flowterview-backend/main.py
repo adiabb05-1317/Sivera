@@ -1,18 +1,21 @@
+import logging
 from contextlib import asynccontextmanager
-from typing import Any, Dict
+from typing import Dict, Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from supabase import Client, create_client
-import uvicorn
+from supabase import create_client, Client
 
 from src.core.config import Config
-from src.router.candidate_router import router as candidate_router
+from src.utils.logger import intercept_standard_logging
+from src.lib.manager import ConnectionManager
 from src.router.interview_router import router as interview_router
 from src.router.organization_router import router as organization_router
 from src.router.user_router import router as user_router
-from src.utils.logger import intercept_standard_logging
+from src.router.candidate_router import router as candidate_router
+from src.router.invites_router import router as invites_router
 
 intercept_standard_logging()
 
@@ -29,8 +32,23 @@ async def lifespan(app: FastAPI):
         # Initialize Supabase client
         supabase = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
         logger.info("Supabase client initialized successfully")
+
+        # Initialize ConnectionManager
+        manager = ConnectionManager()
+
+        # Clean up existing Daily.co rooms if enabled
+        if Config.DAILY_CLEANUP_ON_STARTUP:
+            try:
+                logger.info("Cleaning up existing Daily.co rooms before initialization")
+                await manager.cleanup_daily_rooms()
+            except Exception as e:
+                logger.error(f"Failed to clean up existing Daily.co rooms: {e}")
+                logger.warning("Continuing without initial room cleanup")
+
+        app.state.manager = manager
+
     except Exception as e:
-        logger.error(f"Failed to initialize Supabase client: {e}")
+        logger.error(f"Failed to initialize application: {e}")
         raise
 
     app.state.supabase = supabase
@@ -39,6 +57,13 @@ async def lifespan(app: FastAPI):
 
     logger.info("Application shutting down...")
     # Cleanup if needed
+    try:
+        if hasattr(app.state, "manager"):
+            await app.state.manager.cleanup()
+            logger.info("ConnectionManager cleaned up successfully")
+    except Exception as e:
+        logger.error(f"Error during ConnectionManager cleanup: {e}")
+
     logger.info("All resources terminated")
 
 
@@ -60,12 +85,20 @@ app.include_router(interview_router)
 app.include_router(organization_router)
 app.include_router(user_router)
 app.include_router(candidate_router)
+app.include_router(invites_router)
 
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
     """Health check endpoint"""
-    return {"status": "healthy", "version": "1.0.0", "supabase_connected": supabase is not None}
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "supabase_connected": supabase is not None,
+        "manager_initialized": (
+            hasattr(app.state, "manager") if hasattr(app, "state") else False
+        ),
+    }
 
 
 @app.post("/loopback")
@@ -97,5 +130,40 @@ if __name__ == "__main__":
         host=Config.HOST,
         port=Config.PORT,
         reload=Config.RELOAD,
-        reload_excludes=[".venv", ".venv/*", "__pycache__", "*.pyc"],
+        reload_excludes=[
+            ".venv",
+            ".venv/*",
+            "venv",
+            "venv/*",
+            "env",
+            "env/*",
+            "__pycache__",
+            "__pycache__/*",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".git",
+            ".git/*",
+            "node_modules",
+            "node_modules/*",
+            ".pytest_cache",
+            ".pytest_cache/*",
+            "*.log",
+            "*.sqlite",
+            "*.db",
+            ".DS_Store",
+            "Thumbs.db",
+            "*.tmp",
+            "*.temp",
+            ".coverage",
+            "htmlcov",
+            "htmlcov/*",
+            "dist",
+            "dist/*",
+            "build",
+            "build/*",
+            "*.egg-info",
+            "*.egg-info/*",
+        ],
+        reload_dirs=["src", "storage"],  # Only watch specific directories
     )

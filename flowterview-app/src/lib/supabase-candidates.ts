@@ -201,21 +201,6 @@ export async function addCandidate({
     }
   }
 
-  // 2. Create user in backend (role: candidate)
-  await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/create-user`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        name,
-        organization_id,
-        role: "candidate",
-      }),
-    }
-  );
-
   return candidate;
 }
 
