@@ -485,10 +485,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     if (callStatus !== "joined" || !permissionGranted) {
       return;
     }
-    // if (!isMicMuted && !micStreamRef.current) {
-    //   checkPermissionAndConnect();
-    //   return;
-    // }
 
     if (micStreamRef.current) {
       const audioTrack = micStreamRef.current.getAudioTracks()[0];

@@ -115,16 +115,14 @@ const Controls = ({
     if (callStatus === "joining" && permissionGranted) {
       handleConnectCallAndPlayFirstSpeech();
     }
-  }, [callStatus, permissionGranted, handleConnectCallAndPlayFirstSpeech]);
+  }, [callStatus, permissionGranted]);
 
   // Auto-connect on component mount if needed
   useEffect(() => {
     if (callStatus === "initial" && permissionGranted) {
       console.log("Auto-connecting on component mount");
-      // Auto-start connection on first load
-      handleConnectCallAndPlayFirstSpeech();
     }
-  }, [callStatus, handleConnectCallAndPlayFirstSpeech, permissionGranted]);
+  }, []);
 
   return (
     <section
