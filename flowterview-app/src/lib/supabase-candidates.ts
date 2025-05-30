@@ -49,7 +49,7 @@ export async function getJobIdByTitle(
 ): Promise<string | null> {
   const response = await authenticatedFetch(
     `${
-      process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
     }/api/v1/interviews/job-id?title=${encodeURIComponent(
       title
     )}&organization_id=${encodeURIComponent(organization_id)}`
@@ -163,7 +163,7 @@ export async function addCandidate({
   }
   // 1. Insert candidate via backend
   const response = await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/candidates/`,
+    `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -186,7 +186,7 @@ export async function addCandidate({
   // 2. Append candidate_id to candidates_invited in the interviews table
   if (interviewId) {
     const addResp = await authenticatedFetch(
-      `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
+      `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,7 +206,7 @@ export async function addCandidate({
 
 export async function fetchJobs() {
   const response = await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/jobs-list`
+    `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/jobs-list`
   );
   if (!response.ok) throw new Error("Failed to fetch jobs");
   return await response.json();
@@ -214,7 +214,7 @@ export async function fetchJobs() {
 
 export async function fetchCandidatesSortedByJob() {
   const response = await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/candidates/by-job`
+    `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/by-job`
   );
   if (!response.ok) throw new Error("Failed to fetch candidates");
   return await response.json();
@@ -223,7 +223,7 @@ export async function fetchCandidatesSortedByJob() {
 export async function fetchInterviewIdFromJobId(jobId: string) {
   const response = await authenticatedFetch(
     `${
-      process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
     }/api/v1/interviews?job_id=${encodeURIComponent(jobId)}&status=active`
   );
   if (!response.ok) throw new Error("Failed to fetch interview id");
@@ -239,7 +239,7 @@ export async function fetchInterviewById(
 ): Promise<{ id: string; job_id: string } | null> {
   console.log("interviewId", interviewId);
   const response = await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
+    `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
   );
   if (!response.ok) return null;
   return await response.json();
@@ -259,7 +259,7 @@ export async function updateInterviewStatus(
   status: "draft" | "active" | "completed"
 ) {
   const response = await authenticatedFetch(
-    `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/${interviewId}`,
+    `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -113,8 +113,7 @@ export default function InterviewDetailsPage() {
       setError(null);
       try {
         const backendUrl =
-          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-          "http://localhost:8010";
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
 
         // Fetch interview details
         const resp = await authenticatedFetch(
@@ -148,7 +147,6 @@ export default function InterviewDetailsPage() {
       }
     };
     if (id) fetchData();
-
   }, [id]);
 
   // Layout utility
@@ -260,7 +258,7 @@ export default function InterviewDetailsPage() {
                             `/dashboard/candidates/invite?interview=${id}`
                           )
                         }
-                        className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
                         variant="outline"
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -304,7 +302,7 @@ export default function InterviewDetailsPage() {
                           ).map((candidate) => (
                             <tr
                               key={candidate.id}
-                              className="transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
+                              className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
                             >
                               <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
                                 {candidate.name}
@@ -327,7 +325,7 @@ export default function InterviewDetailsPage() {
                         <div className="flex justify-center mt-2">
                           <Button
                             variant="outline"
-                            className="text-indigo-600 dark:text-indigo-300 border-indigo-400/80 hover:bg-indigo-50/40 dark:hover:bg-indigo-900/40 cursor-pointer"
+                            className="text-app-blue-6/00 dark:text-app-blue-3/00 border-app-blue-400/80 hover:bg-app-blue-50/40 dark:hover:bg-app-blue-900/40 cursor-pointer"
                             onClick={() => setShowAllCandidates(true)}
                           >
                             View all

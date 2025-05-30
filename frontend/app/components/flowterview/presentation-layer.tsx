@@ -37,8 +37,8 @@ const UserTile = ({
 
   return (
     <div
-      className={`h-full w-full bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
-        ${isUserSpeaking ? "ring-2 ring-indigo-400 scale-[1.02]" : ""}
+      className={`h-full w-full bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
+        ${isUserSpeaking ? "ring-2 ring-app-blue-400 scale-[1.02]" : ""}
       `}
     >
       <div className="absolute inset-0 flex items-center justify-center">
@@ -51,16 +51,16 @@ const UserTile = ({
             ref={videoRef}
           />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-indigo-500/50 text-white text-2xl font-medium flex items-center justify-center border-2 border-indigo-500">
+          <div className="w-24 h-24 rounded-full bg-app-blue-500/50 text-white text-2xl font-medium flex items-center justify-center border-2 border-app-blue-500">
             {participant.name.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
 
       {/* Header similar to coding challenge */}
-      <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-indigo-50/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-indigo-200/60 dark:border-slate-600/60">
-        <h3 className="text-indigo-800 dark:text-slate-100 font-semibold text-sm flex items-center gap-2 tracking-tight">
-          <Icons.Video className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+      <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-app-blue-50/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-app-blue-200/60 dark:border-slate-600/60">
+        <h3 className="text-app-blue-800 dark:text-slate-100 font-semibold text-sm flex items-center gap-2 tracking-tight">
+          <Icons.Video className="w-4 h-4 text-app-blue-500 dark:text-app-blue-400" />
           <span>Video Feed</span>
         </h3>
         <div
@@ -85,8 +85,7 @@ const TranscriptionsBox = memo(() => {
     () =>
       currentChatHistory.map((msg, index) => ({
         id: `${index}`,
-        sender:
-          msg.role === "assistant" ? ("Flotia" as const) : ("You" as const),
+        sender: msg.role === "assistant" ? ("Sia" as const) : ("You" as const),
         content: msg.content,
         timestamp: new Date().toISOString(),
       })),
@@ -95,14 +94,14 @@ const TranscriptionsBox = memo(() => {
 
   // Memoize speaker logic to prevent unnecessary recalculations
   const { currentSpeaker, liveTranscription, isTranscribing } = useMemo(() => {
-    let speaker: "Flotia" | "You" | null = null;
+    let speaker: "Sia" | "You" | null = null;
     let transcript = "";
 
     if (isUserSpeaking && currentUserTranscript) {
       speaker = "You";
       transcript = currentUserTranscript;
     } else if (isBotSpeaking && currentBotTranscript) {
-      speaker = "Flotia";
+      speaker = "Sia";
       transcript = currentBotTranscript;
     }
 
@@ -119,11 +118,11 @@ const TranscriptionsBox = memo(() => {
   ]);
 
   return (
-    <div className="h-full flex flex-col bg-indigo-50 dark:bg-[--meet-surface] border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
+    <div className="h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
       {/* Header */}
-      <div className="flex justify-between items-center py-3 px-4 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200/60 dark:border-indigo-700/60">
-        <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
-          <Icons.Chat className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+      <div className="flex justify-between items-center py-3 px-4 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
+        <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
+          <Icons.Chat className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />
           <span>Conversation</span>
         </h3>
       </div>
@@ -216,7 +215,7 @@ const Presentation = () => {
       {true ||
         (transportState !== "ready" && callStatus !== "left" && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-[--meet-surface] dark:bg-[--meet-surface] bg-opacity-60 dark:bg-opacity-80 backdrop-blur-sm">
-            <div className="w-10 h-10 border-4 border-indigo-500/70 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-app-blue-500/70 border-t-transparent rounded-full animate-spin" />
           </div>
         ))}
       {callStatus === "left" ? (
@@ -288,8 +287,8 @@ const Presentation = () => {
                     </div>
                   </div>
 
-                  {/* Transcriptions - Bottom left - takes up remaining space */}
-                  <div className="flex-1">
+                  {/* Transcriptions - Bottom left - constrained height */}
+                  <div className="flex-1 min-h-0 overflow-hidden">
                     <TranscriptionsBox />
                   </div>
                 </div>

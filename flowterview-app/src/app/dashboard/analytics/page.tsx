@@ -159,8 +159,8 @@ export default function AnalyticsPage() {
           >
             <CardContent className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-900 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-indigo-500 dark:text-indigo-300" />
+                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
                   <dt className="truncate text-xs font-medium text-gray-500 tracking-wider uppercase dark:text-gray-300">
@@ -261,7 +261,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center mb-6">
-              <div className="text-5xl font-bold text-indigo-600 tracking-tight dark:text-indigo-400">
+              <div className="text-5xl font-bold text-app-blue-6/00 tracking-tight dark:text-app-blue-4/00">
                 15
               </div>
               <div className="ml-4 text-gray-500 text-xs tracking-wide dark:text-gray-300">
@@ -286,15 +286,15 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800">
+              <Card className="bg-app-blue-50 dark:bg-app-blue-900/20 border-app-blue-1/00 dark:border-app-blue-8/00">
                 <CardContent className="p-4 text-center">
-                  <div className="text-indigo-800 dark:text-indigo-300 text-xs font-medium tracking-wider uppercase">
+                  <div className="text-app-blue-8/00 dark:text-app-blue-3/00 text-xs font-medium tracking-wider uppercase">
                     Improvement
                   </div>
-                  <div className="text-indigo-900 dark:text-indigo-100 text-xl font-semibold mt-1 tracking-tight">
+                  <div className="text-app-blue-9/00 dark:text-app-blue-1/00 text-xl font-semibold mt-1 tracking-tight">
                     -28%
                   </div>
-                  <div className="text-indigo-700 dark:text-indigo-400 text-xs mt-1 tracking-wide">
+                  <div className="text-app-blue-7/00 dark:text-app-blue-4/00 text-xs mt-1 tracking-wide">
                     vs. last quarter
                   </div>
                 </CardContent>
@@ -355,7 +355,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="relative ml-3 flex h-3 w-full overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
                       <div
-                        className="bg-indigo-400/80 dark:bg-indigo-500/80"
+                        className="bg-app-blue-400/80 dark:bg-app-blue-500/80"
                         style={{ width: `${role.rate}%` }}
                       ></div>
                     </div>

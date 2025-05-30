@@ -57,8 +57,7 @@ export default function DashboardPage() {
       setLoading(true);
       try {
         const backendUrl =
-          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-          "http://localhost:8010";
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
         const resp = await authenticatedFetch(
           `${backendUrl}/api/v1/interviews`
         );
@@ -77,7 +76,6 @@ export default function DashboardPage() {
       }
     };
     fetchRecent();
-
   }, []);
 
   return (
@@ -91,8 +89,8 @@ export default function DashboardPage() {
           >
             <div className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-900 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-indigo-500 dark:text-indigo-300" />
+                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
@@ -124,7 +122,7 @@ export default function DashboardPage() {
             recentInterviews.map((interview) => (
               <div
                 key={interview.id}
-                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
                 onClick={() =>
                   router.push(`/dashboard/interviews/${interview.id}`)
                 }
@@ -140,7 +138,7 @@ export default function DashboardPage() {
                       }
                       className={`${
                         interview.status !== "active"
-                          ? "bg-indigo-100/90 dark:bg-indigo-900/40"
+                          ? "bg-app-blue-100/90 dark:bg-app-blue-900/40"
                           : ""
                       } font-normal text-xs`}
                     >
@@ -185,7 +183,7 @@ export default function DashboardPage() {
           <CardFooter className="flex justify-between">
             <Button
               onClick={() => router.push("/dashboard/candidates/invite")}
-              className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               variant="outline"
             >
               Invite Now
@@ -208,7 +206,7 @@ export default function DashboardPage() {
                 router.push("/dashboard/interviews/from-description")
               }
               variant="outline"
-              className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
             >
               Generate Workflow
             </Button>

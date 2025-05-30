@@ -70,7 +70,7 @@ const CandidateViewDialog = ({
             <Button
               onClick={() => handleSendInvite(candidate)}
               variant="outline"
-              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+              className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
             >
               <Send className="mr-2 h-4 w-4" />
               Invite for Interview
@@ -99,7 +99,7 @@ export default function CandidatesPage() {
     Applied: "bg-black-100 text-black-800",
     Screening: "bg-yellow-100 text-yellow-800",
     Interview_Scheduled: "bg-blue-100 text-blue-800",
-    Interviewed: "bg-indigo-100 text-indigo-800",
+    Interviewed: "bg-app-blue-1/00 text-app-blue-8/00",
     Hired: "bg-green-100 text-green-800",
     On_Hold: "bg-orange-100 text-orange-800",
     Rejected: "bg-red-100 text-red-800",
@@ -179,7 +179,7 @@ export default function CandidatesPage() {
       }
 
       const res = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/send-invite`,
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/send-invite`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -248,7 +248,7 @@ export default function CandidatesPage() {
       <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
         <Button
           onClick={() => router.push("/dashboard/candidates/invite")}
-          className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+          className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
           variant="outline"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -265,7 +265,7 @@ export default function CandidatesPage() {
           <Input
             type="text"
             placeholder="Search candidates"
-            className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -397,7 +397,7 @@ export default function CandidatesPage() {
               {filteredCandidates.map((candidate) => (
                 <tr
                   key={candidate.id}
-                  className="transition-colors cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/30"
+                  className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
                   onClick={() => setSelectedCandidate(candidate)}
                 >
                   <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">

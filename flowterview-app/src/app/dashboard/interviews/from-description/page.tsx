@@ -67,7 +67,7 @@ export default function GenerateFromDescriptionPage() {
   } = useForm<FormData>();
 
   const BACKEND_URL =
-    process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL || "http://localhost:8010";
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -266,7 +266,7 @@ export default function GenerateFromDescriptionPage() {
                 id="jobDescription"
                 className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
                   errors.jobDescription && "border-red-500"
-                } px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500`}
+                } px-3 py-2 text-sm focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00`}
                 rows={10}
                 placeholder="Paste the job description here..."
                 disabled={loading}
@@ -286,7 +286,7 @@ export default function GenerateFromDescriptionPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className={`cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
+                className={`cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
                 variant="outline"
               >
                 {loading && <Loader2 className="animate-spin mr-2" />}
@@ -313,7 +313,7 @@ export default function GenerateFromDescriptionPage() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center rounded-md bg-indigo-200 dark:bg-indigo-900 px-4 py-2 text-sm font-medium text-indigo-900 dark:text-indigo-300 hover:bg-indigo-400/60 dark:hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer"
+                className="inline-flex items-center rounded-md bg-app-blue-2/00 dark:bg-app-blue-9/00 px-4 py-2 text-sm font-medium text-app-blue-9/00 dark:text-app-blue-3/00 hover:bg-app-blue-400/60 dark:hover:bg-app-blue-7/00 focus:outline-none focus:ring-2 focus:ring-app-blue-5/00 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer"
               >
                 <Save className="mr-1 h-4 w-4" />
                 {saving ? "Saving..." : "Save Flow"}

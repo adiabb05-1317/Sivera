@@ -16,7 +16,22 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        kyiv: ['"KyivType Sans"', "sans-serif"],
+      },
       colors: {
+        "app-blue": {
+          50: "#e8f4f8",
+          100: "#d1e9f1",
+          200: "#a3d2e3",
+          300: "#75bbd5",
+          400: "#5ba4c7",
+          500: "#488AB5",
+          600: "#3a7399",
+          700: "#2d5c7d",
+          800: "#1f4561",
+          900: "#002B45",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

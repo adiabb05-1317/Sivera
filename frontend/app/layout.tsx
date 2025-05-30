@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flowterview · AI Powered meeting assistant",
+  title: "Sivera · AI Powered meeting assistant",
   description:
     "Help you with your meetings by answering questions, providing insights, and enabling seamless collaboration.",
 };
@@ -31,7 +31,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster />
           <DarkModeToggle />

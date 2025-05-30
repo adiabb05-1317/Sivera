@@ -98,8 +98,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }`}
       >
         <div className="flex h-16 flex-shrink-0 items-center justify-center border-b border-gray-200 dark:border-gray-800 px-4">
-          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-            FLOWTERVIEW
+          <div
+            className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white font-kyiv"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
+            SIVERA
           </div>
           <button className="md:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-6 w-6 text-gray-500 dark:text-gray-300" />
@@ -113,14 +118,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 href={item.href}
                 className={`${
                   pathname === item.href
-                    ? "bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300"
+                    ? "bg-app-blue-50 dark:bg-app-blue-900/40 text-app-blue-6/00 dark:text-app-blue-3/00"
                     : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                 } group mb-1 flex items-center rounded-md p-4 text-sm font-medium`}
               >
                 <item.icon
                   className={`${
                     pathname === item.href
-                      ? "text-indigo-600 dark:text-indigo-300"
+                      ? "text-app-blue-6/00 dark:text-app-blue-3/00"
                       : "text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300"
                   } mr-3 h-5 w-5 flex-shrink-0`}
                 />
@@ -131,8 +136,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div>
             <Card className="flex items-center p-4 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl border-b-0 border-r-0 border-l-0 rounded-br-none rounded-bl-none m-0">
               <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900 p-3">
-                  <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+                <div className="flex-shrink-0 rounded-full bg-app-blue-1/00 dark:bg-app-blue-9/00 p-3">
+                  <Users className="h-6 w-6 text-app-blue-6/00 dark:text-app-blue-3/00" />
                 </div>
                 <div>
                   <p className="text-sm font-light text-gray-800 dark:text-gray-200">

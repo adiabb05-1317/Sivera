@@ -180,7 +180,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Multi-user participants state
   participants: [
     { id: "user", name: "User", isTalking: false, color: "#FFA500" },
-    { id: "bot", name: "Flotia", isTalking: false, color: "#29e9ac" },
+    { id: "bot", name: "Sia", isTalking: false, color: "#29e9ac" },
   ],
   setParticipants: (participants: Participant[]) => set({ participants }),
   addParticipant: (participant: Participant) =>
@@ -268,7 +268,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
     set({
       participants: [
         { id: "user", name: "User", isTalking: false, color: "#FFA500" },
-        { id: "bot", name: "Flotia", isTalking: false, color: "#29e9ac" },
+        { id: "bot", name: "Sia", isTalking: false, color: "#29e9ac" },
       ],
       toasts: [],
       sources: [],

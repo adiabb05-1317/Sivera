@@ -44,7 +44,7 @@ export const setUserContext = async (
   try {
     const response = await authenticatedFetch(
       `${
-        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
       }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`
     );
     if (response.ok) {

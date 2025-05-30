@@ -14,16 +14,23 @@ import { Button } from "@/components/ui/button";
 
 export default function ConfirmationPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-              FLOWTERVIEW
+            <div
+              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              SIVERA
             </div>
           </CardTitle>
-          <CardDescription className="dark:text-gray-300">Confirmation Required</CardDescription>
+          <CardDescription className="dark:text-gray-300">
+            Confirmation Required
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
@@ -54,7 +61,11 @@ export default function ConfirmationPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-center">
-          <Button asChild variant="outline" className="dark:border-zinc-700 dark:text-gray-200">
+          <Button
+            asChild
+            variant="outline"
+            className="dark:border-zinc-700 dark:text-gray-200"
+          >
             <Link href="/auth/login">Go to Login</Link>
           </Button>
         </CardFooter>

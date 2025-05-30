@@ -66,7 +66,7 @@ export default function SignupPage() {
       const name = email.split("@")[0];
       const orgName = extractOrgFromEmail(email);
       const resp = await authenticatedFetch(
-        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL + "/api/v1/users",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -102,13 +102,18 @@ export default function SignupPage() {
   // If success, show confirmation message
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-                FLOWTERVIEW
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                SIVERA
               </div>
             </CardTitle>
             <CardDescription className="dark:text-gray-300">
@@ -145,13 +150,18 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-              FLOWTERVIEW
+            <div
+              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              SIVERA
             </div>
           </CardTitle>
           <CardDescription className="dark:text-gray-300">
@@ -220,7 +230,7 @@ export default function SignupPage() {
                 type="submit"
                 variant="outline"
                 disabled={loading}
-                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%] dark:border-indigo-400/80 dark:hover:bg-indigo-400/10 dark:text-indigo-300 dark:hover:text-indigo-200 dark:focus:ring-indigo-400 dark:focus:ring-offset-zinc-900"
+                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%] dark:border-app-blue-400/80 dark:hover:bg-app-blue-400/10 dark:text-app-blue-3/00 dark:hover:text-app-blue-2/00 dark:focus:ring-app-blue-4/00 dark:focus:ring-offset-zinc-900"
               >
                 {loading ? "Signing up..." : "Sign Up"}
               </Button>
@@ -228,7 +238,7 @@ export default function SignupPage() {
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
+                  className="text-app-blue-5/00 hover:text-app-blue-6/00 dark:text-app-blue-4/00 dark:hover:text-app-blue-3/00"
                 >
                   Sign in
                 </Link>

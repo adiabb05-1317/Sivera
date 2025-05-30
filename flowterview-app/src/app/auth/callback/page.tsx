@@ -46,7 +46,7 @@ export default function AuthCallbackPage() {
           if (!email) throw new Error("No email found for logged in user");
           // 3. Check if user exists in backend
           const resp = await authenticatedFetch(
-            process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL +
+            process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL +
               "/api/v1/users?email=" +
               encodeURIComponent(email)
           );
@@ -68,7 +68,7 @@ export default function AuthCallbackPage() {
               );
             }
             const createResp = await authenticatedFetch(
-              process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL + "/api/v1/users",
+              process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL + "/api/v1/users",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -195,13 +195,18 @@ export default function AuthCallbackPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-                FLOWTERVIEW
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                SIVERA
               </div>
             </CardTitle>
             <CardDescription className="dark:text-gray-300">
@@ -210,7 +215,7 @@ export default function AuthCallbackPage() {
           </CardHeader>
           <CardContent>
             <div className="mt-6 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
             </div>
           </CardContent>
         </Card>
@@ -220,13 +225,18 @@ export default function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-                FLOWTERVIEW
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                SIVERA
               </div>
             </CardTitle>
             <CardDescription className="dark:text-gray-300">
@@ -256,17 +266,22 @@ export default function AuthCallbackPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
         <div className="text-center">
-          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-            FLOWTERVIEW
+          <div
+            className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
+            SIVERA
           </div>
           <p className="mt-4 text-gray-600 dark:text-gray-300">
             Signing you in...
           </p>
           <div className="mt-6 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
           </div>
         </div>
       </div>

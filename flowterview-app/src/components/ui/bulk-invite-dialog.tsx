@@ -106,8 +106,7 @@ export function BulkInviteDialog({
 
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-        "http://localhost:8010";
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
 
       const requestData = {
         interview_id: interviewId,
@@ -159,8 +158,7 @@ export function BulkInviteDialog({
   const pollInviteStatus = async () => {
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-        "http://localhost:8010";
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
       const response = await authenticatedFetch(
         `${backendUrl}/api/v1/invites/bulk-invite-status/${interviewId}`
       );
@@ -193,7 +191,7 @@ export function BulkInviteDialog({
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            <Mail className="h-5 w-5 text-app-blue-6/00 dark:text-app-blue-4/00" />
             Send Bulk Invites
           </DialogTitle>
           <DialogDescription>
@@ -263,7 +261,7 @@ export function BulkInviteDialog({
                           key={candidate.id}
                           className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
                             isSelected
-                              ? "bg-indigo-50 dark:bg-indigo-900/20"
+                              ? "bg-app-blue-50 dark:bg-app-blue-900/20"
                               : ""
                           }`}
                           onClick={() => toggleCandidateSelection(candidate)}
@@ -274,7 +272,7 @@ export function BulkInviteDialog({
                                 <div
                                   className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
                                     isSelected
-                                      ? "bg-indigo-600 border-indigo-600"
+                                      ? "bg-app-blue-6/00 border-app-blue-6/00"
                                       : "border-gray-300 dark:border-gray-600"
                                   }`}
                                 >
@@ -316,7 +314,7 @@ export function BulkInviteDialog({
                   selectedCandidates.length ? (
                     <Check className="h-6 w-6 text-green-600" />
                   ) : (
-                    <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+                    <Loader2 className="h-6 w-6 text-app-blue-6/00 animate-spin" />
                   )}
                   <div>
                     <h3 className="font-semibold">
@@ -335,7 +333,7 @@ export function BulkInviteDialog({
                 {/* Progress Bar */}
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
-                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-app-blue-6/00 h-2 rounded-full transition-all duration-300"
                     style={{
                       width: `${
                         ((inviteStatus?.scheduled_count || 0) /
@@ -373,7 +371,7 @@ export function BulkInviteDialog({
                 <Button
                   onClick={sendBulkInvites}
                   disabled={isLoading || selectedCandidates.length === 0}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="bg-app-blue-6/00 hover:bg-app-blue-7/00 text-white"
                 >
                   {isLoading ? (
                     <>
@@ -396,7 +394,7 @@ export function BulkInviteDialog({
               disabled={
                 inviteStatus?.scheduled_count !== selectedCandidates.length
               }
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-app-blue-6/00 hover:bg-app-blue-7/00 text-white"
             >
               {inviteStatus?.scheduled_count === selectedCandidates.length
                 ? "Done"

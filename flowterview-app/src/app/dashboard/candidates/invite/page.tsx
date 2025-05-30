@@ -204,7 +204,7 @@ export default function InviteCandidatesPage() {
             </p>
             <div className="mt-6">
               <Button
-                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:border-indigo-400/80 dark:text-indigo-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-900/20 dark:focus:ring-offset-gray-900"
+                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:border-app-blue-400/80 dark:text-app-blue-3/00 dark:hover:text-app-blue-2/00 dark:hover:bg-app-blue-900/20 dark:focus:ring-offset-gray-900"
                 variant="outline"
                 onClick={() => router.push("/dashboard/candidates")}
               >
@@ -273,7 +273,7 @@ export default function InviteCandidatesPage() {
                   variant="outline"
                   disabled={isUploading}
                   onClick={handleFileUpload}
-                  className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
                 >
                   {isUploading ? (
                     "Uploading..."
@@ -364,7 +364,7 @@ export default function InviteCandidatesPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="text-indigo-600 cursor-pointer"
+                className="text-app-blue-6/00 cursor-pointer"
                 onClick={addCandidateRow}
               >
                 <Plus className="mr-1 h-4 w-4" />
@@ -386,7 +386,7 @@ export default function InviteCandidatesPage() {
                   isSubmitting || (!interviewIdFromQuery && !selectedInterview)
                 }
                 variant="outline"
-                className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
               >
                 {isSubmitting ? (
                   "Wait..."

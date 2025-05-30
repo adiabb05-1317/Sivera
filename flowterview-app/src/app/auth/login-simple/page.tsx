@@ -70,16 +70,23 @@ export default function SimpleLoginPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
         <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
-              <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-                FLOWTERVIEW
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-800 text-transparent bg-clip-text dark:from-app-blue-200 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                SIVERA
               </div>
             </CardTitle>
-            <CardDescription className="dark:text-gray-300">Check your email</CardDescription>
+            <CardDescription className="dark:text-gray-300">
+              Check your email
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="mt-4 text-gray-600 dark:text-gray-300">
@@ -88,7 +95,11 @@ export default function SimpleLoginPage() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <Button variant="outline" onClick={() => setSuccess(false)} className="dark:border-zinc-700 dark:text-gray-200">
+            <Button
+              variant="outline"
+              onClick={() => setSuccess(false)}
+              className="dark:border-zinc-700 dark:text-gray-200"
+            >
               Back to login
             </Button>
           </CardFooter>
@@ -98,16 +109,23 @@ export default function SimpleLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
       <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">
-            <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text dark:from-indigo-200 dark:via-blue-400 dark:to-white">
-              FLOWTERVIEW
+            <div
+              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-800 text-transparent bg-clip-text dark:from-app-blue-200 dark:via-blue-400 dark:to-white"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              SIVERA
             </div>
           </CardTitle>
-          <CardDescription className="dark:text-gray-300">Simple Login</CardDescription>
+          <CardDescription className="dark:text-gray-300">
+            Simple Login
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-300 text-center">
@@ -120,7 +138,9 @@ export default function SimpleLoginPage() {
           )}
           <form className="space-y-6 mt-4" onSubmit={handleEmailLogin}>
             <div className="flex flex-col space-y-1.5 text-sm">
-              <label htmlFor="email" className="dark:text-gray-200">Email address</label>
+              <label htmlFor="email" className="dark:text-gray-200">
+                Email address
+              </label>
               <Input
                 id="email"
                 name="email"
@@ -132,7 +152,11 @@ export default function SimpleLoginPage() {
                 className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
               />
             </div>
-            <Button type="submit" disabled={loading} className="w-full dark:border-zinc-700 dark:text-gray-200">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full dark:border-zinc-700 dark:text-gray-200"
+            >
               {loading ? "Sending..." : "Send Magic Link"}
             </Button>
           </form>
@@ -149,7 +173,7 @@ export default function SimpleLoginPage() {
         <CardFooter className="flex flex-col items-center gap-2">
           <Link
             href="/auth/login"
-            className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="font-medium text-app-blue-600 hover:text-app-blue-500 dark:text-app-blue-400 dark:hover:text-app-blue-300"
           >
             Return to Regular Login
           </Link>

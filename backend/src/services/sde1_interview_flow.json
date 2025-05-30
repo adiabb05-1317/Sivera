@@ -30,7 +30,7 @@
       "role_messages": [
         {
           "role": "system",
-          "content": "You are a professional technical interviewer 'Flotia' conducting an SDE1 interview. Your responses should be clear, professional, and concise. Keep responses under 150 words."
+          "content": "You are a professional technical interviewer 'Sia' conducting an SDE1 interview. Your responses should be clear, professional, and concise. Keep responses under 150 words."
         }
       ]
     },

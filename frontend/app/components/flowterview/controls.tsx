@@ -32,7 +32,7 @@ const ControlTooltip = ({
   return (
     isHovered && (
       <Badge
-        className="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 text-indigo-900/70 dark:text-indigo-100 bg-white/80 dark:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
+        className="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 text-app-blue-900/70 dark:text-app-blue-100 bg-white/80 dark:bg-app-blue-900/80 border border-app-blue-200 dark:border-app-blue-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
         variant="default"
       >
         {text}
@@ -126,7 +126,7 @@ const Controls = ({
 
   return (
     <section
-      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-4 relative z-20 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-slate-700"
+      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-4 relative z-20 bg-white dark:bg-slate-800 border border-app-blue-100 dark:border-slate-700"
       style={style}
     >
       {/* Left group: Code editor and captions */}
@@ -136,8 +136,8 @@ const Controls = ({
           className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               isCodeEditorOpen
-                ? "bg-indigo-500 text-white"
-                : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+                ? "bg-app-blue-500 text-white"
+                : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
             }
           `}
           onClick={(e) => {
@@ -162,8 +162,8 @@ const Controls = ({
           className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               isCaptionEnabled
-                ? "bg-indigo-500 text-white"
-                : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+                ? "bg-app-blue-500 text-white"
+                : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
             }
           `}
           onClick={() => setIsCaptionEnabled(!isCaptionEnabled)}
@@ -191,8 +191,8 @@ const Controls = ({
               className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
                 ${
                   isSettingsOpen
-                    ? "bg-indigo-500 text-white hover:bg-indigo-500 hover:text-white"
-                    : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 dark:hover:bg-indigo-500/30 dark:hover:text-indigo-400"
+                    ? "bg-app-blue-500 text-white hover:bg-app-blue-500 hover:text-white"
+                    : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 hover:text-app-blue-500 dark:hover:bg-app-blue-500/30 dark:hover:text-app-blue-400"
                 }`}
               onMouseEnter={() => setIsHovered("settings")}
               onMouseLeave={() => setIsHovered(null)}
@@ -205,12 +205,12 @@ const Controls = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[400px] overflow-hidden rounded-2xl shadow-lg p-0 border border-indigo-300/50 dark:border-indigo-700/70 shadow-xl0"
+            className="w-[400px] overflow-hidden rounded-2xl shadow-lg p-0 border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl0"
             align="end"
           >
-            <div className="flex justify-between items-center py-2.5 px-3 bg-indigo-50 dark:bg-[--meet-surface] border-b border-indigo-200/60 dark:border-indigo-700/60">
-              <h3 className="text-indigo-800 dark:text-indigo-200 font-semibold text-xs flex items-center gap-2 tracking-tight">
-                <Icons.Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+            <div className="flex justify-between items-center py-2.5 px-3 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
+              <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-xs flex items-center gap-2 tracking-tight">
+                <Icons.Settings className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />
                 <span>Settings</span>
               </h3>
             </div>
@@ -218,7 +218,7 @@ const Controls = ({
             <div className="p-5">
               {/* Theme Settings */}
               <div className="flex flex-row gap-3 items-center">
-                <div className="opacity-50 text-indigo-500 dark:text-indigo-300">
+                <div className="opacity-50 text-app-blue-500 dark:text-app-blue-300">
                   {theme === "dark" ? (
                     <Sun className="w-4 h-4" />
                   ) : (
@@ -264,10 +264,10 @@ const Controls = ({
           className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-100/50 dark:bg-indigo-500/10 cursor-not-allowed text-indigo-300 dark:text-indigo-500/40"
+                ? "bg-app-blue-100/50 dark:bg-app-blue-500/10 cursor-not-allowed text-app-blue-300 dark:text-app-blue-500/40"
                 : isMicMuted
-                  ? "bg-indigo-500 text-white"
-                  : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+                  ? "bg-app-blue-500 text-white"
+                  : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
             }
           `}
           onClick={() => {
@@ -297,10 +297,10 @@ const Controls = ({
           className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
               callStatus === "initial" || callStatus === "left"
-                ? "bg-indigo-100/50 dark:bg-indigo-500/10 cursor-not-allowed text-indigo-300 dark:text-indigo-500/40"
+                ? "bg-app-blue-100/50 dark:bg-app-blue-500/10 cursor-not-allowed text-app-blue-300 dark:text-app-blue-500/40"
                 : isCameraOn
-                  ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
-                  : "bg-indigo-500 text-white"
+                  ? "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
+                  : "bg-app-blue-500 text-white"
             }
           `}
           onClick={() => {

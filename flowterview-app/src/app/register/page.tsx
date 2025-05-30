@@ -35,7 +35,7 @@ export default function RegisterPage() {
     const verifyToken = async () => {
       try {
         const response = await authenticatedFetch(
-          `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/verify-token`,
+          `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/verify-token`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -81,7 +81,7 @@ export default function RegisterPage() {
     setRegistering(true);
     try {
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL}/api/v1/interviews/complete-registration`,
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/complete-registration`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -137,7 +137,7 @@ export default function RegisterPage() {
         <div className="mt-8 space-y-6">
           {verifying ? (
             <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-app-blue-6/00" />
               <p className="mt-4 text-gray-600">Verifying your email...</p>
             </div>
           ) : completed ? (
@@ -180,7 +180,7 @@ export default function RegisterPage() {
                 <Button
                   onClick={completeRegistration}
                   disabled={registering}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-app-blue-6/00 hover:bg-app-blue-7/00 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-app-blue-5/00"
                 >
                   {registering ? (
                     <>

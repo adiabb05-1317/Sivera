@@ -50,8 +50,7 @@ export default function InterviewsPage() {
       setError(null);
       try {
         const backendUrl =
-          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-          "http://localhost:8010";
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
         const resp = await authenticatedFetch(
           `${backendUrl}/api/v1/interviews`
         );
@@ -74,8 +73,7 @@ export default function InterviewsPage() {
     setLoadingCandidates(true);
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-        "http://localhost:8010";
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
 
       if (!interview.job_id) {
         throw new Error("No job_id found for this interview");
@@ -131,8 +129,7 @@ export default function InterviewsPage() {
     const fetchInterviews = async () => {
       try {
         const backendUrl =
-          process.env.NEXT_PUBLIC_FLOWTERVIEW_BACKEND_URL ||
-          "http://localhost:8010";
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
         const resp = await authenticatedFetch(
           `${backendUrl}/api/v1/interviews`
         );
@@ -166,7 +163,7 @@ export default function InterviewsPage() {
       <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
         <Button
           onClick={() => router.push("/dashboard/interviews/from-description")}
-          className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
           variant="outline"
         >
           New Interview
@@ -182,11 +179,11 @@ export default function InterviewsPage() {
           <Input
             type="text"
             placeholder="Search interviews"
-            className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 py-2 pl-10 pr-3 text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+            className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 py-2 pl-10 pr-3 text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:border-app-blue-5/00 dark:focus:border-app-blue-4/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00 dark:focus:ring-app-blue-4/00"
           />
         </div>
         <div className="inline-flex">
-          <Button className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 cursor-pointer">
+          <Button className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-app-blue-5/00 dark:focus:ring-app-blue-4/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 cursor-pointer">
             <Filter className="mr-2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             Filter
           </Button>
@@ -209,7 +206,7 @@ export default function InterviewsPage() {
               interviews.map((interview) => (
                 <li key={interview.id} className="group">
                   <CardContent
-                    className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800 group-hover:bg-indigo-50/20 dark:group-hover:bg-indigo-900/30"
+                    className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800 group-hover:bg-app-blue-50/20 dark:group-hover:bg-app-blue-900/30"
                     onClick={() =>
                       router.push(`/dashboard/interviews/${interview.id}`)
                     }
@@ -242,7 +239,7 @@ export default function InterviewsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="cursor-pointer border border-indigo-500/80 dark:border-indigo-400/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-900/20 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-200 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
                           onClick={(e) => handleBulkInviteClick(e, interview)}
                           disabled={loadingCandidates}
                         >

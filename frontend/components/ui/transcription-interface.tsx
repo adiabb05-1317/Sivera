@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, memo } from "react";
+import React, { useEffect, useRef, useCallback, memo, useState } from "react";
 import { ScrollArea } from "./scroll-area";
 import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
-  sender: "Flotia" | "You";
+  sender: "Sia" | "You";
   content: string;
   timestamp: string;
 }
@@ -15,7 +15,7 @@ interface TranscriptionInterfaceProps {
   messages?: Message[];
   liveTranscription?: string;
   isTranscribing?: boolean;
-  currentSpeaker?: "Flotia" | "You" | null;
+  currentSpeaker?: "Sia" | "You" | null;
   className?: string;
 }
 
@@ -39,7 +39,7 @@ const MessageBubble = memo<{
         <h4
           className={cn(
             "text-sm font-semibold",
-            message.sender === "Flotia"
+            message.sender === "Sia"
               ? "text-[--meet-primary]"
               : "text-[--meet-text-primary]"
           )}
@@ -68,8 +68,8 @@ const MessageBubble = memo<{
       <div
         className={cn(
           "p-3 rounded-lg text-sm",
-          message.sender === "Flotia"
-            ? "bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700/50"
+          message.sender === "Sia"
+            ? "bg-gradient-to-r from-app-blue-50 to-app-blue-100 dark:from-app-blue-900/20 dark:to-app-blue-800/20 border border-app-blue-200 dark:border-app-blue-700/50"
             : "bg-[--meet-surface-light] border border-[--meet-border]"
         )}
       >
@@ -94,38 +94,114 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
   className,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout>(null);
+  const autoScrollTimeoutRef = useRef<NodeJS.Timeout>(null);
 
-  // Debounced scroll to reduce performance impact
-  const debouncedScrollToBottom = useCallback(() => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-    scrollTimeoutRef.current = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+  // Track if user has manually scrolled up
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+
+  // Check if user is near the bottom of the scroll area
+  const isNearBottom = useCallback(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return true;
+
+    // Find the viewport element within the ScrollArea
+    const viewport = scrollArea.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    ) as HTMLElement;
+    if (!viewport) return true;
+
+    const { scrollTop, scrollHeight, clientHeight } = viewport;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    return distanceFromBottom < 100; // Within 100px of bottom
   }, []);
 
-  // Only scroll when messages change or live transcription updates significantly
-  useEffect(() => {
-    debouncedScrollToBottom();
-  }, [messages.length, debouncedScrollToBottom]);
+  // Handle scroll events to detect manual scrolling
+  const handleScroll = useCallback(
+    (event: Event) => {
+      const nearBottom = isNearBottom();
+      setIsUserScrolledUp(!nearBottom);
 
-  // Separate effect for live transcription to avoid over-scrolling
+      // Clear any pending auto-scroll when user manually scrolls
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
+    },
+    [isNearBottom]
+  );
+
+  // Attach scroll listener to the viewport
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+
+    const viewport = scrollArea.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    ) as HTMLElement;
+    if (!viewport) return;
+
+    viewport.addEventListener("scroll", handleScroll);
+
+    return () => {
+      viewport.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleScroll]);
+
+  // Smart scroll to bottom with auto-scroll after delay
+  const smartScrollToBottom = useCallback(
+    (immediate = false) => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = setTimeout(
+        () => {
+          // Always scroll immediately if user is near bottom or it's the first message
+          if (!isUserScrolledUp || messages.length <= 1 || immediate) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            setIsUserScrolledUp(false);
+          } else {
+            // If user has scrolled up, wait 3 seconds then auto-scroll to new messages
+            if (autoScrollTimeoutRef.current) {
+              clearTimeout(autoScrollTimeoutRef.current);
+            }
+
+            autoScrollTimeoutRef.current = setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+              setIsUserScrolledUp(false);
+            }, 3000); // 3 second delay before auto-scrolling
+          }
+        },
+        immediate ? 0 : 100
+      );
+    },
+    [isUserScrolledUp, messages.length]
+  );
+
+  // Scroll when new messages arrive
+  useEffect(() => {
+    smartScrollToBottom();
+  }, [messages.length, smartScrollToBottom]);
+
+  // For live transcription, be less aggressive with scrolling
   useEffect(() => {
     if (liveTranscription && liveTranscription.length > 0) {
-      // Only scroll if the transcription is getting long enough
-      if (liveTranscription.length % 50 === 0) {
-        debouncedScrollToBottom();
+      // Only scroll if user is already at bottom and transcription is getting long
+      if (!isUserScrolledUp && liveTranscription.length % 100 === 0) {
+        smartScrollToBottom(true); // Immediate scroll for live transcription when at bottom
       }
     }
-  }, [liveTranscription, debouncedScrollToBottom]);
+  }, [liveTranscription, smartScrollToBottom, isUserScrolledUp]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
+      }
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
       }
     };
   }, []);
@@ -144,7 +220,10 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <ScrollArea className="h-full px-4 pb-3 dark:bg-black dark:border-none">
+      <ScrollArea
+        ref={scrollAreaRef}
+        className="h-full px-4 pb-3 dark:bg-black dark:border-none"
+      >
         {messages.length === 0 && !liveTranscription ? (
           <div className="flex items-center justify-center h-full text-[--meet-text-secondary]">
             <p className="text-xs text-center">

@@ -93,7 +93,7 @@ export const FlowterviewAvatar = ({
             ></div>
             <Image
               src="/Flowterviewlogo.svg"
-              alt="Flowterview"
+              alt="Sivera"
               width={80}
               height={80}
               className={`${isTalking ? "scale-110" : "scale-100"} transition-all duration-500 drop-shadow-[0_0_8px_rgba(255,165,0,0.5)]`}
@@ -155,7 +155,7 @@ export const FlowterviewAvatarStatic = () => {
         <div className="w-full h-full relative bg-gradient-to-b from-[#2a2a2a] to-[#222] flex items-center justify-center">
           <Image
             src="/Flowterviewlogo.svg"
-            alt="Flowterview"
+            alt="Sivera"
             width={70}
             height={70}
             className="transition-transform duration-300"
