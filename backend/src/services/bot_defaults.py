@@ -36,7 +36,7 @@ sys.path.append(
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Path AI - AI Demo Agent from Layerpath"
+        description="Sivera · Shaping the future of hiring through AI-driven pre-screening and interviews."
     )
     parser.add_argument("-u", "--url", type=str, help="Room URL", required=True)
     parser.add_argument("-t", "--token", type=str, help="Room token", required=True)
