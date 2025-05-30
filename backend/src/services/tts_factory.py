@@ -1,8 +1,7 @@
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
+from pipecat.services.google.tts import GoogleTTSService
 from pipecat.services.rime.tts import RimeTTSService
-
-# from pipecat.services.google.tts import GoogleTTSService
 from pipecat.transcriptions.language import Language
 
 from src.core.config import Config
@@ -72,5 +71,17 @@ class TTSFactory:
                 model=rime_config["model"],
                 sample_rate=rime_config["sample_rate"],
             )
+        elif provider == "google":
+            google_config = config["google"]
+
+            return GoogleTTSService(
+                credentials_path=google_config["credentials_path"],
+                voice_id=google_config["voice_id"],
+                sample_rate=google_config["sample_rate"],
+                params=GoogleTTSService.InputParams(
+                    language=Language.EN,
+                ),
+            )
+
         else:
             raise ValueError(f"Unsupported TTS provider: {provider}")

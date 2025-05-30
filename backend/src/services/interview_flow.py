@@ -5,8 +5,6 @@ from typing import Any, Dict, Optional
 
 import aiohttp
 from dotenv import load_dotenv
-from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
-from pipecat.audio.turn.smart_turn.fal_smart_turn import FalSmartTurnAnalyzer
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import BotInterruptionFrame
 from pipecat.observers.base_observer import FramePushed
@@ -120,7 +118,8 @@ class InterviewFlow:
         self.task_running = False
         self.db = db_manager
 
-        self.flow_config = json.load(open(flow_config_path))
+        with open(flow_config_path) as f:
+            self.flow_config = json.load(f)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
@@ -173,15 +172,16 @@ class InterviewFlow:
             token=self.token,
             bot_name=self.bot_name,
             params=DailyParams(
-                turn_analyzer=FalSmartTurnAnalyzer(
-                    api_key=os.getenv("FAL_API_KEY"),
-                    aiohttp_session=self.aiohttp_session,
-                    params=SmartTurnParams(
-                        stop_secs=2,  # Time to wait after speech ends before considering turn complete
-                        pre_speech_ms=0.3,  # No delay before starting to process speech
-                        max_duration_secs=8.0,  # Maximum length of a single turn to maintain natural conversation
-                    ),
-                ),
+                # I don't see this contributing that much, or might need to finetune params.
+                # turn_analyzer=FalSmartTurnAnalyzer(
+                #     api_key=os.getenv("FAL_API_KEY"),
+                #     aiohttp_session=self.aiohttp_session,
+                #     params=SmartTurnParams(
+                #         stop_secs=2,  # Time to wait after speech ends before considering turn complete
+                #         pre_speech_ms=0.3,  # No delay before starting to process speech
+                #         max_duration_secs=8.0,  # Maximum length of a single turn to maintain natural conversation
+                #     ),
+                # ),
                 audio_out_enabled=True,  # Enable audio output for bot responses
                 audio_out_sample_rate=48000,  # High-quality audio sampling rate
                 audio_out_channels=1,  # Mono audio output for better compatibility
@@ -200,15 +200,15 @@ class InterviewFlow:
         )
 
         @self.transport.event_handler("on_joined")
-        async def on_joined(transport, participant):
+        async def on_joined(_transport, _participant):
             logger.info(f"Bot joined the session: {self.session_id}")
 
         @self.transport.event_handler("on_call_state_updated")
-        async def on_call_state_updated(transport, state):
+        async def on_call_state_updated(_transport, state):
             logger.info(f"Call state updated: {state}")
 
         @self.transport.event_handler("on_first_participant_joined")
-        async def on_first_participant_joined(transport, participant):
+        async def on_first_participant_joined(_transport, participant):
             if not self.task:
                 return
 
@@ -221,7 +221,7 @@ class InterviewFlow:
             pass
 
         @self.transport.event_handler("on_participant_left")
-        async def on_participant_left(transport, participant, reason):
+        async def on_participant_left(_transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
             message_history = self.flow_manager.get_current_context()
             filtered_messages = [
@@ -246,7 +246,7 @@ class InterviewFlow:
             await self.stop()
 
         @self.transport.event_handler("on_app_message")
-        async def on_app_message(transport, participant, message):
+        async def on_app_message(_transport, participant, message):
             try:
                 if isinstance(participant, dict) and isinstance(message, str):
                     logger.info(f"Received app message from {message}: {participant}")
@@ -313,7 +313,7 @@ class InterviewFlow:
         )
 
         async def handle_append_to_messages(
-            rtvi: RTVIProcessor, service: str, arguments: Dict[str, Any]
+            _rtvi: RTVIProcessor, _service: str, arguments: Dict[str, Any]
         ) -> ActionResult:
             if "messages" in arguments and arguments["messages"]:
                 for msg in arguments["messages"]:
@@ -374,7 +374,7 @@ class InterviewFlow:
                 self.task_running = True
             except Exception as recovery_error:
                 logger.error(f"Failed to recover pipeline: {recovery_error}")
-                raise RuntimeError(f"Failed to start interview flow: {e}")
+                raise RuntimeError(f"Failed to start interview flow: {e}") from None
 
     async def stop(self):
         try:

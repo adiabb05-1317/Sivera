@@ -251,19 +251,23 @@ wheels = [
 
 [[package]]
 name = "cartesia"
-version = "1.4.0"
+version = "2.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "audioop-lts", marker = "python_full_version >= '3.13' and python_full_version < '4.0'" },
     { name = "httpx" },
+    { name = "httpx-sse" },
     { name = "iterators" },
+    { name = "pydantic" },
+    { name = "pydantic-core" },
     { name = "pydub" },
-    { name = "requests" },
+    { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/8c/042835d911210f6af0b18a1323b2839424006dbc4eafad08f0ef75edf52a/cartesia-1.4.0.tar.gz", hash = "sha256:ea64e8641e468fc324e317932308f2c6539b61c729c6320f99a86a84bf6f95a8", size = 390866 }
+sdist = { url = "https://files.pythonhosted.org/packages/81/6f/ae99ecb963139acd29cbb404f205b2105b06ed96ac8a7b024665620c6525/cartesia-2.0.4.tar.gz", hash = "sha256:d7229d4e4aee669cc243fac9362ef43251bc061560bf2ad08ea5764d5be2bd3f", size = 58159 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/bc/432fecc330bcdfad7c3e433d14d9056aa680311c8ba70548ce3b7dfc727d/cartesia-1.4.0-py3-none-any.whl", hash = "sha256:ee3d944f24790fb0b2450eb5693273a612190ed5a125b4fc2972aefe8585e227", size = 31810 },
+    { url = "https://files.pythonhosted.org/packages/cf/b3/3fa431c518702d824d4c42f85063d01059afde55b40f6d10ad0d4cacefdf/cartesia-2.0.4-py3-none-any.whl", hash = "sha256:2a22115e465451aa75012b0c228bea0de85c3c447ea20b0608c0f89fca6c4e2e", size = 118472 },
 ]
 
 [[package]]
@@ -387,13 +391,13 @@ wheels = [
 
 [[package]]
 name = "daily-python"
-version = "0.18.2"
+version = "0.19.1"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/82/db3e45444493d7e5d8fc848382b0420994409831ed8e1274763c9b1f53e6/daily_python-0.18.2-cp37-abi3-macosx_10_15_x86_64.whl", hash = "sha256:9ffb527d9575fb42bebb0549cbe7d5bce266bb737558772215a80045bc319d28", size = 13424866 },
-    { url = "https://files.pythonhosted.org/packages/c6/ff/0abccba2809cb9eed634cd98cdaac076dc545c621e97891afc546b6f7ac3/daily_python-0.18.2-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:49c2caa0caad4637c95d4bf02d7267d0d1ff5de14f185bbdebe1ea3407ee88f7", size = 11765888 },
-    { url = "https://files.pythonhosted.org/packages/4f/75/9c74ffa83dc6b1e6d346e351b5053af828ff6c3e0174acf5c0fd85a58027/daily_python-0.18.2-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:57faaf617f95b3438bbbf61a738aeb993f3283a148e2805aa01f3393089a9c9b", size = 13801256 },
-    { url = "https://files.pythonhosted.org/packages/c1/44/70ef1833f8994637ff341577340af196ddae4a9b3ef045bc2acf6834cc25/daily_python-0.18.2-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:bacdff0cdc9f8d52c16884a65e00d80a2892e28274d6711ece5547ed42d3c316", size = 14289201 },
+    { url = "https://files.pythonhosted.org/packages/7e/78/73dbc8947775d05179c97a6badd4df57c38f6d1069e993909a9f754f9927/daily_python-0.19.1-cp37-abi3-macosx_10_15_x86_64.whl", hash = "sha256:ee7eda1ac36ae0cc45781aa5d31b9438d6abd40d178b8d092ed64a39f3c75ad9", size = 13482263 },
+    { url = "https://files.pythonhosted.org/packages/8e/9c/b58a8e1838548a8aaf119ab445c98304037fee98e870321e51a1cb810794/daily_python-0.19.1-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:c3f3103b840b19a8bf28013254576c0a3d3b0a878798e8876c4beca50fadd87f", size = 11797856 },
+    { url = "https://files.pythonhosted.org/packages/48/2c/0b22964d3ac23bd98a0d05310f50cae8781e6962fc560d00e78d0b0d8d9a/daily_python-0.19.1-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:ae75acc971133dd0de6a7b1799d07b5b2bb00eaebb5bda404b4a73fb2dc9d1b1", size = 13852877 },
+    { url = "https://files.pythonhosted.org/packages/cc/7f/39ce38334b09b2256fcbcd529ef6bb3906417dca5dd9d77679eaa0b6aea1/daily_python-0.19.1-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:e3ceb1d48e6247a9cddf60fd0d343202b15f7080472268d5298e8ab2bfee1a80", size = 14356785 },
 ]
 
 [[package]]
@@ -411,7 +415,7 @@ wheels = [
 
 [[package]]
 name = "deepgram-sdk"
-version = "3.8.0"
+version = "4.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aenum" },
@@ -423,9 +427,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/96/541a8da2066aaf51fb2829d3abbb0842d1b6d3f9d141946add2f423ea8ab/deepgram_sdk-3.8.0.tar.gz", hash = "sha256:e71e7abe9ce5c9b8c8ae8b752371b7af573945ea47a4dd273622a96baa94a59d", size = 81081 }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/9f/2529466844cb0e0961dea6c2149e98fb9f8a08baead31dda10b5a5b69f77/deepgram_sdk-4.1.0.tar.gz", hash = "sha256:6dc669052e37fb8187cb179ff31e333916b5870b4935abd4ad2146ab907a5313", size = 93311 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/ab/30aafc4c38470d2b1df85e5bc56361693fe01fc2b17fb00476a08847cd61/deepgram_sdk-3.8.0-py3-none-any.whl", hash = "sha256:5e25c233e74104e2a398994cfef110d11d3a1a2bf8435b9b96293b10a78532dc", size = 129546 },
+    { url = "https://files.pythonhosted.org/packages/05/bd/f74ee57de5c88096451179a975cbfe99d87d9e53d795f581c257d4201452/deepgram_sdk-4.1.0-py3-none-any.whl", hash = "sha256:239f3e74113efdf7eab020c9092f9ce2096644509a9d499aa87d123cb6f0e44b", size = 153222 },
 ]
 
 [[package]]
@@ -671,7 +675,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-speech"
-version = "2.31.1"
+version = "2.32.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
@@ -679,14 +683,14 @@ dependencies = [
     { name = "proto-plus" },
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/06/d50873b1b621b929d5d0befacf1c12ee6bf01d7d119e9355e1b6b7c742f9/google_cloud_speech-2.31.1.tar.gz", hash = "sha256:fdf0d350c0647b566945402bd8aeef2b7afda67abb5206eb4db4ed41f923b40f", size = 384588 }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/fc/7e47328069850f084ee17e26b5572de067e30fdab862e381702222d237b7/google_cloud_speech-2.32.0.tar.gz", hash = "sha256:89c2618b131d310c6c00e7c04d290ffa9a5d68c20191030766a7737850f04e77", size = 387621 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/f2/65cc7bc25768d0075cdb78fd22b3136620059d0674230abc628f71fab77e/google_cloud_speech-2.31.1-py3-none-any.whl", hash = "sha256:bb10defc51570881156893556ee3dc6a481f21ce39196ebd0b3e011dc61a6533", size = 332304 },
+    { url = "https://files.pythonhosted.org/packages/85/a4/f41f2737cd0597f2aa5855b0a12f353fad4506868887590671230df81c77/google_cloud_speech-2.32.0-py3-none-any.whl", hash = "sha256:537b279d8697fe5b5bc5f485f2d48a6b343fc76f73385b5776806c37bc5f8ea1", size = 334148 },
 ]
 
 [[package]]
 name = "google-cloud-texttospeech"
-version = "2.25.1"
+version = "2.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
@@ -694,14 +698,14 @@ dependencies = [
     { name = "proto-plus" },
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/3c/e1243561ce766940f080bc691b448db1228adca3ccd5fcff8a21b8464b97/google_cloud_texttospeech-2.25.1.tar.gz", hash = "sha256:37dd7c3f023f5a97db72989718d96530e05fae270e5d1de41d104b316a770afc", size = 181107 }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/3d/214506e1163138159a3ba172adc0945970843ce9a8c5332db06772806dff/google_cloud_texttospeech-2.26.0.tar.gz", hash = "sha256:43af1b88a6b9becde69a3bbf8aa80cdfa5f12f8999e56bcf9dec374354ed7f6a", size = 181084 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/73/928e08724be0ce90bb7a0876fa8a69703a93995d3382db23d8ac42bfcdd6/google_cloud_texttospeech-2.25.1-py3-none-any.whl", hash = "sha256:599ed2be08076b6abd64ab7b84ad28111a99ee34bf2ce3e0474cc5ae2d423771", size = 188167 },
+    { url = "https://files.pythonhosted.org/packages/f0/eb/fb3a2c16f5612c4a131b2bfa242aaf7800ec0cee479759d9de2cc919ba70/google_cloud_texttospeech-2.26.0-py3-none-any.whl", hash = "sha256:837835aadeb261983d139ef1c5e60c99f80199e22330bf4f62e217360b9e07b8", size = 188122 },
 ]
 
 [[package]]
 name = "google-genai"
-version = "1.7.0"
+version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -712,9 +716,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/24/3f3282c82e0cd678ea7bdfe53bc5d908059fb9628643b783129724c3bcfb/google_genai-1.7.0.tar.gz", hash = "sha256:bf8909ba25527e125f07de99cd16ec8bba4d989b67c31c235114418a65404967", size = 146088 }
+sdist = { url = "https://files.pythonhosted.org/packages/00/ba/c8e4c0b60c6dda40e51e2125709d097c2609fce1389b4a05f40cdd51c1ec/google_genai-1.14.0.tar.gz", hash = "sha256:7c608de5bb173486a546f5ec4562255c26bae72d33d758a3207bb26f695d0087", size = 169938 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/e1/8495491b7ff694c940765061283d562a428b7f9d8d93fc5fdaf2d672d735/google_genai-1.7.0-py3-none-any.whl", hash = "sha256:62b7b67d16b2fa0a6a989f029414a072c6e9e6f0479bb7d18e0532b8090ea895", size = 144732 },
+    { url = "https://files.pythonhosted.org/packages/12/86/dde4cd028c8b0716b3f1f6d202647396a87a4ecbbdc7e4beb59b9d9284d3/google_genai-1.14.0-py3-none-any.whl", hash = "sha256:5916ee985bf69ac7b68c4488949225db71e21579afc7ba5ecd5321173b60d3b2", size = 168862 },
 ]
 
 [[package]]
@@ -856,7 +860,7 @@ requires-dist = [
     { name = "google-generativeai", specifier = ">=0.8.4" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "openai", specifier = ">=1.59" },
-    { name = "pipecat-ai", extras = ["silero", "daily", "elevenlabs", "google", "deepgram", "openai", "websocket", "cartesia"], specifier = ">=0.0.67" },
+    { name = "pipecat-ai", extras = ["silero", "daily", "elevenlabs", "google", "deepgram", "openai", "websocket", "cartesia"], specifier = ">=0.0.68" },
     { name = "pipecat-ai-flows", specifier = ">=0.0.15" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
@@ -940,6 +944,15 @@ wheels = [
 [package.optional-dependencies]
 http2 = [
     { name = "h2" },
+]
+
+[[package]]
+name = "httpx-sse"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/60/8f4281fa9bbf3c8034fd54c0e7412e66edbab6bc74c4996bd616f8d0406e/httpx-sse-0.4.0.tar.gz", hash = "sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721", size = 12624 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/9b/a181f281f65d776426002f330c31849b86b31fc9d848db62e16f03ff739f/httpx_sse-0.4.0-py3-none-any.whl", hash = "sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f", size = 7819 },
 ]
 
 [[package]]
@@ -1376,7 +1389,7 @@ wheels = [
 
 [[package]]
 name = "pipecat-ai"
-version = "0.0.67"
+version = "0.0.68"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1392,9 +1405,8 @@ dependencies = [
     { name = "resampy" },
     { name = "soxr" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/8a/2c021cdc69876b38e6c4e366b24e77e3956674ee302bea6ffe3fdc499985/pipecat_ai-0.0.67.tar.gz", hash = "sha256:864657271ec6729b96d406fd85238a15eb64e14e77b1ba5794051d579f6739f1", size = 95147430 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/a6/2231101351658d76cef77ddb0b9e750b86e5bb2f4848d776a6962bdf1687/pipecat_ai-0.0.67-py3-none-any.whl", hash = "sha256:8a61c53f7c3baf1c86e78a05fadf9f01959930165d5f5e1e92be36184797e26a", size = 2379800 },
+    { url = "https://files.pythonhosted.org/packages/8a/9d/cb3011016d0098787c76af97040b2cab8f70cf006f743d09b52a5796203d/pipecat_ai-0.0.68-py3-none-any.whl", hash = "sha256:e289718d2fa8b5759a64b390d7efc9ba51b10a1dfc1149c1dda743f7eb62a6ad", size = 2415351 },
 ]
 
 [package.optional-dependencies]
@@ -1415,7 +1427,6 @@ google = [
     { name = "google-cloud-speech" },
     { name = "google-cloud-texttospeech" },
     { name = "google-genai" },
-    { name = "google-generativeai" },
     { name = "websockets" },
 ]
 openai = [

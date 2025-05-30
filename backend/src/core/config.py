@@ -110,6 +110,11 @@ class Config:
             "model": os.getenv("RIME_MODEL", "mistv2"),
             "sample_rate": int(os.getenv("RIME_SAMPLE_RATE", "48000")),
         },
+        "google": {
+            "credentials_path": os.getenv("GOOGLE_CREDENTIALS_PATH"),
+            "voice_id": os.getenv("GOOGLE_VOICE_ID"),
+            "sample_rate": int(os.getenv("RIME_SAMPLE_RATE", "48000")),
+        },
     }
 
     @classmethod
