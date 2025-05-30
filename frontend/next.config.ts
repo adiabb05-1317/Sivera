@@ -1,7 +1,5 @@
-import { withSentryConfig } from "@sentry/nextjs";
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   eslint: {
     // Only run ESLint on specific directories during production builds
     dirs: ["src", "components", "lib", "app", "pages"],
@@ -25,6 +23,7 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer, dev, webpack }) => {
     // Prevent server-only packages from being bundled in client-side code
     if (!isServer) {
+      // Ignore problematic dynamic imports
       config.plugins.push(
         // Ignore OpenTelemetry packages in client builds
         new webpack.IgnorePlugin({
@@ -35,13 +34,6 @@ const nextConfig: NextConfig = {
         }),
         new webpack.IgnorePlugin({
           resourceRegExp: /require-in-the-middle/,
-        }),
-        // Ignore server-specific Sentry packages
-        new webpack.IgnorePlugin({
-          resourceRegExp: /@sentry\/node/,
-        }),
-        new webpack.IgnorePlugin({
-          resourceRegExp: /@sentry\/profiling-node/,
         })
       );
 
@@ -60,6 +52,11 @@ const nextConfig: NextConfig = {
         assert: false,
         os: false,
         path: false,
+        // Add specific fallbacks for Monaco Editor
+        module: false,
+        dgram: false,
+        dns: false,
+        child_process: false,
       };
     }
 
@@ -75,6 +72,7 @@ const nextConfig: NextConfig = {
           /node_modules[\\/].+[\\/]@pipecat-ai[\\/].+\.js/,
           /node_modules[\\/].+[\\/]@opentelemetry[\\/].+\.js/,
           /node_modules[\\/].+[\\/]require-in-the-middle[\\/].+\.js/,
+          /node_modules[\\/].+[\\/]monaco-editor[\\/].+\.js/,
         ],
       });
     }
@@ -86,6 +84,8 @@ const nextConfig: NextConfig = {
       { message: /Critical dependency.*@opentelemetry/ },
       { message: /the request of a dependency is an expression/ },
       { message: /Critical dependency: require function is used in a way/ },
+      { message: /Can't resolve.*dynamic/ },
+      { message: /Critical dependency.*monaco-editor/ },
     ];
 
     // Optimize for development speed
@@ -93,32 +93,35 @@ const nextConfig: NextConfig = {
       // Disable source maps in development for faster builds
       config.devtool = false;
 
-      // Enable faster incremental builds
+      // Enable faster incremental builds with more aggressive caching
       config.cache = {
         type: "filesystem",
         allowCollectingMemory: true,
+        maxMemoryGenerations: 1,
       };
 
-      // Optimize module resolution
+      // Optimize module resolution for development
       config.resolve.alias = {
         ...config.resolve.alias,
-        // Add specific aliases for heavy modules if needed
+      };
+
+      // Reduce the number of modules processed in development
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
       };
     }
 
     return config;
   },
+
+  // Experimental optimizations
+  experimental: {
+    // Enable optimistic client router cache
+    optimisticClientCache: true,
+  },
 };
 
-// Apply Sentry config only in production to avoid dev overhead
-export default process.env.NODE_ENV === "production"
-  ? withSentryConfig(nextConfig, {
-      org: "layerpath-tb",
-      project: "javascript-nextjs",
-      silent: !process.env.CI,
-      widenClientFileUpload: true,
-      tunnelRoute: "/monitoring",
-      disableLogger: true,
-      automaticVercelMonitors: true,
-    })
-  : nextConfig;
+export default nextConfig;

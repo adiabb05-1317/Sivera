@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import Editor from "@monaco-editor/react";
-import { editor } from "monaco-editor";
+import type { editor } from "monaco-editor";
 import { Fira_Code } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { Send, Type } from "lucide-react";
@@ -68,12 +68,7 @@ export default function CodeEditor({
     setMonacoTheme(newTheme);
 
     // Update existing editor theme if editor is mounted
-    if (editorRef.current) {
-      // Use Monaco's editor API to update theme
-      import("monaco-editor").then((monaco) => {
-        monaco.editor.setTheme(newTheme);
-      });
-    }
+    // Note: Theme will be updated when Monaco re-renders with new theme prop
   }, [resolvedTheme]);
 
   const getMonacoLang = (lang: string) => {

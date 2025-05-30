@@ -1,4 +1,4 @@
-import FlowterviewComponent from "./components/flowterview/path-ai-component";
+import FlowterviewComponent from "./components/flowterview/main-component";
 
 export default function Home() {
   return (

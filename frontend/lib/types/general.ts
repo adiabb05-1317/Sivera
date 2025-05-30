@@ -1,29 +1,24 @@
 export type TSource = {
+  id?: number;
+  chunk_id: string;
   metadata: {
-    imageFile?: string
-    contentType?: string
-    filename?: string
-    id: string
-    pageNumber?: number
-    project_id: string
-    source?: string
-    type?: string
-    source_workspace_id?: string
-    source_demo_id?: string
-    source_demo_url?: string
-  }
-  id_?: string
-  score: number
-}
+    type: string;
+    title?: string;
+    link?: string;
+    summary?: string;
+    category?: string;
+  };
+  content: string;
+};
 
 export type Message = {
-  content: string
-  role: "user" | "assistant" | "system"
-}
+  content: string;
+  role: "user" | "assistant" | "system";
+};
 
 export type TConnectionStatus =
   | "initializing"
   | "audio_connected"
   | "service_connected"
   | "bot_connected"
-  | "disconnected"
+  | "disconnected";

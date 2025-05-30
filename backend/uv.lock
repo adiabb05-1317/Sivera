@@ -861,7 +861,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "openai", specifier = ">=1.59" },
     { name = "pipecat-ai", extras = ["silero", "daily", "elevenlabs", "google", "deepgram", "openai", "websocket", "cartesia"], specifier = ">=0.0.68" },
-    { name = "pipecat-ai-flows", specifier = ">=0.0.15" },
+    { name = "pipecat-ai-flows", specifier = ">=0.0.17" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
@@ -1442,15 +1442,15 @@ websocket = [
 
 [[package]]
 name = "pipecat-ai-flows"
-version = "0.0.16"
+version = "0.0.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "loguru" },
     { name = "pipecat-ai" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/4d/945a7e1db59e03bd5fa2af2df0bcb1f34a6db9aa94a54974e070474f3dbd/pipecat_ai_flows-0.0.16.tar.gz", hash = "sha256:ca6e600bb404da7607e20a3e01225c3fecbb84b5302071b4b3cba22311eefdf2", size = 35319 }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/fa/a6823050e9b1ac9ad34e3a5ff01b56a27d056bba3df08c8b52f384b90176/pipecat_ai_flows-0.0.17.tar.gz", hash = "sha256:80101886650451da963182b1c206c7f09fb8579fa85983e81a815079c9eb1a71", size = 37475 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/64/fa3e83aed45c4677e262916d5b7b9c6aecea0652169fe509ac1dda88e7fe/pipecat_ai_flows-0.0.16-py3-none-any.whl", hash = "sha256:cd01b58ca9692beb3ce0e4c22217d9a3991ef9c3270e7981936aa68842585987", size = 26812 },
+    { url = "https://files.pythonhosted.org/packages/bf/a1/5e5994cb7b6cbba904d117833d7b23d9415f63807e078c95842407797420/pipecat_ai_flows-0.0.17-py3-none-any.whl", hash = "sha256:1eed55a455ae3610813560969652d147dd190fffd06e3161e2b3b448774374cf", size = 27987 },
 ]
 
 [[package]]

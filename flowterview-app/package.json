@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
+    "dev:fast": "next dev --turbo --experimental-https",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
+    "clean": "rm -rf .next && rm -rf node_modules/.cache",
+    "dev:clean": "npm run clean && npm run dev:turbo",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
@@ -68,6 +73,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.19.3",
     "tw-animate-css": "^1.2.9",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@next/bundle-analyzer": "^15.3.1"
   }
 }

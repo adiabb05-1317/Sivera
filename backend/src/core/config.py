@@ -22,7 +22,13 @@ class Config:
     ENVIRONMENT = os.getenv("ENV", "development")
     PORT = int(os.getenv("PORT", "8000"))
     HOST = os.getenv("HOST", "0.0.0.0")
-    RELOAD = os.getenv("RELOAD", "true").lower() == "true"
+    RELOAD = (
+        os.getenv(
+            "RELOAD",
+            "true" if os.getenv("ENV", "development") == "development" else "false",
+        ).lower()
+        == "true"
+    )
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     USE_COHERE_RERANK = os.getenv("USE_COHERE_RERANK", "false").lower() == "true"
 
@@ -46,7 +52,9 @@ class Config:
 
     # Daily.co Configuration
     DAILY_ROOM_EXPIRY_MINUTES = 30  # Hardcoded instead of env
-    DAILY_CLEANUP_ON_STARTUP = os.getenv("DAILY_CLEANUP_ON_STARTUP", "true").lower() == "true"
+    DAILY_CLEANUP_ON_STARTUP = (
+        os.getenv("DAILY_CLEANUP_ON_STARTUP", "true").lower() == "true"
+    )
     DAILY_ROOM_SETTINGS = {
         "privacy": "public",
         "properties": {
@@ -62,7 +70,7 @@ class Config:
 
     # Vector Store Configuration
     DEFAULT_VECTOR_DIMENSION = 3072
-    DEFAULT_COLLECTION = "path_ai_demo"
+    DEFAULT_COLLECTION = "interview_data"
     TOP_K = 5
     SCORE_THRESHOLD = 0.25
     USE_HYBRID_SEARCH = True

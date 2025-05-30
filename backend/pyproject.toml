@@ -14,7 +14,7 @@ dependencies = [
     "uvicorn>=0.34.0",
     "loguru>=0.7.3",
     "supabase>=1.0.3",
-    "pipecat-ai-flows>=0.0.15",
+    "pipecat-ai-flows>=0.0.17",
 ]
 
 [project.optional-dependencies]
