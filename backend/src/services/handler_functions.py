@@ -1,10 +1,9 @@
-import json
-import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from pipecat_flows import FlowManager, FlowArgs
-from src.utils.logger import logger
+from pipecat_flows import FlowArgs, FlowManager
+
 from src.services.interview_flow import end_interview_pipeline, send_message_to_client
+from src.utils.logger import logger
 
 
 async def collect_candidate_info(
@@ -38,7 +37,7 @@ async def process_background_info(
     technical_background = args["technical_background"]
     key_skills = args["key_skills"]
 
-    logger.info(f"Processed candidate technical background")
+    logger.info("Processed candidate technical background")
 
     return {"technical_background": technical_background, "key_skills": key_skills}
 
@@ -53,7 +52,6 @@ async def present_coding_problem(
     problem_constraints = args["problem_constraints"]
 
     try:
-
         message = {
             "type": "coding-problem",
             "payload": {
@@ -82,7 +80,7 @@ async def evaluate_problem_solving(
     approach = args["approach"]
     solution_quality = args["solution_quality"]
 
-    logger.info(f"Evaluated candidate's problem-solving approach")
+    logger.info("Evaluated candidate's problem-solving approach")
 
     return {"approach": approach, "solution_quality": solution_quality}
 
@@ -96,7 +94,7 @@ async def present_system_design(
     design_question = args["design_question"]
     expected_components = args["expected_components"]
 
-    logger.info(f"Presented system design question")
+    logger.info("Presented system design question")
 
     return {
         "design_question": design_question,
@@ -113,7 +111,7 @@ async def evaluate_behavioral_response(
     response_quality = args["response_quality"]
     communication_skills = args["communication_skills"]
 
-    logger.info(f"Evaluated candidate's behavioral responses")
+    logger.info("Evaluated candidate's behavioral responses")
 
     return {
         "response_quality": response_quality,
@@ -130,7 +128,7 @@ async def handle_candidate_questions(
     questions = args["questions"]
     response = args["response"]
 
-    logger.info(f"Handled candidate questions")
+    logger.info("Handled candidate questions")
 
     return {"questions": questions, "response": response}
 
@@ -144,7 +142,7 @@ async def conclude_interview(
     final_remarks = args["final_remarks"]
     next_steps = args["next_steps"]
 
-    logger.info(f"Concluded interview")
+    logger.info("Concluded interview")
 
     return {"final_remarks": final_remarks, "next_steps": next_steps}
 

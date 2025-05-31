@@ -33,4 +33,4 @@ echo ""
 echo "To test the setup, make a change to a Python file and commit it."
 echo "The formatter should run automatically during the commit process."
 
-exit 0 
+exit 0

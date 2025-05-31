@@ -1,6 +1,7 @@
 import os
-from google import genai
 from typing import Optional
+
+from google import genai
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

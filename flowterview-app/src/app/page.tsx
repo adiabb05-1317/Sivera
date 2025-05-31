@@ -24,12 +24,17 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-indigo-600 tracking-wider">
-          FLOWTERVIEW
+        <h1
+          className="text-4xl font-bold text-app-blue-6/00 dark:text-app-blue-3/00 tracking-wider font-kyiv"
+          style={{
+            fontFamily: "KyivType Sans",
+          }}
+        >
+          SIVERA
         </h1>
-        <p className="mt-2 text-gray-600">Loading...</p>
+        <p className="mt-2 text-gray-600 dark:text-gray-300">Loading...</p>
       </div>
     </div>
   );

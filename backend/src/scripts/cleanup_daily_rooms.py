@@ -33,9 +33,7 @@ import sys
 import aiohttp
 from dotenv import load_dotenv
 
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.core.config import Config
 from src.utils.daily_helper import delete_rooms_batch, get_rooms, is_room_expired
@@ -75,9 +73,7 @@ async def cleanup_rooms(
         rooms_to_delete = []
 
         if delete_all:
-            print(
-                f"{RED}{BOLD}DELETING ALL ROOMS! This will delete all {total_rooms} rooms.{ENDC}"
-            )
+            print(f"{RED}{BOLD}DELETING ALL ROOMS! This will delete all {total_rooms} rooms.{ENDC}")
             rooms_to_delete = rooms
         elif force:
             # Keep only the most recent N rooms
@@ -88,9 +84,7 @@ async def cleanup_rooms(
             )
         else:
             # Normal mode - delete rooms matching pattern
-            rooms_to_delete = [
-                r for r in rooms if pattern.lower() in r.get("name", "").lower()
-            ]
+            rooms_to_delete = [r for r in rooms if pattern.lower() in r.get("name", "").lower()]
             print(
                 f"{BLUE}Pattern mode: Found {len(rooms_to_delete)} rooms matching pattern '{pattern}'{ENDC}"
             )
@@ -105,9 +99,7 @@ async def cleanup_rooms(
                     expired_rooms.append(room)
 
             if expired_rooms:
-                print(
-                    f"{YELLOW}Found {len(expired_rooms)} expired rooms to delete{ENDC}"
-                )
+                print(f"{YELLOW}Found {len(expired_rooms)} expired rooms to delete{ENDC}")
                 rooms_to_delete.extend(expired_rooms)
 
         if not rooms_to_delete:
@@ -117,13 +109,9 @@ async def cleanup_rooms(
         print(f"{BOLD}Deleting {len(rooms_to_delete)} out of {total_rooms} rooms{ENDC}")
 
         if dry_run:
-            print(
-                f"{YELLOW}{BOLD}DRY RUN MODE - No rooms will actually be deleted{ENDC}"
-            )
+            print(f"{YELLOW}{BOLD}DRY RUN MODE - No rooms will actually be deleted{ENDC}")
 
-        room_names_to_delete = [
-            room.get("name") for room in rooms_to_delete if room.get("name")
-        ]
+        room_names_to_delete = [room.get("name") for room in rooms_to_delete if room.get("name")]
 
         if len(room_names_to_delete) > 10:
             batch_size = 25
@@ -140,9 +128,7 @@ async def cleanup_rooms(
         if not dry_run:
             # Verify the cleanup
             remaining_rooms = await get_rooms(session, api_key)
-            print(
-                f"{BLUE}Verification: {len(remaining_rooms)} rooms remain after cleanup.{ENDC}"
-            )
+            print(f"{BLUE}Verification: {len(remaining_rooms)} rooms remain after cleanup.{ENDC}")
 
 
 def parse_args():
@@ -157,9 +143,7 @@ def parse_args():
         action="store_true",
         help="Show what would be deleted without actually deleting",
     )
-    parser.add_argument(
-        "--all", action="store_true", help="Delete all rooms (use with caution)"
-    )
+    parser.add_argument("--all", action="store_true", help="Delete all rooms (use with caution)")
     parser.add_argument(
         "--count", type=int, default=5, help="Number of rooms to leave (default: 5)"
     )

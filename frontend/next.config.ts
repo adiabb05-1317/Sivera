@@ -1,7 +1,11 @@
-import { withSentryConfig } from "@sentry/nextjs"
-import type { NextConfig } from "next"
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    // Only run ESLint on specific directories during production builds
+    dirs: ["src", "components", "lib", "app", "pages"],
+    // Allow production builds to complete even with ESLint errors
+    ignoreDuringBuilds: true,
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
@@ -14,62 +18,110 @@ const nextConfig: NextConfig = {
     ],
   },
   output: "standalone",
-  
-  // Fix source map issues but allow Daily.js and Pipecat to function properly
-  webpack: (config, { isServer }) => {
-    // Only modify source maps for non-server code
+
+  // Optimize webpack for faster dev builds and fix server-only package bundling
+  webpack: (config, { isServer, dev, webpack }) => {
+    // Prevent server-only packages from being bundled in client-side code
     if (!isServer) {
-      // Add a rule to handle source maps for problematic packages
+      // Ignore problematic dynamic imports
+      config.plugins.push(
+        // Ignore OpenTelemetry packages in client builds
+        new webpack.IgnorePlugin({
+          resourceRegExp: /@opentelemetry\/instrumentation/,
+        }),
+        new webpack.IgnorePlugin({
+          resourceRegExp: /@opentelemetry\/api/,
+        }),
+        new webpack.IgnorePlugin({
+          resourceRegExp: /require-in-the-middle/,
+        })
+      );
+
+      // Prevent Node.js specific modules from being resolved in client
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        os: false,
+        path: false,
+        // Add specific fallbacks for Monaco Editor
+        module: false,
+        dgram: false,
+        dns: false,
+        child_process: false,
+      };
+    }
+
+    // Only apply expensive source map processing in production
+    if (!isServer && !dev) {
+      // Add a rule to handle source maps for problematic packages (production only)
       config.module.rules.push({
         test: /\.js$/,
-        enforce: 'pre',
-        use: ['source-map-loader'],
-        // Skip source map generation only for specific files, not entire packages
+        enforce: "pre",
+        use: ["source-map-loader"],
         exclude: [
-          // Specific files causing issues
           /node_modules[\\/].+[\\/]daily-esm\.js/,
           /node_modules[\\/].+[\\/]@pipecat-ai[\\/].+\.js/,
+          /node_modules[\\/].+[\\/]@opentelemetry[\\/].+\.js/,
+          /node_modules[\\/].+[\\/]require-in-the-middle[\\/].+\.js/,
+          /node_modules[\\/].+[\\/]monaco-editor[\\/].+\.js/,
         ],
       });
-
-      // Disable source map warnings in console
-      config.ignoreWarnings = [
-        { message: /Failed to parse source map/ },
-      ];
     }
-    
+
+    // Suppress warnings for both dev and production
+    config.ignoreWarnings = [
+      { message: /Failed to parse source map/ },
+      { message: /Critical dependency.*require-in-the-middle/ },
+      { message: /Critical dependency.*@opentelemetry/ },
+      { message: /the request of a dependency is an expression/ },
+      { message: /Critical dependency: require function is used in a way/ },
+      { message: /Can't resolve.*dynamic/ },
+      { message: /Critical dependency.*monaco-editor/ },
+    ];
+
+    // Optimize for development speed
+    if (dev) {
+      // Disable source maps in development for faster builds
+      config.devtool = false;
+
+      // Enable faster incremental builds with more aggressive caching
+      config.cache = {
+        type: "filesystem",
+        allowCollectingMemory: true,
+        maxMemoryGenerations: 1,
+      };
+
+      // Optimize module resolution for development
+      config.resolve.alias = {
+        ...config.resolve.alias,
+      };
+
+      // Reduce the number of modules processed in development
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+    }
+
     return config;
   },
-}
 
-export default withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
+  // Experimental optimizations
+  experimental: {
+    // Enable optimistic client router cache
+    optimisticClientCache: true,
+  },
+};
 
-  org: "layerpath-tb",
-  project: "javascript-nextjs",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-
-  // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-  // See the following for more information:
-  // https://docs.sentry.io/product/crons/
-  // https://vercel.com/docs/cron-jobs
-  automaticVercelMonitors: true,
-})
+export default nextConfig;

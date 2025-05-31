@@ -1,12 +1,13 @@
 import asyncio
 import json
 import os
-import uuid
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional
 
+import aiohttp
 from dotenv import load_dotenv
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import BotInterruptionFrame
+from pipecat.observers.base_observer import FramePushed
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -16,27 +17,27 @@ from pipecat.processors.filters.stt_mute_filter import (
     STTMuteFilter,
     STTMuteStrategy,
 )
-from pipecat.processors.frame_processor import Frame, FrameDirection, FrameProcessor
+from pipecat.processors.frame_processor import FrameDirection
 from pipecat.processors.frameworks.rtvi import (
+    RTVI_MESSAGE_LABEL,
     ActionResult,
+    RTVIAction,
+    RTVIActionArgument,
     RTVIConfig,
+    RTVIMessageLiteral,
     RTVIObserver,
     RTVIProcessor,
     TransportMessageUrgentFrame,
-    RTVI_MESSAGE_LABEL,
-    RTVIMessageLiteral,
-    RTVIAction,
-    RTVIActionArgument,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
-from pipecat_flows import FlowArgs, FlowManager
+from pipecat_flows import FlowManager
+from pydantic import BaseModel
+
 from src.constants.ai_models import LLMModels
 from src.services.tts_factory import TTSFactory
 from src.utils.logger import logger
-from pydantic import BaseModel
-
 
 load_dotenv(override=True)
 
@@ -49,19 +50,12 @@ class InterviewRTVIProcessor(RTVIProcessor):
 
 
 class InterviewRTVIObserver(RTVIObserver):
-    async def on_push_frame(
-        self,
-        src: FrameProcessor,
-        dst: FrameProcessor,
-        frame: Frame,
-        direction: FrameDirection,
-        timestamp: int,
-    ):
-        if isinstance(frame, BotInterruptionFrame):
+    async def on_push_frame(self, data: FramePushed):
+        if isinstance(data.frame, BotInterruptionFrame):
             logger.info(
-                f"Bot interruption frame detected: {frame} from {src.__class__.__name__} to {dst.__class__.__name__}"
+                f"Bot interruption frame detected: {data.frame} from {data.source.__class__.__name__} to {data.destination.__class__.__name__}"
             )
-        await super().on_push_frame(src, dst, frame, direction, timestamp)
+        await super().on_push_frame(data)
 
 
 rtvi_instance = None
@@ -94,9 +88,8 @@ async def send_message_to_client(message):
         return
 
     try:
-
         message_model = RTVISourcesMessage(data=message)
-        logger.info(f"Sending message to client using model approach")
+        logger.info("Sending message to client using model approach")
         await rtvi_instance.push_frame(
             TransportMessageUrgentFrame(message=message_model.model_dump()),
             FrameDirection.DOWNSTREAM,
@@ -125,7 +118,8 @@ class InterviewFlow:
         self.task_running = False
         self.db = db_manager
 
-        self.flow_config = json.load(open(flow_config_path))
+        with open(flow_config_path) as f:
+            self.flow_config = json.load(f)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
@@ -137,16 +131,18 @@ class InterviewFlow:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an interviewer. Your responses should be clear, concise, and professional. Keep your responses under 150 words.",
+                    "content": """
+                    You are an interviewer. Your responses should be clear, concise, and professional.
+                    Keep your responses under 150 words.
+                    Your output will be converted to audio so don't include special characters in your answers.
+                    """,
                 }
             ]
         )
         self.context_aggregator = self.llm.create_context_aggregator(context)
         self.stt_mute_filter = STTMuteFilter(
             stt_service=self.stt,
-            config=STTMuteConfig(
-                strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE}
-            ),
+            config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE}),
         )
         self.rtvi_config = RTVIConfig(
             config=[
@@ -169,42 +165,50 @@ class InterviewFlow:
         return cls(url, bot_token, session_id, flow_config_path, bot_name)
 
     async def create_transport(self):
+        self.aiohttp_session = aiohttp.ClientSession()
+
         self.transport = DailyTransport(
             room_url=self.url,
             token=self.token,
             bot_name=self.bot_name,
             params=DailyParams(
-                audio_out_enabled=True,
-                audio_out_sample_rate=48000,
-                audio_out_channels=1,
-                audio_in_enabled=True,
-                camera_out_enabled=True,
-                camera_out_width=1024,
-                camera_out_height=768,
-                camera_out_framerate=30,
-                vad_enabled=True,
+                # I don't see this contributing that much, or might need to finetune params.
+                # turn_analyzer=FalSmartTurnAnalyzer(
+                #     api_key=os.getenv("FAL_API_KEY"),
+                #     aiohttp_session=self.aiohttp_session,
+                #     params=SmartTurnParams(
+                #         stop_secs=2,  # Time to wait after speech ends before considering turn complete
+                #         pre_speech_ms=0.3,  # No delay before starting to process speech
+                #         max_duration_secs=8.0,  # Maximum length of a single turn to maintain natural conversation
+                #     ),
+                # ),
+                audio_out_enabled=True,  # Enable audio output for bot responses
+                audio_out_sample_rate=48000,  # High-quality audio sampling rate
+                audio_out_channels=1,  # Mono audio output for better compatibility
+                audio_in_enabled=True,  # Enable audio input for user speech
+                camera_out_enabled=True,  # Enable video output for bot
+                camera_out_width=1024,  # High-resolution video width
+                camera_out_height=768,  # High-resolution video height
+                camera_out_framerate=30,  # Smooth video frame rate
                 vad_analyzer=SileroVADAnalyzer(
-                    sample_rate=16000,
                     params=VADParams(
-                        threshold=0.5,
-                        min_speech_duration_ms=250,
-                        min_silence_duration_ms=100,
+                        stop_secs=0.1,  # Quick detection of speech end
                     ),
                 ),
-                vad_audio_passthrough=True,
+                audio_in_passthrough=True,  # Pass audio through VAD for real-time processing
             ),
         )
 
         @self.transport.event_handler("on_joined")
-        async def on_joined(transport, participant):
+        async def on_joined(_transport, _participant):
             logger.info(f"Bot joined the session: {self.session_id}")
 
         @self.transport.event_handler("on_call_state_updated")
-        async def on_call_state_updated(transport, state):
+        async def on_call_state_updated(_transport, state):
             logger.info(f"Call state updated: {state}")
 
         @self.transport.event_handler("on_first_participant_joined")
-        async def on_first_participant_joined(transport, participant):
+        async def on_first_participant_joined(_transport, participant):
             if not self.task:
                 return
 
@@ -217,7 +221,7 @@ class InterviewFlow:
             pass
 
         @self.transport.event_handler("on_participant_left")
-        async def on_participant_left(transport, participant, reason):
+        async def on_participant_left(_transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
             message_history = self.flow_manager.get_current_context()
             filtered_messages = [
@@ -242,7 +246,7 @@ class InterviewFlow:
             await self.stop()
 
         @self.transport.event_handler("on_app_message")
-        async def on_app_message(transport, participant, message):
+        async def on_app_message(_transport, participant, message):
             try:
                 if isinstance(participant, dict) and isinstance(message, str):
                     logger.info(f"Received app message from {message}: {participant}")
@@ -254,9 +258,7 @@ class InterviewFlow:
 
                         await self.stop()
                     elif message.get("msg") == "interrupt":
-                        logger.info(
-                            "Interrupt message received, triggering bot interruption"
-                        )
+                        logger.info("Interrupt message received, triggering bot interruption")
                         try:
                             await self.rtvi.interrupt_bot()
                             logger.info("Bot interruption triggered successfully")
@@ -290,8 +292,14 @@ class InterviewFlow:
         self.task = PipelineTask(
             pipeline=pipeline,
             params=PipelineParams(
-                allow_interruptions=True,
-                auto_enable_processors=True,
+                allow_interruptions=True,  # Enable bot interruption for more natural conversation
+                auto_enable_processors=True,  # Automatically enable all processors
+                stream_processing=True,  # Process audio in real-time streams
+                parallel_processing=True,  # Enable parallel processing of frames
+                buffer_size=2048,  # Larger buffer for smoother audio processing
+                max_queue_size=50,  # Smaller queue for faster processing of frames
+                processing_timeout=5.0,  # Overall timeout for processing pipeline
+                error_handling="retry",  # Automatically retry on processing errors
             ),
             observers=[self.rtvi_observer],
         )
@@ -305,7 +313,7 @@ class InterviewFlow:
         )
 
         async def handle_append_to_messages(
-            rtvi: RTVIProcessor, service: str, arguments: Dict[str, Any]
+            _rtvi: RTVIProcessor, _service: str, arguments: Dict[str, Any]
         ) -> ActionResult:
             if "messages" in arguments and arguments["messages"]:
                 for msg in arguments["messages"]:
@@ -339,21 +347,15 @@ class InterviewFlow:
 
         try:
             logger.info("Starting interview flow pipeline...")
-            logger.info(
-                f"- Allow interruptions: {self.task.params.allow_interruptions}"
-            )
-            logger.info(
-                f"- STT mute strategy: {self.stt_mute_filter._config.strategies}"
-            )
+            logger.info(f"- Allow interruptions: {self.task.params.allow_interruptions}")
+            logger.info(f"- STT mute strategy: {self.stt_mute_filter._config.strategies}")
 
             logger.info(f"Starting interview flow for session {self.session_id}")
 
             await self.runner.run(self.task)
             self.task_running = True
 
-            logger.info(
-                f"Interview flow pipeline running for session {self.session_id}"
-            )
+            logger.info(f"Interview flow pipeline running for session {self.session_id}")
 
         except Exception as e:
             logger.error(f"Failed to start interview flow: {e}")
@@ -372,7 +374,7 @@ class InterviewFlow:
                 self.task_running = True
             except Exception as recovery_error:
                 logger.error(f"Failed to recover pipeline: {recovery_error}")
-                raise RuntimeError(f"Failed to start interview flow: {e}")
+                raise RuntimeError(f"Failed to start interview flow: {e}") from None
 
     async def stop(self):
         try:
@@ -395,9 +397,7 @@ class InterviewFlow:
                         f"Chat history saved to session_history table for session {self.session_id}"
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to save chat history during pipeline cancellation: {e}"
-                    )
+                    logger.error(f"Failed to save chat history during pipeline cancellation: {e}")
 
             if self.task:
                 logger.info("Canceling pipeline task")
@@ -411,6 +411,9 @@ class InterviewFlow:
                 finally:
                     self.task = None
                     self.task_running = False
+
+            if hasattr(self, "aiohttp_session"):
+                await self.aiohttp_session.close()
 
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")

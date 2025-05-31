@@ -1,21 +1,19 @@
+from datetime import datetime
+import json
 import os
 import subprocess
-from src.utils.logger import logger
-from typing import Dict, List
 import uuid
-import json
-from datetime import datetime
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile, Body
-from starlette.responses import JSONResponse
+from fastapi import APIRouter, Body, HTTPException, Request
 
 from src.core.config import Config
 from src.llm_handler.analytics import InterviewAnalytics
 from src.llm_handler.flow_generator import (
+    convert_flow_to_react_flow,
     generate_interview_flow_from_jd,
     generate_react_flow_json,
-    convert_flow_to_react_flow,
 )
+from src.utils.logger import logger
 
 UPLOAD_DIR = Config.UPLOAD_DIR
 
@@ -28,21 +26,16 @@ router = APIRouter(
 
 @router.post("/connect")
 async def rtvi_connect(request: Request):
-
     manager = request.app.state.manager
     room_url, bot_token = await manager.create_room_and_token()
     session_id = str(uuid.uuid4())
 
     try:
         proc = subprocess.Popen(
-            [
-                f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id}"
-            ],
+            [f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id}"],
             shell=True,
             bufsize=1,
-            cwd=os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            ),
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         )
         manager.add_process(proc.pid, proc)
     except Exception as e:
@@ -97,9 +90,7 @@ async def get_interview_analytics(request: Request, session_id: str):
 
     except Exception as e:
         logger.error(f"Error getting interview analytics: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Error getting interview analytics: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error getting interview analytics: {str(e)}")
 
 
 @router.post("/disconnect")
@@ -134,11 +125,7 @@ async def generate_interview_flow(
     Generate an interview flow JSON using Gemini LLM, given org ID and job description.
     Also generates a React Flow compatible version for visualization.
     """
-    if (
-        not data["organization_id"]
-        or not data["job_description"]
-        or len(data["job_description"]) < 30
-    ):
+    if not data["job_description"] or len(data["job_description"]) < 30:
         raise HTTPException(
             status_code=400,
             detail="organization_id and a valid job_description are required.",
@@ -148,26 +135,13 @@ async def generate_interview_flow(
     print(flow_json)
 
     try:
-
         react_flow_json = await generate_react_flow_json(flow_json)
         print(react_flow_json)
     except Exception as e:
         logger.warning(f"Failed to generate React Flow JSON directly: {e}")
         react_flow_json = convert_flow_to_react_flow(flow_json)
 
-    db_manager = request.app.state.db_manager
-
-    db_manager.execute_query(
-        "interview_flows",
-        {
-            "flow_json": json.dumps(flow_json),
-            "name": "test_flow",
-            "react_flow_json": json.dumps(react_flow_json),
-        },
-    )
-
     return {
-        "organization_id": data["organization_id"],
         "flow": flow_json,
         "react_flow": react_flow_json,
     }

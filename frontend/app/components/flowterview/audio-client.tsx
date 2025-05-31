@@ -3,7 +3,7 @@
 import usePathStore from "@/app/store/PathStore";
 import { RTVIClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Message } from "@/lib/types/general";
 
 export interface AudioClientProps {
@@ -48,6 +48,29 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const updateThrottleMs = 50; // Throttle updates to every 50ms
+
+  // Track the current messages being built
+  const currentBotMessageRef = useRef<string>("");
+  const latestUserTranscriptRef = useRef<string>("");
+
+  // Track complete messages from start to finish
+  const completeUserMessageRef = useRef<string>("");
+  const completeBotMessageRef = useRef<string>("");
+  const botJustStoppedRef = useRef<boolean>(false);
+
+  // Throttled transcript update function
+  const throttledTranscriptUpdate = useCallback(
+    (updateFn: () => void, forceUpdate = false) => {
+      const now = Date.now();
+      if (forceUpdate || now - lastUpdateTimeRef.current > updateThrottleMs) {
+        updateFn();
+        lastUpdateTimeRef.current = now;
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -173,80 +196,32 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       setIsUserSpeaking(true);
     });
 
+    client.on(RTVIEvent.UserTranscript, (data) => {
+      console.log("User:", data.text);
+      // Just update our ref with the latest transcript
+      if (data.final) {
+      }
+    });
+
     client.on(RTVIEvent.UserStoppedSpeaking, () => {
       console.log("User stopped speaking - triggering UI update");
       setIsUserSpeaking(false);
       setBotState("thinking");
-    });
 
-    client.on(RTVIEvent.UserTranscript, (data) => {
-      console.log("User:", data.text);
-      // setCurrentUserTranscript(data.text);
-    });
-
-    client.on(RTVIEvent.BotTranscript, (data) => {
-      console.log("Bot:", data.text);
-      // Get the latest transcript value directly from the store
-      const latestTranscript = usePathStore.getState().currentBotTranscript;
-      // console.log("Current transcript:", latestTranscript)
-      // setCurrentBotTranscript(data.text)
-    });
-
-    client.on(RTVIEvent.BotTtsText, (data) => {
-      // Get the latest transcript from the store
-      console.log("BotTTs", data.text);
-      const latestTranscript = usePathStore.getState().currentBotTranscript;
-
-      const isNewSentence = /[.!?]\s*$/.test(latestTranscript);
-
-      if (isNewSentence) {
-        setCurrentBotTranscript(data.text);
-        return;
+      // Now append the final transcript to chat history
+      const finalTranscript = latestUserTranscriptRef.current.trim();
+      if (finalTranscript) {
+        const currentHistory = usePathStore.getState().currentChatHistory;
+        const newMessage: Message = {
+          role: "user",
+          content: finalTranscript,
+        };
+        setCurrentChatHistory([...currentHistory, newMessage]);
       }
 
-      const concatenateWithSpacing = (
-        prevText: string,
-        newText: string
-      ): string => {
-        // If this is the first piece of text
-        if (!prevText) return newText;
-
-        const isPunctuation = /^[.,!?;:]/.test(newText);
-
-        // Check if the previous text ends with a punctuation mark
-        const endsWithPunctuation = /[.,!?;:]$/.test(prevText);
-
-        // Check if the previous text ends with a space
-        const endsWithSpace = /\s$/.test(prevText);
-
-        // Logic for concatenation:
-        // 1. If new text is punctuation, don't add space before it
-        if (isPunctuation) {
-          return prevText + newText;
-        }
-
-        // 2. If previous text ends with punctuation, add a space after it
-        if (endsWithPunctuation && !endsWithSpace) {
-          return prevText + " " + newText;
-        }
-
-        // 3. If previous text already ends with a space, just append new text
-        if (endsWithSpace) {
-          return prevText + newText;
-        }
-
-        // 4. Default case: add a space between words
-        return prevText + " " + newText;
-      };
-
-      // Update the transcript with intelligent spacing
-      const updatedTranscript = concatenateWithSpacing(
-        latestTranscript,
-        data.text
-      );
-
-      // Set the current transcript
-      setCurrentBotTranscript(updatedTranscript);
+      // Clear everything
+      // setCurrentUserTranscript("");
+      latestUserTranscriptRef.current = "";
     });
 
     client.on(RTVIEvent.BotStartedSpeaking, () => {
@@ -254,14 +229,48 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       setIsBotSpeaking(true);
       setShowStarterQuestions(false);
       setBotState("speaking");
+      // Reset the message being built
+      currentBotMessageRef.current = "";
+    });
+
+    client.on(RTVIEvent.BotTranscript, (data) => {
+      // We ignore transcript events - only using TTS
+      console.log("Bot transcript (ignored):", data.text);
+    });
+
+    client.on(RTVIEvent.BotTtsText, (data) => {
+      console.log("Bot TTS:", data.text);
+
+      // Append the TTS text to our message
+      currentBotMessageRef.current +=
+        (currentBotMessageRef.current ? " " : "") + data.text;
+
+      // Update the live display
+      setCurrentBotTranscript(currentBotMessageRef.current);
     });
 
     client.on(RTVIEvent.BotStoppedSpeaking, () => {
       console.log("Bot stopped speaking - clearing transcripts");
       setIsBotSpeaking(false);
+      setBotState("done");
+
+      // Add the complete message to chat history
+      const completeMessage = currentBotMessageRef.current.trim();
+      console.log("Final bot message to add to history:", completeMessage);
+
+      if (completeMessage) {
+        const currentHistory = usePathStore.getState().currentChatHistory;
+        const newMessage: Message = {
+          role: "assistant",
+          content: completeMessage,
+        };
+        setCurrentChatHistory([...currentHistory, newMessage]);
+      }
+
+      // Clear everything
       onClearTranscripts();
       setCurrentBotTranscript("");
-      setBotState("done");
+      currentBotMessageRef.current = "";
     });
 
     client.on(RTVIEvent.TransportStateChanged, (state) => {
@@ -476,10 +485,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     if (callStatus !== "joined" || !permissionGranted) {
       return;
     }
-    // if (!isMicMuted && !micStreamRef.current) {
-    //   checkPermissionAndConnect();
-    //   return;
-    // }
 
     if (micStreamRef.current) {
       const audioTrack = micStreamRef.current.getAudioTracks()[0];

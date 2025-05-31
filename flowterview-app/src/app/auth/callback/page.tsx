@@ -1,42 +1,109 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { FloatingPaths } from "@/components/ui/background-paths";
+import { supabase } from "@/lib/supabase";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { authenticatedFetch } from "@/lib/auth-client";
+
+function extractOrgFromEmail(email: string): string {
+  // Extracts the part between @ and . in the domain
+  // e.g., user@something.com => something
+  if (!email || !email.includes("@")) return "";
+  const domain = email.split("@")[1] || "";
+  const org = domain.split(".")[0] || "";
+  return org;
+}
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>("");
+  const [orgLoading, setOrgLoading] = useState(false);
 
   useEffect(() => {
     // Process the auth callback
     const handleAuthCallback = async () => {
       try {
+        // 1. Wait for session
+        const sessionResp = await supabase.auth.getSession();
+        const sessionData = sessionResp.data;
+        const sessionError = sessionResp.error;
+        if (sessionError) {
+          setDebugInfo("Session error: " + sessionError.message);
+        } else if (sessionData.session) {
+          // 2. Get user info
+          const { data: userData } = await supabase.auth.getUser();
+          console.log("User data:", userData);
+          const email = userData?.user?.email || "";
+          if (!email) throw new Error("No email found for logged in user");
+          // 3. Check if user exists in backend
+          const resp = await authenticatedFetch(
+            process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL +
+              "/api/v1/users?email=" +
+              encodeURIComponent(email)
+          );
+          if (resp.ok) {
+            // User exists, redirect
+            window.location.href = "/dashboard";
+            return;
+          } else {
+            // User does not exist, create user with org from domain
+            setOrgLoading(true);
+            const userId = userData?.user?.id;
+            const name = email.split("@")[0];
+            const orgName = extractOrgFromEmail(email);
+            // Defensive: fallback if orgName is empty
+            if (!orgName) {
+              setOrgLoading(false);
+              throw new Error(
+                "Could not extract organization name from email domain."
+              );
+            }
+            const createResp = await authenticatedFetch(
+              process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL + "/api/v1/users",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: name,
+                  user_id: userData?.user?.id,
+                  email: email, // Use email directly
+                  organization_name: orgName,
+                  role: "admin", // default role for login
+                }),
+              }
+            );
+            setOrgLoading(false);
+            if (!createResp.ok) {
+              let data = {};
+              try {
+                data = await createResp.json();
+                console.log("Create response:", data);
+              } catch (e) {
+                // ignore
+              }
+              throw new Error(
+                (data as any).detail ||
+                  (data as any).error ||
+                  "Failed to create user"
+              );
+            }
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
         // Detailed logging for debugging
         console.log("Auth callback triggered");
         console.log("Current URL:", window.location.href);
-
-        // Try multiple approaches to handle the auth callback
-
-        // APPROACH 1: Use the automatic Supabase handling
-        console.log("Approach 1: Using Supabase getSession()");
-        const { data: sessionData, error: sessionError } =
-          await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          setDebugInfo("Session error: " + sessionError.message);
-        } else if (sessionData.session) {
-          console.log("Session found via getSession()");
-          // We have a session, redirect to dashboard
-          console.log("Authentication successful, redirecting to dashboard...");
-          window.location.href = "/dashboard";
-          return;
-        } else {
-          console.log(
-            "No session found via getSession(), trying next approach"
-          );
-        }
 
         // APPROACH 2: Try to extract token from URL hash and set session manually
         const hash = window.location.hash;
@@ -126,58 +193,95 @@ export default function AuthCallbackPage() {
     handleAuthCallback();
   }, []);
 
+  if (orgLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
+        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
+          <CardHeader className="flex flex-col items-center justify-center">
+            <CardTitle className="tracking-widest text-2xl">
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                SIVERA
+              </div>
+            </CardTitle>
+            <CardDescription className="dark:text-gray-300">
+              Setting up your account...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mt-6 flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
-          <FloatingPaths position={-1} className="inset-0 opacity-30" />
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Flowterview</h1>
-            <p className="mt-4 text-sm font-medium text-red-600">
-              Authentication Issue
-            </p>
-            <p className="mt-2 text-gray-600">{error}</p>
-
-            <div className="mt-6">
-              <a
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+        <FloatingPaths position={-1} className="inset-0 opacity-30" />
+        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
+          <CardHeader className="flex flex-col items-center justify-center">
+            <CardTitle className="tracking-widest text-2xl">
+              <div
+                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
               >
-                Go to Dashboard
-              </a>
-            </div>
-
-            <div className="mt-4">
-              <a
-                href="/auth/login"
-                className="text-sm text-indigo-600 hover:text-indigo-500"
-              >
-                Return to Login
-              </a>
-            </div>
-
-            {debugInfo && (
-              <div className="mt-4 rounded bg-gray-100 p-3 text-left text-xs text-gray-800 overflow-auto max-h-48">
-                <p className="font-bold">Debug Info:</p>
-                <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+                SIVERA
               </div>
-            )}
-          </div>
-        </div>
+            </CardTitle>
+            <CardDescription className="dark:text-gray-300">
+              Authentication Error
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
+              {error}
+            </div>
+            <div className="text-xs text-gray-400 dark:text-gray-300 whitespace-pre-wrap mt-2">
+              {debugInfo}
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center">
+            <Button
+              asChild
+              variant="outline"
+              className="dark:border-zinc-700 dark:text-gray-200"
+            >
+              <a href="/auth/login">Back to Login</a>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
+      <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
         <div className="text-center">
-          <div className="text-2xl font-medium tracking-widest bg-gradient-to-br from-indigo-400/50 via-indigo-600/70 to-indigo-800 text-transparent bg-clip-text">
-            FLOWTERVIEW
+          <div
+            className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
+            SIVERA
           </div>
-          <p className="mt-4 text-gray-600">Signing you in...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">
+            Signing you in...
+          </p>
           <div className="mt-6 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
           </div>
         </div>
       </div>

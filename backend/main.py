@@ -1,14 +1,14 @@
-import logging
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
 from src.core.config import Config
 from src.lib.manager import ConnectionManager
 from src.router.path_router import router
-from storage.db_manager import DatabaseManager
 from src.utils.logger import intercept_standard_logging, logger
+from storage.db_manager import DatabaseManager
 
 intercept_standard_logging()
 
@@ -69,5 +69,39 @@ if __name__ == "__main__":
         host=Config.HOST,
         port=Config.PORT,
         reload=Config.RELOAD,
-        reload_excludes=[".venv", ".venv/*", "__pycache__", "*.pyc"],
+        reload_excludes=[
+            ".venv",
+            ".venv/*",
+            "venv",
+            "venv/*",
+            "env",
+            "env/*",
+            "__pycache__",
+            "__pycache__/*",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".git",
+            ".git/*",
+            "node_modules",
+            "node_modules/*",
+            ".pytest_cache",
+            ".pytest_cache/*",
+            "*.log",
+            "*.sqlite",
+            "*.db",
+            ".DS_Store",
+            "Thumbs.db",
+            "*.tmp",
+            "*.temp",
+            ".coverage",
+            "htmlcov",
+            "htmlcov/*",
+            "dist",
+            "dist/*",
+            "build",
+            "build/*",
+            "*.egg-info",
+            "*.egg-info/*",
+        ],
     )

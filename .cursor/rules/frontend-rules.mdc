@@ -1,10 +1,10 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: false
 ---
 ---
-description: 
+description:
 globs: frontend/*
 alwaysApply: false
 ---

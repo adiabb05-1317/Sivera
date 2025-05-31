@@ -9,12 +9,12 @@ dependencies = [
     "fastapi[standard]>=0.115.8",
     "google-generativeai>=0.8.4",
     "openai>=1.59",
-    "pipecat-ai[silero,daily,elevenlabs,google,deepgram,openai,websocket,cartesia]>=0.0.62",
+    "pipecat-ai[silero,daily,elevenlabs,google,deepgram,openai,websocket,cartesia]>=0.0.68",
     "python-dotenv>=1.0.1",
     "uvicorn>=0.34.0",
     "loguru>=0.7.3",
     "supabase>=1.0.3",
-    "pipecat-ai-flows>=0.0.15",
+    "pipecat-ai-flows>=0.0.17",
 ]
 
 [project.optional-dependencies]
@@ -44,3 +44,5 @@ indent-style = "space"
 line-ending = "auto"
 skip-magic-trailing-comma = false
 
+[tool.ruff.lint.per-file-ignores]
+"src/services/bot_defaults.py" = ["F401"]

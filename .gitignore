@@ -1,1 +1,4 @@
 .vscode/
+*.log
+*.DS_Store
+credentials.json

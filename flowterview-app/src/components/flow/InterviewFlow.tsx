@@ -2,14 +2,12 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   Node,
   Edge,
   useNodesState,
   useEdgesState,
   addEdge,
   Connection,
-  Panel,
   ReactFlowProvider,
   ReactFlowInstance,
   MarkerType,
@@ -43,37 +41,52 @@ interface InterviewFlowProps {
   reactFlowData?: ReactFlowData;
 }
 
-const nodeTypes = {
+export const nodeTypes = {
   interview: InterviewNode,
 };
 
-// Professional color palette options
-const COLOR_PALETTES = [
-  // Blue focus
-  [
+const COLOR_PALETTES = {
+  light: [
     { bg: "#e0f2fe", border: "#0ea5e9", text: "#0c4a6e" },
     { bg: "#dbeafe", border: "#3b82f6", text: "#1e3a8a" },
     { bg: "#ede9fe", border: "#8b5cf6", text: "#4c1d95" },
     { bg: "#f5f3ff", border: "#a78bfa", text: "#5b21b6" },
     { bg: "#fae8ff", border: "#d946ef", text: "#86198f" },
   ],
-  // Green focus
-  [
+  dark: [
+    { bg: "#0c4a6e", border: "#0ea5e9", text: "#e0f2fe" },
+    { bg: "#1e3a8a", border: "#3b82f6", text: "#dbeafe" },
+    { bg: "#4c1d95", border: "#8b5cf6", text: "#ede9fe" },
+    { bg: "#5b21b6", border: "#a78bfa", text: "#f5f3ff" },
+    { bg: "#86198f", border: "#d946ef", text: "#fae8ff" },
+  ],
+  green: [
     { bg: "#dcfce7", border: "#22c55e", text: "#14532d" },
     { bg: "#d1fae5", border: "#10b981", text: "#065f46" },
     { bg: "#ccfbf1", border: "#14b8a6", text: "#134e4a" },
     { bg: "#e0f2fe", border: "#0ea5e9", text: "#0c4a6e" },
     { bg: "#f0f9ff", border: "#0284c7", text: "#075985" },
   ],
-];
+};
 
+// Update FlowCanvas to use theme-aware background for <Background />
 function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
   const [fitOnce, setFitOnce] = useState(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
+  // Add theme detection
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const match = window.matchMedia("(prefers-color-scheme: dark)");
+    setIsDark(match.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    match.addEventListener("change", handler);
+    return () => match.removeEventListener("change", handler);
+  }, []);
+
   const { initialNodes, initialEdges } = useMemo(() => {
     // Select a color palette
-    const palette = COLOR_PALETTES[0];
+    const palette = isDark ? COLOR_PALETTES.dark : COLOR_PALETTES.light;
 
     if (reactFlowData) {
       // Add styles to existing react flow data
@@ -81,22 +94,21 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
         const colorIndex = index % palette.length;
         const nodeColor = palette[colorIndex];
 
+        // Remove or override the top-level style.border
+        const { style, ...rest } = node;
+        const sanitizedStyle = { ...style };
+        delete sanitizedStyle.border; // Remove border property if present
+
         return {
-          ...node,
+          ...rest,
+          style: sanitizedStyle, // Use sanitized style (no border)
           data: {
             ...node.data,
             style: {
-              backgroundColor: nodeColor.bg,
-              borderColor: nodeColor.border,
-              color: nodeColor.text,
-              width: 280,
+              ...node.data.style,
+              // Optionally, also remove borderColor if you want
+              borderColor: undefined,
             },
-            label: node.data.type
-              .split("_")
-              .map(
-                (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
-              )
-              .join(" "),
           },
         };
       });
@@ -118,11 +130,9 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     const yOffset = 80;
 
     Object.entries(flowData.nodes).forEach(([nodeId, nodeData], index) => {
-      // Calculate position with zigzag pattern
       const xPos = xStartPosition + index * nodeSpacing;
       const yPos = yBasePosition + (index % 2) * yOffset;
 
-      // Assign a color based on position in sequence
       const colorIndex = index % palette.length;
       const nodeColor = palette[colorIndex];
 
@@ -144,21 +154,19 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
           taskMessage: nodeData.task_messages[0].content,
           style: {
             backgroundColor: nodeColor.bg,
-            borderColor: nodeColor.border,
             color: nodeColor.text,
             width: 280,
           },
         },
       });
 
-      // Create edge to next node
       const transitionTo = nodeData.functions[0].function.transition_to;
       if (transitionTo && transitionTo !== "end") {
         edges.push({
           id: `${nodeId}-${transitionTo}`,
           source: nodeId,
           target: transitionTo,
-          type: "smoothstep",
+          type: "default",
           animated: true,
           style: { stroke: nodeColor.border, strokeWidth: 2 },
           markerEnd: {
@@ -170,7 +178,7 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [flowData, reactFlowData]);
+  }, [flowData, reactFlowData, isDark]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -198,7 +206,6 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
     }
   }, [nodes, fitOnce]);
 
-  // Layout improvement function
   const improveLayout = useCallback(() => {
     setNodes((nodes) => {
       const xPos = 100;
@@ -215,10 +222,14 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
 
     setTimeout(() => {
       if (reactFlowInstanceRef.current) {
-        reactFlowInstanceRef.current.fitView({ padding: 0.2 });
+        reactFlowInstanceRef.current.fitView({ padding: 0.05 });
       }
     }, 50);
   }, [setNodes]);
+
+  useEffect(() => {
+    improveLayout();
+  }, [improveLayout]);
 
   return (
     <ReactFlow
@@ -229,7 +240,7 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
       onConnect={onConnect}
       nodeTypes={nodeTypes}
       defaultEdgeOptions={{
-        type: "smoothstep",
+        type: "default",
         animated: true,
       }}
       fitView
@@ -245,23 +256,8 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
       }}
       connectionLineType={ConnectionLineType.Bezier}
     >
-      <Background color="#aaa" gap={16} size={1} />
-      <Controls className="bg-white shadow-md rounded-md border border-gray-200" />
-      <MiniMap className="rounded-md border border-gray-200" />
-      <Panel position="top-right" className="flex gap-2">
-        <button
-          onClick={improveLayout}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium shadow-sm"
-        >
-          Fix Layout
-        </button>
-      </Panel>
-      <Panel
-        position="top-center"
-        className="bg-white rounded-md shadow-sm px-3 py-1 text-sm text-gray-500 border border-gray-200"
-      >
-        Drag to reposition • Scroll to zoom • Click Fix Layout if nodes overlap
-      </Panel>
+      <Background color={isDark ? "#222" : "#aaa"} gap={16} size={1} />
+      <Controls className="bg-white dark:bg-gray-900 shadow-md rounded-md border border-gray-200 dark:border-gray-800" />
     </ReactFlow>
   );
 }
@@ -269,7 +265,7 @@ function FlowCanvas({ flowData, reactFlowData }: InterviewFlowProps) {
 // Wrapper component that provides the ReactFlow context
 export default function InterviewFlow(props: InterviewFlowProps) {
   return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200 h-full w-full">
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 h-full w-full">
       <ReactFlowProvider>
         <FlowCanvas {...props} />
       </ReactFlowProvider>

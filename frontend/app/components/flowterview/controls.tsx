@@ -3,7 +3,24 @@ import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import { useEffect, useRef, useState } from "react";
 import { Participant } from "../ui/AvatarStack";
-import { Mic, MicOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { LucideVolume2, Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Separator } from "@/components/ui/separator";
 
 const ControlTooltip = ({
   text,
@@ -14,9 +31,12 @@ const ControlTooltip = ({
 }) => {
   return (
     isHovered && (
-      <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded shadow-md whitespace-nowrap">
+      <Badge
+        className="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 text-app-blue-900/70 dark:text-app-blue-100 bg-white/80 dark:bg-app-blue-900/80 border border-app-blue-200 dark:border-app-blue-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
+        variant="default"
+      >
         {text}
-      </div>
+      </Badge>
     )
   );
 };
@@ -37,12 +57,11 @@ const Controls = ({
   toggleCodeEditor?: () => void;
 }) => {
   // State for UI interactions
-  const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [isHovered, setIsHovered] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const participantsRef = useRef<HTMLDivElement>(null);
 
   // Store states
-  const { resetStore } = usePathStore();
   const { showToast } = usePathStore();
   const {
     isCaptionEnabled,
@@ -56,8 +75,10 @@ const Controls = ({
     permissionGranted,
     setTtsConnecting,
     setConnectionStatus,
-    connectionStatus,
   } = usePathStore();
+
+  // Theme states
+  const { theme, setTheme } = useTheme();
 
   const handleConnectCallAndPlayFirstSpeech = async () => {
     if (!permissionGranted) {
@@ -100,103 +121,155 @@ const Controls = ({
   useEffect(() => {
     if (callStatus === "initial" && permissionGranted) {
       console.log("Auto-connecting on component mount");
-      // Auto-start connection on first load
-      handleConnectCallAndPlayFirstSpeech();
     }
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        participantsRef.current &&
-        !participantsRef.current.contains(event.target as Node)
-      ) {
-        setShowParticipantsList(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
   }, []);
 
   return (
     <section
-      className="rounded-full shadow-lg flex items-center justify-center z-30 p-3 gap-5"
+      className="rounded-full shadow-lg flex items-center justify-center p-3 gap-4 relative z-20 bg-white dark:bg-slate-800 border border-app-blue-100 dark:border-slate-700"
       style={style}
     >
-      {/* Left side */}
-      <button
-        className="p-3.5 rounded-full bg-[#323D68] text-white hover:bg-[#262F50] relative"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowParticipantsList(!showParticipantsList);
-        }}
-        onMouseEnter={() => setIsHovered("participants")}
-        onMouseLeave={() => setIsHovered(null)}
-      >
-        <Icons.Users className="w-4 h-4" />
-        <span className="absolute -top-[0.5px] -right-[0.5px] bg-[#774BE5] text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-          {connectionStatus === "bot_connected" ? participants.length : 1}
-        </span>
+      {/* Left group: Code editor and captions */}
+      <div className="flex items-center gap-4">
+        {/* Code Editor toggle */}
+        <button
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              isCodeEditorOpen
+                ? "bg-app-blue-500 text-white"
+                : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
+            }
+          `}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleCodeEditor?.();
+          }}
+          onMouseEnter={() => setIsHovered("codeEditor")}
+          onMouseLeave={() => setIsHovered(null)}
+        >
+          <Icons.Code className="h-5 w-5" />
+          {isHovered === "codeEditor" && (
+            <ControlTooltip
+              text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
+              isHovered
+            />
+          )}
+        </button>
 
-        <ControlTooltip
-          text="View participants"
-          isHovered={isHovered === "participants"}
-        />
-      </button>
-
-      {/* Code Editor toggle button - Google Meet style */}
-      <button
-        className={`p-3.5 rounded-full ${isCodeEditorOpen ? "bg-[#774BE5] text-white" : "bg-[#323D68] text-white hover:bg-[#262F50]"}`}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleCodeEditor?.();
-        }}
-        onMouseEnter={() => setIsHovered("codeEditor")}
-        onMouseLeave={() => setIsHovered(null)}
-      >
-        <Icons.Code className="h-4 w-4" />
-
-        <ControlTooltip
-          text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
-          isHovered={isHovered === "codeEditor"}
-        />
-      </button>
-
-      {/* Center controls */}
-      <div className="flex items-center gap-6">
         {/* Captions toggle */}
         <button
-          className={`p-3.5 rounded-full ${
-            isCaptionEnabled
-              ? "bg-[#323D68] text-white"
-              : "bg-[#0E1C29]/40 text-white/70"
-          }`}
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              isCaptionEnabled
+                ? "bg-app-blue-500 text-white"
+                : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
+            }
+          `}
           onClick={() => setIsCaptionEnabled(!isCaptionEnabled)}
           onMouseEnter={() => setIsHovered("captions")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.ClosedCaptions className="w-4 h-4" />
-
-          <ControlTooltip
-            text={isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
-            isHovered={isHovered === "captions"}
-          />
+          <Icons.ClosedCaptions className="w-5 h-5" />
+          {isHovered === "captions" && (
+            <ControlTooltip
+              text={isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
+              isHovered
+            />
+          )}
         </button>
+      </div>
 
-        {/* Microphone control */}
+      {/* Middle group: Settings and theme */}
+      <div className="flex items-center gap-4">
+        {/* Settings */}
+        <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+                ${
+                  isSettingsOpen
+                    ? "bg-app-blue-500 text-white hover:bg-app-blue-500 hover:text-white"
+                    : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 hover:text-app-blue-500 dark:hover:bg-app-blue-500/30 dark:hover:text-app-blue-400"
+                }`}
+              onMouseEnter={() => setIsHovered("settings")}
+              onMouseLeave={() => setIsHovered(null)}
+            >
+              <Icons.Settings className="h-5 w-5" />
+              <span className="sr-only">Settings</span>
+              {isHovered === "settings" && (
+                <ControlTooltip text="Settings" isHovered />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[400px] overflow-hidden rounded-2xl shadow-lg p-0 border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl0"
+            align="end"
+          >
+            <div className="flex justify-between items-center py-2.5 px-3 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
+              <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-xs flex items-center gap-2 tracking-tight">
+                <Icons.Settings className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />
+                <span>Settings</span>
+              </h3>
+            </div>
+
+            <div className="p-5">
+              {/* Theme Settings */}
+              <div className="flex flex-row gap-3 items-center">
+                <div className="opacity-50 text-app-blue-500 dark:text-app-blue-300">
+                  {theme === "dark" ? (
+                    <Sun className="w-4 h-4" />
+                  ) : (
+                    <Moon className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground/70 mb-1.5 block">
+                    Theme
+                  </Label>
+                  <Select
+                    value={theme}
+                    onValueChange={(value) => setTheme(value)}
+                  >
+                    <SelectTrigger className="w-full h-8 text-sm bg-white dark:bg-slate-900 border-input/50 rounded-lg">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-input/50">
+                      <SelectItem value="light" className="text-sm">
+                        Light
+                      </SelectItem>
+                      <SelectItem value="dark" className="text-sm">
+                        Dark
+                      </SelectItem>
+                      <SelectItem value="system" className="text-sm">
+                        System
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Right group: Call controls */}
+      <div className="flex items-center gap-4">
+        {/* Mic */}
         <button
-          className={`p-4 rounded-full ${
-            callStatus === "initial" || callStatus === "left"
-              ? "bg-gray-300 cursor-not-allowed"
-              : isMicMuted
-                ? "bg-[#0E1C29]/40 text-white/70"
-                : "bg-[#323D68] text-white"
-          }`}
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              callStatus === "initial" || callStatus === "left"
+                ? "bg-app-blue-100/50 dark:bg-app-blue-500/10 cursor-not-allowed text-app-blue-300 dark:text-app-blue-500/40"
+                : isMicMuted
+                  ? "bg-app-blue-500 text-white"
+                  : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
+            }
+          `}
           onClick={() => {
             if (callStatus !== "initial" && callStatus !== "left") {
               setIsMicMuted(!isMicMuted);
@@ -207,26 +280,29 @@ const Controls = ({
           onMouseLeave={() => setIsHovered(null)}
         >
           {isMicMuted ? (
-            <Icons.MicOff className="w-4 h-4" />
+            <Icons.MicOff className="w-5 h-5" />
           ) : (
-            <Icons.MicrophoneIcon className="w-4 h-4" />
+            <Icons.MicrophoneIcon className="w-5 h-5" />
           )}
-
-          <ControlTooltip
-            text={isMicMuted ? "Unmute microphone" : "Mute microphone"}
-            isHovered={isHovered === "microphone"}
-          />
+          {isHovered === "microphone" && (
+            <ControlTooltip
+              text={isMicMuted ? "Unmute microphone" : "Mute microphone"}
+              isHovered
+            />
+          )}
         </button>
 
-        {/* Camera control */}
+        {/* Camera */}
         <button
-          className={`p-4 rounded-full ${
-            callStatus === "initial" || callStatus === "left"
-              ? "bg-gray-300 cursor-not-allowed"
-              : isCameraOn
-                ? "bg-[#0E1C29]/40 text-white/70"
-                : "bg-[#323D68] text-white"
-          }`}
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+            ${
+              callStatus === "initial" || callStatus === "left"
+                ? "bg-app-blue-100/50 dark:bg-app-blue-500/10 cursor-not-allowed text-app-blue-300 dark:text-app-blue-500/40"
+                : isCameraOn
+                  ? "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
+                  : "bg-app-blue-500 text-white"
+            }
+          `}
           onClick={() => {
             if (callStatus !== "initial" && callStatus !== "left") {
               setIsCameraOn(!isCameraOn);
@@ -237,101 +313,31 @@ const Controls = ({
           onMouseLeave={() => setIsHovered(null)}
         >
           {isCameraOn ? (
-            <Icons.Video className="w-4 h-4" />
+            <Icons.Video className="w-5 h-5" />
           ) : (
-            <Icons.VideoOff className="w-4 h-4" />
+            <Icons.VideoOff className="w-5 h-5" />
           )}
-
-          <ControlTooltip
-            text={isCameraOn ? "Turn off camera" : "Turn on camera"}
-            isHovered={isHovered === "camera"}
-          />
+          {isHovered === "camera" && (
+            <ControlTooltip
+              text={isCameraOn ? "Turn off camera" : "Turn on camera"}
+              isHovered
+            />
+          )}
         </button>
 
+        {/* End call */}
         <button
-          className="p-4 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+          className="p-4 rounded-full w-12 h-12 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-colors"
           onClick={handleEndCall}
           onMouseEnter={() => setIsHovered("endCall")}
           onMouseLeave={() => setIsHovered(null)}
         >
-          <Icons.PhoneOff className="w-4 h-4" />
-
-          <ControlTooltip text="End call" isHovered={isHovered === "endCall"} />
+          <Icons.PhoneOff className="w-5 h-5" />
+          {isHovered === "endCall" && (
+            <ControlTooltip text="End call" isHovered />
+          )}
         </button>
       </div>
-
-      {showParticipantsList && (
-        <div
-          ref={participantsRef}
-          className="absolute bottom-20 left-4 bg-white rounded-lg p-4 z-30 animate-fade-in shadow-lg"
-        >
-          <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-200">
-            <h3 className="text-gray-800 text-sm font-medium">
-              Participants (
-              {connectionStatus === "bot_connected" ? participants.length : 1})
-            </h3>
-            <button
-              className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-              onClick={() => setShowParticipantsList(false)}
-            >
-              <Icons.X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="max-h-60 overflow-y-auto">
-            {participants
-              .filter(
-                (participant) =>
-                  participant.id === "user" ||
-                  (participant.id === "bot" &&
-                    connectionStatus === "bot_connected")
-              )
-              .map((participant) => (
-                <div
-                  key={participant.id}
-                  className="flex items-center justify-between py-2 px-1 hover:bg-gray-50 rounded-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        participant.id === "bot"
-                          ? "bg-[#323D68] border border-[#774BE5]"
-                          : "bg-gray-200"
-                      }`}
-                    >
-                      {participant.id === "bot" ? (
-                        <img
-                          src="/Flowterviewlogo.svg"
-                          alt="AI Assistant"
-                          className="w-5 h-5"
-                        />
-                      ) : (
-                        <span className="text-gray-700 text-xs font-medium">
-                          {participant.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-gray-800 text-sm">
-                      {participant.name}
-                      {participant.id === "bot" && (
-                        <span className="text-xs text-gray-500 ml-1">
-                          (AI Interviewer)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-
-                  {participant.isTalking && (
-                    <div className="flex space-x-1">
-                      <div className="w-1.5 h-3 bg-[#774BE5] rounded-full animate-sound-wave"></div>
-                      <div className="w-1.5 h-4 bg-[#774BE5] rounded-full animate-sound-wave animation-delay-100"></div>
-                      <div className="w-1.5 h-2 bg-[#774BE5] rounded-full animate-sound-wave animation-delay-200"></div>
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 };

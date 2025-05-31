@@ -1,13 +1,13 @@
-import { Icons } from "@/app/lib/icons"
-import Image from "next/image"
-import { useEffect, useState } from "react"
+import { Icons } from "@/app/lib/icons";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
 interface AvatarProps {
-  isTalking: boolean
-  name: string
-  color?: string
-  id?: string
-  size?: "small" | "normal" | "large"
+  isTalking: boolean;
+  name: string;
+  color?: string;
+  id?: string;
+  size?: "small" | "normal" | "large";
 }
 
 const Avatar = ({
@@ -17,24 +17,24 @@ const Avatar = ({
   id,
   size = "normal",
 }: AvatarProps) => {
-  const [pulseAnimation, setPulseAnimation] = useState(false)
-  
+  const [pulseAnimation, setPulseAnimation] = useState(false);
+
   // Set size based on prop
   const dimensions = {
     small: { container: "min-w-[32px] min-h-[32px]", image: 22 },
     normal: { container: "min-w-[40px] min-h-[40px]", image: 28 },
     large: { container: "min-w-[48px] min-h-[48px]", image: 34 },
-  }
-  
+  };
+
   // Toggle pulse animation when talking state changes
   useEffect(() => {
     if (isTalking) {
-      setPulseAnimation(true)
+      setPulseAnimation(true);
     } else {
-      setPulseAnimation(false)
+      setPulseAnimation(false);
     }
-  }, [isTalking])
-  
+  }, [isTalking]);
+
   return (
     <div className="flex items-center">
       <div
@@ -46,30 +46,31 @@ const Avatar = ({
         {pulseAnimation && (
           <div className="absolute inset-0 rounded-full animate-pulse-golden opacity-75"></div>
         )}
-        
+
         <div
           className={`
             transition-all duration-300 ease-in-out
             ${dimensions[size].container} rounded-full flex items-center justify-center
-            ${ isTalking ? "shadow-lg" : "shadow-md" }
+            ${isTalking ? "shadow-lg" : "shadow-md"}
           `}
           style={{
-            background: id === "bot" 
-              ? `linear-gradient(135deg, #ffa500, #ffc457)` 
-              : (color || `linear-gradient(135deg, #8ab4f8, #4285f4)`),
+            background:
+              id === "bot"
+                ? `linear-gradient(135deg, #ffa500, #ffc457)`
+                : color || `linear-gradient(135deg, #8ab4f8, #4285f4)`,
           }}
         >
           {id === "bot" ? (
             <div className="relative flex items-center justify-center">
               <Image
                 src="/Flowterviewlogo.svg"
-                alt="Flowterview Logo"
+                alt="Sivera"
                 width={dimensions[size].image}
                 height={dimensions[size].image}
-                style={{ 
-                  width: dimensions[size].image, 
+                style={{
+                  width: dimensions[size].image,
                   height: dimensions[size].image,
-                  filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.1))"
+                  filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.1))",
                 }}
                 className={`${isTalking ? "animate-subtle-pulse" : ""}`}
                 priority
@@ -83,25 +84,25 @@ const Avatar = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export interface Participant {
-  id: string
-  name: string
-  isTalking: boolean
-  color?: string
-  isHost?: boolean
+  id: string;
+  name: string;
+  isTalking: boolean;
+  color?: string;
+  isHost?: boolean;
 }
 
 const AvatarStack = ({
   participants,
   showNames = false,
-  size = "normal"
+  size = "normal",
 }: {
-  participants: Participant[]
-  showNames?: boolean
-  size?: "small" | "normal" | "large"
+  participants: Participant[];
+  showNames?: boolean;
+  size?: "small" | "normal" | "large";
 }) => {
   // Sort participants so talking avatar comes first, then hosts
   const sortedParticipants = [...participants].sort((a, b) => {
@@ -115,11 +116,9 @@ const AvatarStack = ({
       {sortedParticipants.map((participant) => (
         <div
           key={participant.id}
-          className={
-            `flex items-center transition-all duration-300 ease-in-out ${
-              participant.isTalking ? 'z-10 transform scale-105' : 'z-0'
-            }`
-          }
+          className={`flex items-center transition-all duration-300 ease-in-out ${
+            participant.isTalking ? "z-10 transform scale-105" : "z-0"
+          }`}
         >
           <div className="flex flex-col items-center">
             <Avatar
@@ -134,7 +133,9 @@ const AvatarStack = ({
                 {participant.isHost && (
                   <Icons.Crown className="w-3 h-3 text-[--meet-primary] mr-1" />
                 )}
-                <span className={`text-xs whitespace-nowrap ${participant.isTalking ? 'golden-text' : 'text-[--meet-text-secondary]'}`}>
+                <span
+                  className={`text-xs whitespace-nowrap ${participant.isTalking ? "golden-text" : "text-[--meet-text-secondary]"}`}
+                >
                   {participant.name}
                 </span>
               </div>
@@ -143,7 +144,7 @@ const AvatarStack = ({
         </div>
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default AvatarStack
+export default AvatarStack;

@@ -1,13 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import {
-  FileText,
-  Users,
-  Activity,
-  ChevronRight,
-  ArrowRight,
-} from "lucide-react";
+import { FileText, Users, Activity, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import {
@@ -18,9 +11,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [recentInterviews, setRecentInterviews] = useState<
+    Array<{
+      id: string;
+      title: string;
+      candidates: number;
+      status: string;
+      date: string;
+    }>
+  >([]);
 
   // Placeholder data - in a real application, this would come from an API
   const stats = [
@@ -44,36 +51,32 @@ export default function DashboardPage() {
     },
   ];
 
-  const recentInterviews = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      candidates: 5,
-      status: "active",
-      date: "2023-08-15",
-    },
-    {
-      id: 2,
-      title: "UX Designer",
-      candidates: 3,
-      status: "active",
-      date: "2023-08-14",
-    },
-    {
-      id: 3,
-      title: "Product Manager",
-      candidates: 7,
-      status: "completed",
-      date: "2023-08-10",
-    },
-    {
-      id: 4,
-      title: "DevOps Engineer",
-      candidates: 2,
-      status: "active",
-      date: "2023-08-08",
-    },
-  ];
+  // Fetch interviews for recentInterviews
+  useEffect(() => {
+    const fetchRecent = async () => {
+      setLoading(true);
+      try {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+        const resp = await authenticatedFetch(
+          `${backendUrl}/api/v1/interviews`
+        );
+        if (!resp.ok) throw new Error("Failed to fetch interviews");
+        const data = await resp.json();
+        setRecentInterviews(data.slice(0, 4));
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch interviews";
+        toast({
+          title: "Error",
+          description: errorMessage,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecent();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -82,18 +85,18 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <Card
             key={stat.id}
-            className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-slate-50 shadow-md border border-slate-200"
+            className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 shadow-md border border-slate-200 dark:border-gray-800"
           >
             <div className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-indigo-50 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-indigo-500" />
+                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
-                  <dt className="truncate text-sm font-semibold text-gray-500 tracking-wide uppercase">
+                  <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
                     {stat.name}
                   </dt>
-                  <dd className="mt-2 text-4xl font-bold text-gray-900">
+                  <dd className="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
                     {stat.value}
                   </dd>
                 </div>
@@ -104,79 +107,95 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Interviews */}
-      <Card className="overflow-hidden rounded-lg bg-white shadow pb-0">
+      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
         <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-lg font-medium text-gray-900 ml-5">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white ml-5">
             Recent Interviews
           </h2>
         </div>
         <div>
-          {recentInterviews.map((interview) => (
-            <div
-              key={interview.id}
-              className="flex items-center justify-between p-4 cursor-pointer border hover:bg-indigo-50/20 border-l-0 border-r-0"
-              onClick={() =>
-                router.push(`/dashboard/interviews/${interview.id}`)
-              }
-            >
-              <div className="flex-1 truncate">
-                <div className="flex items-center space-x-3">
-                  <h3 className="truncate text-sm font-medium text-gray-900">
-                    {interview.title}
-                  </h3>
-                  <Badge
-                    variant={
-                      interview.status === "active" ? "secondary" : "outline"
-                    }
-                    className={`${
-                      interview.status !== "active" ? "bg-indigo-100/90" : ""
-                    } font-normal text-xs`}
-                  >
-                    {interview.status}
-                  </Badge>
-                </div>
-                <div className="mt-1 flex items-center text-sm text-gray-500">
-                  <span>{interview.candidates} candidates</span>
-                  <span className="mx-1">&middot;</span>
-                </div>
-              </div>
-              <div className="ml-4 flex-shrink-0">
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </div>
+          {loading ? (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
+              Loading interviews...
             </div>
-          ))}
-          <Button
-            onClick={() => router.push("/dashboard/interviews")}
-            className="cursor-pointer w-full h-full border-t border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-0"
-          >
-            View all
-          </Button>
+          ) : recentInterviews.length > 0 ? (
+            recentInterviews.map((interview) => (
+              <div
+                key={interview.id}
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                onClick={() =>
+                  router.push(`/dashboard/interviews/${interview.id}`)
+                }
+              >
+                <div className="flex-1 truncate">
+                  <div className="flex items-center space-x-3">
+                    <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                      {interview.title}
+                    </h3>
+                    <Badge
+                      variant={
+                        interview.status === "active" ? "secondary" : "outline"
+                      }
+                      className={`${
+                        interview.status !== "active"
+                          ? "bg-app-blue-100/90 dark:bg-app-blue-900/40"
+                          : ""
+                      } font-normal text-xs`}
+                    >
+                      {interview.status}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
+                    <span>{interview.candidates} candidates</span>
+                    <span className="mx-1">&middot;</span>
+                  </div>
+                </div>
+                <div className="ml-4 flex-shrink-0">
+                  <ChevronRight className="mx-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
+              No interviews found.
+            </div>
+          )}
+          {recentInterviews.length === 4 && !loading && (
+            <Button
+              onClick={() => router.push("/dashboard/interviews")}
+              className="cursor-pointer w-full h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 border-0"
+            >
+              View all
+            </Button>
+          )}
         </div>
       </Card>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
           <CardHeader>
-            <CardTitle>Invite Candidates</CardTitle>
-            <CardDescription>
+            <CardTitle className="dark:text-white">Invite Candidates</CardTitle>
+            <CardDescription className="dark:text-gray-300">
               Send interview invitations to candidates via email.
             </CardDescription>
           </CardHeader>
           <CardFooter className="flex justify-between">
             <Button
               onClick={() => router.push("/dashboard/candidates/invite")}
-              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               variant="outline"
             >
               Invite Now
             </Button>
           </CardFooter>
         </Card>
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
           <CardHeader>
-            <CardTitle>Create from Job Description</CardTitle>
-            <CardDescription>
+            <CardTitle className="dark:text-white">
+              Create from Job Description
+            </CardTitle>
+            <CardDescription className="dark:text-gray-300">
               Generate an AI-powered interview workflow using your job
               description.
             </CardDescription>
@@ -187,7 +206,7 @@ export default function DashboardPage() {
                 router.push("/dashboard/interviews/from-description")
               }
               variant="outline"
-              className="cursor-pointer border border-indigo-500/80 hover:bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
             >
               Generate Workflow
             </Button>
