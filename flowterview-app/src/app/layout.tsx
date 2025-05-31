@@ -4,6 +4,7 @@ import "./globals.css";
 import AuthListener from "./auth-listener";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
+import StoreInitializer from "./store-initializer";
 
 const workSans = Work_Sans({
   subsets: ["latin"],
@@ -25,7 +26,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${workSans.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <AuthListener>{children}</AuthListener>
+          <StoreInitializer>
+            <AuthListener>{children}</AuthListener>
+          </StoreInitializer>
           <Toaster />
         </ThemeProvider>
       </body>

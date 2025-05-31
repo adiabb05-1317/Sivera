@@ -48,29 +48,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const lastUpdateTimeRef = useRef<number>(0);
-  const updateThrottleMs = 50; // Throttle updates to every 50ms
 
   // Track the current messages being built
   const currentBotMessageRef = useRef<string>("");
   const latestUserTranscriptRef = useRef<string>("");
-
-  // Track complete messages from start to finish
-  const completeUserMessageRef = useRef<string>("");
-  const completeBotMessageRef = useRef<string>("");
-  const botJustStoppedRef = useRef<boolean>(false);
-
-  // Throttled transcript update function
-  const throttledTranscriptUpdate = useCallback(
-    (updateFn: () => void, forceUpdate = false) => {
-      const now = Date.now();
-      if (forceUpdate || now - lastUpdateTimeRef.current > updateThrottleMs) {
-        updateFn();
-        lastUpdateTimeRef.current = now;
-      }
-    },
-    []
-  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -220,7 +201,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       }
 
       // Clear everything
-      // setCurrentUserTranscript("");
+      setCurrentUserTranscript("");
       latestUserTranscriptRef.current = "";
     });
 

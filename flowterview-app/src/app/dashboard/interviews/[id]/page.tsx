@@ -19,7 +19,6 @@ import { improveLayout as improveLayoutUtil } from "@/utils/flowUtils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Mail, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { authenticatedFetch } from "@/lib/auth-client";
 import {
   Select,
   SelectTrigger,
@@ -30,7 +29,9 @@ import {
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
+import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 
+// Move nodeTypes outside the component to prevent recreation on every render
 const nodeTypes = {
   interview: InterviewNode,
 };
@@ -89,8 +90,15 @@ export default function InterviewDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Use our store hooks instead of manual API calls
+  const {
+    details,
+    isLoading: loading,
+    error,
+  } = useInterviewDetails(id as string);
+  const { candidates } = useCandidates();
+
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
@@ -106,48 +114,22 @@ export default function InterviewDetailsPage() {
   >("draft");
   const { toast } = useToast();
 
-  // Fetch interview details and candidates
+  // Update local state when store data changes
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+    if (details) {
+      setJob(details.job);
+      setInterviewStatus(details.interview.status || "draft");
+      setInvitedCandidates(details.candidates.invited || []);
+      setAvailableCandidates(details.candidates.available || []);
 
-        // Fetch interview details
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews/${id}`
-        );
-        if (!resp.ok) throw new Error("Failed to fetch interview details");
-        const data: InterviewData = await resp.json();
-        console.log(data);
-
-        setJob(data.job);
-        setInterviewStatus(data.interview.status || "draft");
-
-        // Set candidates from the new API response structure
-        setInvitedCandidates(data.candidates.invited || []);
-        setAvailableCandidates(data.candidates.available || []);
-
-        // Set up React Flow
-        if (data.flow && data.flow.react_flow_json) {
-          setNodes(data.flow.react_flow_json.nodes || []);
-          setEdges(data.flow.react_flow_json.edges || []);
-          improveLayout();
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch interview details";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
+      // Set up React Flow
+      if (details.flow && details.flow.react_flow_json) {
+        setNodes(details.flow.react_flow_json.nodes || []);
+        setEdges(details.flow.react_flow_json.edges || []);
+        improveLayout();
       }
-    };
-    if (id) fetchData();
-  }, [id]);
+    }
+  }, [details]);
 
   // Layout utility
   const improveLayout = useCallback(() => {

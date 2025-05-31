@@ -16,9 +16,10 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { authenticatedFetch } from "@/lib/auth-client";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useInterviews, useCandidates } from "@/hooks/useStores";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 interface Interview {
   id: string;
@@ -41,9 +42,12 @@ interface Candidate {
 export default function InterviewsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Use our store hooks instead of manual API calls
+  const { interviews, isLoading: loading, error } = useInterviews();
+  console.log(interviews);
+  const { candidates } = useCandidates();
+
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(
     null
@@ -52,30 +56,6 @@ export default function InterviewsPage() {
     []
   );
   const [loadingCandidates, setLoadingCandidates] = useState(false);
-
-  useEffect(() => {
-    const fetchInterviews = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews`
-        );
-        if (!resp.ok) throw new Error("Failed to fetch interviews");
-        const data: Interview[] = await resp.json();
-        setInterviews(data);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch interviews";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInterviews();
-  }, []);
 
   // Fetch available candidates for bulk invite
   const fetchAvailableCandidates = async (interview: Interview) => {
@@ -133,23 +113,8 @@ export default function InterviewsPage() {
     setSelectedInterview(null);
     setAvailableCandidates([]);
 
-    // Optionally refresh the interviews list to update candidate counts
-    const fetchInterviews = async () => {
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews`
-        );
-        if (resp.ok) {
-          const data: Interview[] = await resp.json();
-          setInterviews(data);
-        }
-      } catch (err) {
-        console.error("Failed to refresh interviews:", err);
-      }
-    };
-    fetchInterviews();
+    // Refresh interviews from store - this will trigger re-fetch
+    // The store will automatically refresh when this component re-renders
   };
 
   // Status badge color mapping
@@ -211,7 +176,7 @@ export default function InterviewsPage() {
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-800">
             {interviews.length > 0 ? (
-              interviews.map((interview) => (
+              interviews.map((interview: any) => (
                 <li key={interview.id} className="group">
                   <CardContent
                     className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800 group-hover:bg-app-blue-50/20 dark:group-hover:bg-app-blue-900/30"

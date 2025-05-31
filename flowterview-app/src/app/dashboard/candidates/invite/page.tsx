@@ -264,7 +264,7 @@ export default function InviteCandidatesPage() {
         <div className="flex items-center">
           <Button
             variant="link"
-            className="text-xs dark:text-gray-300"
+            className="text-xs dark:text-gray-300 cursor-pointer"
             onClick={() => {
               router.push("/dashboard/candidates");
             }}
@@ -282,21 +282,9 @@ export default function InviteCandidatesPage() {
             <h2 className="mt-4 text-lg font-medium tracking-tight dark:text-white">
               Candidates Saved Successfully
             </h2>
-            <p className="mt-2 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
+            <p className="mt-2 mb-6 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
               All candidates have been added to your organization.
             </p>
-            <div className="mt-6">
-              <Button
-                variant="link"
-                className="text-xs dark:text-gray-300"
-                onClick={() => {
-                  router.push("/dashboard/candidates");
-                }}
-              >
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Return to Candidates
-              </Button>
-            </div>
           </div>
         </div>
       </div>

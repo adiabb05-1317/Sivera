@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { authenticatedFetch, getUserContext } from "./auth-client";
+import { useInterviewsStore } from "../../store";
 
 // Utility: Upload resume to Supabase Storage
 export async function uploadResume(
@@ -75,6 +76,7 @@ export async function generateInterviewFlow(
   | { error: string }
 > {
   try {
+    console.log(jobDescription);
     if (!jobDescription) {
       return { error: "Job description is required" };
     }
@@ -130,6 +132,10 @@ export async function generateInterviewFlow(
     ) {
       return { error: "Invalid flow data received from backend" };
     }
+
+    // Force revalidate interviews store to refresh the interviews list
+    const interviewsStore = useInterviewsStore.getState();
+    interviewsStore.invalidateCache();
 
     return data;
   } catch (error) {

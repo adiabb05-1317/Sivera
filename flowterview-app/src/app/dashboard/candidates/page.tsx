@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { useState, useEffect } from "react";
-
-import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -19,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { useJobs } from "./invite/supabase-hooks";
 import {
   Popover,
   PopoverContent,
@@ -35,6 +32,7 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
+import { useCandidates, useJobs } from "@/hooks/useStores";
 
 const CandidateViewDialog = ({
   candidate,
@@ -91,8 +89,15 @@ export default function CandidatesPage() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
   const router = useRouter();
-  const { candidates, loading, error, reload } = useCandidatesSortedByJob();
-  const { jobs, loadJobs } = useJobs();
+
+  // Use our new store hooks instead of the old supabase hooks
+  const {
+    candidates,
+    isLoading: loading,
+    error,
+    refresh: reload,
+  } = useCandidates();
+  const { jobs, fetchJobs } = useJobs();
 
   // Status badge color mapping (for capitalized statuses)
   const statusColors: Record<string, string> = {
@@ -126,7 +131,7 @@ export default function CandidatesPage() {
   ).map((str) => JSON.parse(str));
 
   useEffect(() => {
-    loadJobs();
+    fetchJobs();
   }, []);
 
   useEffect(() => {

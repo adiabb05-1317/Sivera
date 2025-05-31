@@ -75,9 +75,8 @@ export default function GenerateFromDescriptionPage() {
       setFlowData(null);
       setReactFlowData(null);
 
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-      if (userError || !userData?.user) {
+      const user_id = getCookie("user_id");
+      if (!user_id) {
         toast({
           title: "Could not determine current user",
           description: "Please try again.",
@@ -86,29 +85,6 @@ export default function GenerateFromDescriptionPage() {
         return;
       }
 
-      const created_by = userData.user.id;
-      const email = userData.user.email || "";
-      // Fetch organization_id from backend
-      let organization_id = undefined;
-      const orgResp = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
-      );
-      if (orgResp.ok) {
-        const orgData = await orgResp.json();
-        if (Array.isArray(orgData) && orgData.length > 0) {
-          organization_id = orgData[0].organization_id;
-        }
-      }
-      if (!organization_id) {
-        toast({
-          title: "Could not determine organization",
-          description: "Please try again.",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // TypeScript workaround: result can be {error} or {flow, react_flow}
       const result: any = await generateInterviewFlow(data.jobDescription);
 
       if (!result) {

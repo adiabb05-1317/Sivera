@@ -133,8 +133,6 @@ export const authenticatedFetch = async (
     console.warn("Failed to get session token:", error);
   }
 
-  console.log(headers);
-
   return fetch(url, {
     ...options,
     headers,
