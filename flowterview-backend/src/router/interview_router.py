@@ -507,7 +507,12 @@ async def get_job_id_by_title(title: str, organization_id: str, request: Request
 @router.get("/jobs-list")
 async def fetch_jobs(request: Request):
     try:
-        jobs = db.fetch_all("jobs", order_by="title")
+        organization_id = require_organization(request).organization_id
+        jobs = db.fetch_all(
+            "jobs",
+            {"organization_id": organization_id},
+            order_by=("created_at", True),
+        )
         return [{"id": job["id"], "title": job["title"]} for job in jobs]
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))

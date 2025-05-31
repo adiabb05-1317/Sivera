@@ -96,13 +96,17 @@ class DatabaseManager:
 
         try:
             result = self.supabase.table(table).insert(data_list).execute()
-            logger.debug(f"Batch insert executed successfully with {len(data_list)} items")
+            logger.debug(
+                f"Batch insert executed successfully with {len(data_list)} items"
+            )
             return result.data
         except Exception as e:
             logger.error(f"Error executing batch insert: {e}")
             raise DatabaseError(f"Batch insert failed: {e}")
 
-    def fetch_one(self, table: str, query_params: Dict = None, select: str = "*") -> Optional[Dict]:
+    def fetch_one(
+        self, table: str, query_params: Dict = None, select: str = "*"
+    ) -> Optional[Dict]:
         """Fetch a single row from a table with optional query parameters."""
         if not self.connected:
             raise ConnectionError("Supabase not connected")
@@ -166,7 +170,6 @@ class DatabaseManager:
                 if isinstance(order_by, str):
                     query = query.order(order_by)
                 elif isinstance(order_by, tuple) and len(order_by) == 2:
-                    # Support (column, desc=True/False)
                     column, desc = order_by
                     query = query.order(column, desc=desc)
 
