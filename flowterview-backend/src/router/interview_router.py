@@ -1,28 +1,28 @@
-from typing import Dict, Any, Optional, List, Literal
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Path
-from pydantic import BaseModel, Field, EmailStr
-import aiosmtplib
-import urllib.parse
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from loguru import logger
-from storage.db_manager import DatabaseManager, DatabaseError
-from src.utils.auth_middleware import (
-    require_auth,
-    require_organization,
-    get_user_context_optional,
-)
-import uuid
-import secrets
-import time
 from datetime import datetime, timedelta
-import os
-
-from src.core.config import Config
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # Set up more detailed logging
-import logging
-from loguru import logger as loguru_logger
+import os
+import secrets
+import time
+from typing import Any, Dict, List, Literal, Optional
+import urllib.parse
+import uuid
+
+import aiosmtplib
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from loguru import (
+    logger,
+    logger as loguru_logger,
+)
+from pydantic import BaseModel, EmailStr, Field
+
+from src.core.config import Config
+from src.utils.auth_middleware import (
+    require_organization,
+)
+from storage.db_manager import DatabaseError, DatabaseManager
 
 # Ensure loguru is capturing all levels
 loguru_logger.add("interview_router.log", level="DEBUG", rotation="5 MB")
@@ -34,9 +34,7 @@ db = DatabaseManager()
 
 # Pydantic models for request validation
 class GenerateFlowRequest(BaseModel):
-    job_description: str = Field(
-        ..., min_length=50, description="Job description for the interview flow"
-    )
+    job_description: str = Field(..., min_length=50, description="Job description for the interview flow")
     organization_id: str = Field(..., description="Organization ID")
 
 
@@ -45,9 +43,7 @@ class SendInviteRequest(BaseModel):
     name: str = Field(..., description="Candidate's name")
     job: str = Field(..., description="Job title/position")
     organization_id: str = Field(..., description="Organization ID")
-    sender_id: Optional[str] = Field(
-        None, description="ID of the user sending the invitation"
-    )
+    sender_id: Optional[str] = Field(None, description="ID of the user sending the invitation")
 
 
 class VerifyTokenRequest(BaseModel):
@@ -62,12 +58,8 @@ class CreateUserRequest(BaseModel):
     email: EmailStr = Field(..., description="User's email address")
     name: str = Field(..., description="User's name")
     organization_id: str = Field(..., description="Organization ID")
-    role: str = Field(
-        default="candidate", description="User role, defaults to 'candidate'"
-    )
-    candidate_id: Optional[str] = Field(
-        None, description="ID of the candidate if exists"
-    )
+    role: str = Field(default="candidate", description="User role, defaults to 'candidate'")
+    candidate_id: Optional[str] = Field(None, description="ID of the candidate if exists")
 
 
 class InterviewIn(BaseModel):
@@ -104,18 +96,18 @@ class AddCandidateRequest(BaseModel):
     candidate_id: str
 
 
+class BulkAddCandidatesRequest(BaseModel):
+    candidate_ids: List[str]
+
+
 async def send_verification_email(email: str, name: str, job: str, token: str) -> None:
     """Background task to send verification email for new candidates"""
-    logger.info(
-        f"Starting to send verification email to {email} with token {token[:10]}..."
-    )
+    logger.info(f"Starting to send verification email to {email} with token {token[:10]}...")
     try:
         message = MIMEMultipart()
         message["From"] = f"Flowterview Team <{Config.SMTP_USER}>"
         message["To"] = email
-        message["Subject"] = (
-            f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
-        )
+        message["Subject"] = f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
 
         # Make sure the token is URL safe and properly encoded
         import urllib.parse
@@ -152,9 +144,7 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         """
         message.attach(MIMEText(html_content, "html"))
 
-        logger.info(
-            f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}"
-        )
+        logger.info(f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}")
 
         try:
             await aiosmtplib.send(
@@ -177,9 +167,7 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         logger.error(f"Failed to send verification email to {email}: {e}")
 
 
-async def send_interview_email(
-    email: str, name: str, job: str, interview_url: str
-) -> None:
+async def send_interview_email(email: str, name: str, job: str, interview_url: str) -> None:
     """Background task to send direct interview email for existing candidates"""
     try:
         message = MIMEMultipart()
@@ -216,9 +204,7 @@ async def send_interview_email(
 
         # Send email using aiosmtplib
         # Log SMTP settings (without password)
-        logger.info(
-            f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}"
-        )
+        logger.info(f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}")
 
         try:
             await aiosmtplib.send(
@@ -244,9 +230,7 @@ async def send_interview_email(
 
 
 @router.post("/send-invite")
-async def send_invite(
-    request: SendInviteRequest, background_tasks: BackgroundTasks
-) -> Dict[str, Any]:
+async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """
     Send an interview invitation email to the candidate
     If candidate exists, send direct interview link
@@ -263,21 +247,15 @@ async def send_invite(
         logger.info(f"[send-invite] Candidate lookup for {request.email}: {candidate}")
 
         # Try to find a matching interview for this job title
-        matching_job = db.fetch_one(
-            "jobs", {"title": request.job, "organization_id": request.organization_id}
-        )
+        matching_job = db.fetch_one("jobs", {"title": request.job, "organization_id": request.organization_id})
         logger.info(f"[send-invite] Matching job for {request.job}: {matching_job}")
 
         interview_id = None
         if matching_job:
             # Find an interview for this job with status 'active' or 'draft'
             all_interviews = db.fetch_all("interviews", {"job_id": matching_job["id"]})
-            logger.info(
-                f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}"
-            )
-            matching_interview = next(
-                (i for i in all_interviews if i["status"] in ("active", "draft")), None
-            )
+            logger.info(f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}")
+            matching_interview = next((i for i in all_interviews if i["status"] in ("active", "draft")), None)
             logger.info(f"[send-invite] Matching interview: {matching_interview}")
             if matching_interview:
                 interview_id = matching_interview["id"]
@@ -285,9 +263,7 @@ async def send_invite(
         if user:
             logger.info(f"[send-invite] Existing user path for {request.email}")
             # Candidate exists, send direct interview link
-            logger.info(
-                f"Candidate {request.email} exists, sending direct interview link"
-            )
+            logger.info(f"Candidate {request.email} exists, sending direct interview link")
 
             # Update candidate's organization_id if it's different
             if candidate.get("organization_id") != request.organization_id:
@@ -313,12 +289,8 @@ async def send_invite(
 
             else:
                 # No interview found, return error
-                logger.error(
-                    f"No active interview found for job {request.job} in org {request.organization_id}"
-                )
-                raise HTTPException(
-                    status_code=404, detail="No active interview found for this job."
-                )
+                logger.error(f"No active interview found for job {request.job} in org {request.organization_id}")
+                raise HTTPException(status_code=404, detail="No active interview found for this job.")
 
             # Generate interview link
             interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id}"
@@ -355,9 +327,7 @@ async def send_invite(
                 org_exists = db.fetch_one("organizations", {"id": org_id})
                 if not org_exists:
                     # Organization ID doesn't exist, try to find any organization
-                    logger.warning(
-                        f"Organization ID {org_id} not found, looking for default"
-                    )
+                    logger.warning(f"Organization ID {org_id} not found, looking for default")
                     default_org = db.fetch_one("organizations", limit=1)
                     if default_org:
                         org_id = default_org["id"]
@@ -397,9 +367,7 @@ async def send_invite(
             # Create token
             try:
                 # Log the token we're about to save
-                logger.info(
-                    f"Creating verification token: {token[:10]}... for {request.email} with org_id: {org_id}"
-                )
+                logger.info(f"Creating verification token: {token[:10]}... for {request.email} with org_id: {org_id}")
 
                 # Make sure the token is stored as a string
                 token_data = {
@@ -419,16 +387,10 @@ async def send_invite(
                 # Verify the token was saved by retrieving it
                 saved_token = db.fetch_one("verification_tokens", {"token": token})
                 if saved_token:
-                    logger.info(
-                        f"Successfully verified token was saved for {request.email}"
-                    )
+                    logger.info(f"Successfully verified token was saved for {request.email}")
                 else:
-                    logger.error(
-                        f"Failed to verify token was saved for {request.email}"
-                    )
-                logger.info(
-                    f"Successfully created verification token for {request.email}"
-                )
+                    logger.error(f"Failed to verify token was saved for {request.email}")
+                logger.info(f"Successfully created verification token for {request.email}")
             except Exception as token_error:
                 logger.error(f"Error creating verification token: {str(token_error)}")
                 raise HTTPException(
@@ -477,19 +439,13 @@ async def send_invite(
                 status_code=500,
                 detail="Database foreign key error. Organization may not exist.",
             )
-        elif (
-            "smtp" in str(e).lower()
-            or "email" in str(e).lower()
-            or "aiosmtplib" in str(e).lower()
-        ):
+        elif "smtp" in str(e).lower() or "email" in str(e).lower() or "aiosmtplib" in str(e).lower():
             raise HTTPException(
                 status_code=500,
                 detail="Failed to send email. Please check SMTP configuration.",
             )
         else:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to send invitation: {str(e)}"
-            )
+            raise HTTPException(status_code=500, detail=f"Failed to send invitation: {str(e)}")
 
 
 @router.get("/job-id")
@@ -523,9 +479,7 @@ async def create_user(request: CreateUserRequest) -> Dict[str, Any]:
     """
     Create a new user in the users table. This is a dedicated endpoint for user creation.
     """
-    logger.info(
-        f"Creating user in the users table: {request.email}, org_id: {request.organization_id}"
-    )
+    logger.info(f"Creating user in the users table: {request.email}, org_id: {request.organization_id}")
 
     try:
         # Generate unique user ID
@@ -631,9 +585,7 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             "email": token_data.get("email", ""),
             "job_title": token_data.get("job_title", ""),
             "organization_id": token_data.get("organization_id", ""),
-            "interview_id": token_data.get(
-                "interview_id", ""
-            ),  # Include interview_id in response
+            "interview_id": token_data.get("interview_id", ""),  # Include interview_id in response
         }
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
@@ -706,9 +658,7 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                 }
 
         # Check if candidate already exists
-        existing_candidate = db.fetch_one(
-            "candidates", {"email": token_data.get("email")}
-        )
+        existing_candidate = db.fetch_one("candidates", {"email": token_data.get("email")})
 
         if existing_candidate:
             # Use the existing candidate
@@ -736,9 +686,7 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
 
             if job_title:
                 # Try to find an existing job with this title
-                existing_job = db.fetch_one(
-                    "jobs", {"title": job_title, "organization_id": org_id}
-                )
+                existing_job = db.fetch_one("jobs", {"title": job_title, "organization_id": org_id})
                 if existing_job:
                     job_id = existing_job.get("id")
                     logger.info(f"Found existing job with ID: {job_id}")
@@ -782,15 +730,11 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                         {"candidates_invited": updated_invited},
                         {"id": interview_id},
                     )
-                logger.info(
-                    f"Added candidate {candidate_id} to interview {interview_id}"
-                )
+                logger.info(f"Added candidate {candidate_id} to interview {interview_id}")
 
         # Generate interview URL
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
-        interview_url = (
-            f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
-        )
+        interview_url = f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
 
         # Delete the used token
         db.delete("verification_tokens", {"token": token_data["token"]})
@@ -841,9 +785,7 @@ async def create_interview_from_description(
         )
         job_id = job["id"]
         # 3. Create the interview
-        interview = db.execute_query(
-            "interviews", {"job_id": job_id, "status": "draft"}
-        )
+        interview = db.execute_query("interviews", {"job_id": job_id, "status": "draft"})
         # 4. Return the interview info (with job title)
         return {
             "id": interview["id"],
@@ -858,9 +800,7 @@ async def create_interview_from_description(
 
 
 @router.post("/{interview_id}/add-candidate")
-async def add_candidate_to_interview(
-    interview_id: str, req: AddCandidateRequest, request: Request
-):
+async def add_candidate_to_interview(interview_id: str, req: AddCandidateRequest, request: Request):
     try:
         # Fetch current candidates_invited
         interview = db.fetch_one("interviews", {"id": interview_id})
@@ -868,14 +808,38 @@ async def add_candidate_to_interview(
             raise HTTPException(status_code=404, detail="Interview not found")
         current_invited = interview.get("candidates_invited", [])
         updated_invited = (
-            current_invited
-            if req.candidate_id in current_invited
-            else current_invited + [req.candidate_id]
+            current_invited if req.candidate_id in current_invited else current_invited + [req.candidate_id]
         )
-        db.update(
-            "interviews", {"candidates_invited": updated_invited}, {"id": interview_id}
-        )
+        db.update("interviews", {"candidates_invited": updated_invited}, {"id": interview_id})
         return {"success": True, "candidates_invited": updated_invited}
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{interview_id}/add-candidates-bulk")
+async def add_candidates_bulk_to_interview(interview_id: str, req: BulkAddCandidatesRequest, request: Request):
+    """Add multiple candidates to an interview at once for better performance"""
+    try:
+        # Fetch current candidates_invited
+        interview = db.fetch_one("interviews", {"id": interview_id})
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+
+        current_invited = interview.get("candidates_invited", [])
+
+        # Merge new candidates with existing ones (avoid duplicates)
+        new_candidates = [cid for cid in req.candidate_ids if cid not in current_invited]
+        updated_invited = current_invited + new_candidates
+
+        # Update the interview with all candidate IDs
+        db.update("interviews", {"candidates_invited": updated_invited}, {"id": interview_id})
+
+        return {
+            "success": True,
+            "candidates_invited": updated_invited,
+            "added_count": len(new_candidates),
+            "total_count": len(updated_invited),
+        }
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -920,7 +884,6 @@ async def get_interview_job(interview_id: str, request: Request):
 @router.get("/", response_model=List[Dict[str, Any]])
 async def list_interviews(request: Request):
     """List all interviews for the authenticated user's organization"""
-    import time
 
     start_time = time.time()
 
@@ -946,9 +909,7 @@ async def list_interviews(request: Request):
         )
 
         if not interviews:
-            logger.info(
-                f"No interviews found for organization {user_context.organization_id}"
-            )
+            logger.info(f"No interviews found for organization {user_context.organization_id}")
             return []
 
         query_time = time.time() - query_start
@@ -977,22 +938,18 @@ async def list_interviews(request: Request):
 
         logger.info(
             f"Performance metrics for org {user_context.organization_id}: "
-            f"Total: {total_time*1000:.0f}ms, "
-            f"Auth: {auth_time*1000:.0f}ms, "
-            f"Query: {query_time*1000:.0f}ms ({len(interviews)} interviews), "
-            f"Transform: {transform_time*1000:.0f}ms"
+            f"Total: {total_time * 1000:.0f}ms, "
+            f"Auth: {auth_time * 1000:.0f}ms, "
+            f"Query: {query_time * 1000:.0f}ms ({len(interviews)} interviews), "
+            f"Transform: {transform_time * 1000:.0f}ms"
         )
 
         return result
 
     except Exception as e:
         total_time = time.time() - start_time
-        logger.error(
-            f"Error fetching interviews after {total_time*1000:.0f}ms: {str(e)}"
-        )
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch interviews: {str(e)}"
-        )
+        logger.error(f"Error fetching interviews after {total_time * 1000:.0f}ms: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch interviews: {str(e)}")
 
 
 @router.post("/", response_model=InterviewOut)
@@ -1005,9 +962,7 @@ async def create_interview(interview: InterviewIn, request: Request):
 
 
 @router.patch("/{interview_id}", response_model=InterviewOut)
-async def update_interview(
-    interview_id: str, updates: InterviewUpdate, request: Request
-):
+async def update_interview(interview_id: str, updates: InterviewUpdate, request: Request):
     try:
         # Fetch the current interview record
         current = db.fetch_one("interviews", {"id": interview_id})
@@ -1077,9 +1032,7 @@ async def get_interview(interview_id: str, request: Request):
         )
 
         # Create a map of candidate_id to interview details
-        candidate_interview_map = {
-            ci["candidate_id"]: ci for ci in candidate_interviews
-        }
+        candidate_interview_map = {ci["candidate_id"]: ci for ci in candidate_interviews}
 
         # Enhance candidates with interview status and room details
         enhanced_candidates = []
@@ -1092,24 +1045,12 @@ async def get_interview(interview_id: str, request: Request):
             enhanced_candidate = {
                 **candidate,
                 "is_invited": candidate_id in invited_candidate_ids,
-                "interview_status": (
-                    interview_details.get("status") if interview_details else None
-                ),
-                "room_url": (
-                    interview_details.get("room_url") if interview_details else None
-                ),
-                "bot_token": (
-                    interview_details.get("bot_token") if interview_details else None
-                ),
-                "scheduled_at": (
-                    interview_details.get("scheduled_at") if interview_details else None
-                ),
-                "started_at": (
-                    interview_details.get("started_at") if interview_details else None
-                ),
-                "completed_at": (
-                    interview_details.get("completed_at") if interview_details else None
-                ),
+                "interview_status": (interview_details.get("status") if interview_details else None),
+                "room_url": (interview_details.get("room_url") if interview_details else None),
+                "bot_token": (interview_details.get("bot_token") if interview_details else None),
+                "scheduled_at": (interview_details.get("scheduled_at") if interview_details else None),
+                "started_at": (interview_details.get("started_at") if interview_details else None),
+                "completed_at": (interview_details.get("completed_at") if interview_details else None),
             }
             enhanced_candidates.append(enhanced_candidate)
 
@@ -1118,13 +1059,8 @@ async def get_interview(interview_id: str, request: Request):
         # The 'interview_flows' object is now expected to be part of job_data
         # It will be null if jobs.flow_id is null or if there's no matching flow.
         flow_details_from_job = job_data.get("interview_flows")
-        if (
-            flow_details_from_job
-            and flow_details_from_job.get("react_flow_json") is not None
-        ):
-            flow_data = {
-                "react_flow_json": flow_details_from_job.get("react_flow_json")
-            }
+        if flow_details_from_job and flow_details_from_job.get("react_flow_json") is not None:
+            flow_data = {"react_flow_json": flow_details_from_job.get("react_flow_json")}
 
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
@@ -1167,6 +1103,4 @@ async def get_interview(interview_id: str, request: Request):
         raise
     except Exception as e:
         logger.error(f"Error fetching interview {interview_id}: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch interview: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to fetch interview: {str(e)}")

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useJobs, useAddCandidate } from "./supabase-hooks";
+import {
+  useJobs,
+  useAddCandidate,
+  useBulkAddCandidates,
+} from "./supabase-hooks";
 import { useSession } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import { ArrowLeft, Send, X, Plus, UploadCloud, Check } from "lucide-react";
@@ -28,6 +32,7 @@ export default function InviteCandidatesPage() {
   const searchParams = useSearchParams();
   const interviewIdFromQuery = searchParams.get("interview");
   const [selectedInterview, setSelectedInterview] = useState("");
+  const [selectedJobId, setSelectedJobId] = useState("");
   const [interviewError, setInterviewError] = useState("");
   type CandidateRow = {
     name: string;
@@ -51,6 +56,16 @@ export default function InviteCandidatesPage() {
     error: addError,
     success: addSuccess,
   } = useAddCandidate();
+
+  // Bulk submission hook
+  const {
+    submitBulkCandidates,
+    loading: bulkLoading,
+    error: bulkError,
+    success: bulkSuccess,
+    progress: bulkProgress,
+  } = useBulkAddCandidates();
+
   const session = useSession();
   const orgEmail = session?.user?.email ?? "";
 
@@ -88,36 +103,72 @@ export default function InviteCandidatesPage() {
     return candidates.every((candidate) => candidate.resume !== null);
   };
 
-  const handleFileUpload = () => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     setIsUploading(true);
-    // In a real application, this would handle file upload and CSV parsing
-    setTimeout(() => {
-      // Simulate adding candidates from CSV
-      setCandidates([
-        {
-          name: "John Doe",
-          email: "john@example.com",
-          resume: null,
-          id: Date.now(),
-          status: "Applied",
-        },
-        {
-          name: "Jane Smith",
-          email: "jane@example.com",
-          resume: null,
-          id: Date.now() + 1,
-          status: "Applied",
-        },
-        {
-          name: "Bob Johnson",
-          email: "bob@example.com",
-          resume: null,
-          id: Date.now() + 2,
-          status: "Applied",
-        },
-      ]);
-      setIsUploading(false);
-    }, 1500);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target?.result as string;
+        const lines = csv.split("\n").filter((line) => line.trim());
+
+        if (lines.length < 2) {
+          setInterviewError(
+            "CSV file must contain at least a header row and one data row."
+          );
+          setIsUploading(false);
+          return;
+        }
+
+        // Parse CSV (expecting: name, email format)
+        const header = lines[0].toLowerCase();
+        const nameIndex = header.includes("name")
+          ? header.split(",").findIndex((col) => col.trim().includes("name"))
+          : 0;
+        const emailIndex = header.includes("email")
+          ? header.split(",").findIndex((col) => col.trim().includes("email"))
+          : 1;
+
+        const newCandidates: CandidateRow[] = [];
+
+        for (let i = 1; i < lines.length && i <= 101; i++) {
+          // Limit to 100 candidates + header
+          const values = lines[i]
+            .split(",")
+            .map((v) => v.trim().replace(/"/g, ""));
+
+          if (values.length >= 2 && values[nameIndex] && values[emailIndex]) {
+            newCandidates.push({
+              name: values[nameIndex],
+              email: values[emailIndex],
+              resume: null,
+              id: Date.now() + i,
+              status: "Applied",
+            });
+          }
+        }
+
+        if (newCandidates.length > 0) {
+          setCandidates(newCandidates);
+          setInterviewError(
+            `Imported ${newCandidates.length} candidates from CSV.`
+          );
+        } else {
+          setInterviewError(
+            "No valid candidates found in CSV. Please check the format."
+          );
+        }
+      } catch (error) {
+        setInterviewError("Error parsing CSV file. Please check the format.");
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   // Dropdown handler: when a job is selected, fetch the interview ID for that job
@@ -128,15 +179,18 @@ export default function InviteCandidatesPage() {
       const interviewId = await fetchInterviewIdFromJobId(jobId);
       if (interviewId) {
         setSelectedInterview(interviewId);
+        setSelectedJobId(jobId); // Store the selected job ID
       } else {
         setInterviewError(
           "No active interview found for this job. Please create one first."
         );
         setSelectedInterview("");
+        setSelectedJobId(""); // Clear job ID if no interview found
       }
     } catch (err) {
       setInterviewError("Failed to fetch interview for selected job.");
       setSelectedInterview("");
+      setSelectedJobId(""); // Clear job ID on error
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +200,7 @@ export default function InviteCandidatesPage() {
     e.preventDefault();
     setInterviewError("");
     setIsSubmitting(true);
+
     try {
       // Require interview selection if not from query
       if (!selectedInterview) {
@@ -153,33 +208,51 @@ export default function InviteCandidatesPage() {
         setIsSubmitting(false);
         return;
       }
-      // Always fetch jobId from interviewId
+
       let jobId = "";
-      let jobTitle = "";
-      if (selectedInterview) {
+
+      // If we have a selectedJobId (from job selection), use it directly
+      if (selectedJobId) {
+        jobId = selectedJobId;
+      } else if (
+        interviewIdFromQuery &&
+        selectedInterview === interviewIdFromQuery
+      ) {
+        // For direct interview links, we need to fetch the job info
         const interview = await fetchInterviewById(selectedInterview);
         if (interview && interview.job_id) {
           jobId = interview.job_id;
-          // Get job title from the jobs list
-          const job = jobs.find((j) => j.id === interview.job_id);
-          jobTitle = job?.title || "";
         }
       }
-      // Add candidates to database
-      for (const candidate of candidates) {
-        await submitCandidate({
-          name: candidate.name,
-          email: candidate.email,
-          orgEmail: orgEmail,
-          jobId,
-          resumeFile: candidate.resume || undefined,
-          interviewId: selectedInterview,
-        });
+
+      if (!jobId) {
+        setInterviewError(
+          "Could not determine job for the selected interview."
+        );
+        setIsSubmitting(false);
+        return;
       }
+
+      // Use bulk submission for much better performance
+      const candidatesData = candidates.map((candidate) => ({
+        name: candidate.name,
+        email: candidate.email,
+        resumeFile: candidate.resume || undefined,
+        status: candidate.status as any, // Convert to CandidateStatus
+      }));
+
+      await submitBulkCandidates({
+        candidates: candidatesData,
+        jobId,
+        interviewId: selectedInterview,
+      });
+
       setIsSent(true);
     } catch (err) {
       console.error("Error in handleSubmit:", err);
-      // You can handle error UI here
+      setInterviewError(
+        bulkError || "Failed to submit candidates. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -189,9 +262,15 @@ export default function InviteCandidatesPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center">
-          <Button variant="link" className="text-xs dark:text-gray-300">
+          <Button
+            variant="link"
+            className="text-xs dark:text-gray-300"
+            onClick={() => {
+              router.push("/dashboard/candidates");
+            }}
+          >
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Candidates
+            Return to Candidates
           </Button>
         </div>
 
@@ -208,10 +287,13 @@ export default function InviteCandidatesPage() {
             </p>
             <div className="mt-6">
               <Button
-                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:border-app-blue-400/80 dark:text-app-blue-3/00 dark:hover:text-app-blue-2/00 dark:hover:bg-app-blue-900/20 dark:focus:ring-offset-gray-900"
-                variant="outline"
-                onClick={() => router.push("/dashboard/candidates")}
+                variant="link"
+                className="text-xs dark:text-gray-300"
+                onClick={() => {
+                  router.push("/dashboard/candidates");
+                }}
               >
+                <ArrowLeft className="mr-1 h-4 w-4" />
                 Return to Candidates
               </Button>
             </div>
@@ -272,22 +354,33 @@ export default function InviteCandidatesPage() {
                     )}
                   </div>
                 )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isUploading}
-                  onClick={handleFileUpload}
-                  className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                >
-                  {isUploading ? (
-                    "Uploading..."
-                  ) : (
-                    <>
-                      <UploadCloud className="w-4 h-4 mr-2" />
-                      Import CSV
-                    </>
-                  )}
-                </Button>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isUploading}
+                    onClick={() =>
+                      document.getElementById("csv-upload")?.click()
+                    }
+                    className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  >
+                    {isUploading ? (
+                      "Uploading..."
+                    ) : (
+                      <>
+                        <UploadCloud className="w-4 h-4 mr-2" />
+                        Import CSV
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    id="csv-upload"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
 
@@ -388,14 +481,15 @@ export default function InviteCandidatesPage() {
                 type="submit"
                 disabled={
                   isSubmitting ||
+                  bulkLoading ||
                   (!interviewIdFromQuery && !selectedInterview) ||
                   !allCandidatesHaveResumes()
                 }
                 variant="outline"
                 className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
               >
-                {isSubmitting ? (
-                  "Wait..."
+                {isSubmitting || bulkLoading ? (
+                  "Processing..."
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
