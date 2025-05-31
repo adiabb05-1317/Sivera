@@ -1,6 +1,15 @@
 "use client";
 
-import { Search, Filter, ArrowRight, Mail, Users } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ArrowRight,
+  Mail,
+  Users,
+  SplinePointer,
+  Loader,
+  Loader2,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -71,6 +80,7 @@ export default function InterviewsPage() {
   // Fetch available candidates for bulk invite
   const fetchAvailableCandidates = async (interview: Interview) => {
     setLoadingCandidates(true);
+    setSelectedInterview(interview);
     try {
       const backendUrl =
         process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
@@ -88,7 +98,6 @@ export default function InterviewsPage() {
         if (candidatesResp.status === 404) {
           // No candidates found for this job
           setAvailableCandidates([]);
-          setSelectedInterview(interview);
           setBulkInviteOpen(true);
           return;
         }
@@ -99,7 +108,6 @@ export default function InterviewsPage() {
 
       // Show all candidates - the dialog can handle filtering if needed
       setAvailableCandidates(allCandidates || []);
-      setSelectedInterview(interview);
       setBulkInviteOpen(true);
     } catch (err) {
       const errorMessage =
@@ -243,11 +251,20 @@ export default function InterviewsPage() {
                           onClick={(e) => handleBulkInviteClick(e, interview)}
                           disabled={loadingCandidates}
                         >
-                          <Mail className="mr-1 h-3 w-3" />
-                          {loadingCandidates ? "Loading..." : "Bulk Invite"}
+                          {loadingCandidates &&
+                          selectedInterview?.id === interview.id ? (
+                            <>
+                              Bulk Invite
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            </>
+                          ) : (
+                            <>
+                              Bulk Invite
+                              <Mail className="mr-1 h-3 -3" />
+                            </>
+                          )}
                         </Button>
                       )}
-                      <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     </div>
                   </CardContent>
                 </li>

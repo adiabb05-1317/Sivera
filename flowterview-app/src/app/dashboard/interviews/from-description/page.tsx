@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { generateInterviewFlow } from "@/lib/supabase-candidates";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { authenticatedFetch, getCookie } from "@/lib/auth-client";
 
 // Dynamically import ReactFlow component to avoid SSR issues
 const InterviewFlow = dynamic(() => import("@/components/flow/InterviewFlow"), {
@@ -158,26 +158,9 @@ export default function GenerateFromDescriptionPage() {
         return;
       }
       const created_by = userData.user.id;
-      const email = userData.user.email || "";
+      const organization_id = getCookie("organization_id");
+
       // Fetch organization_id from backend
-      let organization_id = undefined;
-      const orgResp = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
-      );
-      if (orgResp.ok) {
-        const orgData = await orgResp.json();
-        if (Array.isArray(orgData) && orgData.length > 0) {
-          organization_id = orgData[0].organization_id;
-        }
-      }
-      if (!organization_id) {
-        toast({
-          title: "Could not determine organization",
-          description: "Please try again.",
-        });
-        setSaving(false);
-        return;
-      }
       const response = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/interviews/from-description`,
         {
@@ -313,7 +296,8 @@ export default function GenerateFromDescriptionPage() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center rounded-md bg-app-blue-2/00 dark:bg-app-blue-9/00 px-4 py-2 text-sm font-medium text-app-blue-9/00 dark:text-app-blue-3/00 hover:bg-app-blue-400/60 dark:hover:bg-app-blue-7/00 focus:outline-none focus:ring-2 focus:ring-app-blue-5/00 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer"
+                variant="outline"
+                className="cursor-pointer border border-app-blue-100"
               >
                 <Save className="mr-1 h-4 w-4" />
                 {saving ? "Saving..." : "Save Flow"}

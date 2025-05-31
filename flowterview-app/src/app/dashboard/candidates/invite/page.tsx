@@ -57,7 +57,6 @@ export default function InviteCandidatesPage() {
   useEffect(() => {
     loadJobs();
     if (interviewIdFromQuery) setSelectedInterview(interviewIdFromQuery);
-
   }, [interviewIdFromQuery]);
 
   const addCandidateRow = () => {
@@ -82,6 +81,11 @@ export default function InviteCandidatesPage() {
         candidate.id === id ? { ...candidate, [field]: value } : candidate
       )
     );
+  };
+
+  // Check if all candidates have uploaded their resumes
+  const allCandidatesHaveResumes = () => {
+    return candidates.every((candidate) => candidate.resume !== null);
   };
 
   const handleFileUpload = () => {
@@ -383,7 +387,9 @@ export default function InviteCandidatesPage() {
               <Button
                 type="submit"
                 disabled={
-                  isSubmitting || (!interviewIdFromQuery && !selectedInterview)
+                  isSubmitting ||
+                  (!interviewIdFromQuery && !selectedInterview) ||
+                  !allCandidatesHaveResumes()
                 }
                 variant="outline"
                 className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"

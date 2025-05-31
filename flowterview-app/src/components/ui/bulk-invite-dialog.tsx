@@ -218,6 +218,7 @@ export function BulkInviteDialog({
                 <Button
                   variant="outline"
                   size="sm"
+                  className="cursor-pointer"
                   onClick={selectAllCandidates}
                   disabled={
                     selectedCandidates.length === availableCandidates.length
@@ -227,6 +228,7 @@ export function BulkInviteDialog({
                 </Button>
                 <Button
                   variant="outline"
+                  className="cursor-pointer"
                   size="sm"
                   onClick={clearSelection}
                   disabled={selectedCandidates.length === 0}
@@ -277,7 +279,7 @@ export function BulkInviteDialog({
                                   }`}
                                 >
                                   {isSelected && (
-                                    <Check className="w-3 h-3 text-white" />
+                                    <Check className="w-3 h-3 dark:text-white text-black" />
                                   )}
                                 </div>
                                 <div>
@@ -364,6 +366,7 @@ export function BulkInviteDialog({
                 variant="outline"
                 onClick={handleClose}
                 disabled={isLoading}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>

@@ -5,33 +5,29 @@ import sys
 
 from storage.db_manager import DatabaseManager
 
-from .interview_flow import InterviewFlow
 from .handler_functions import (
     collect_candidate_info,
-    process_background_info,
-    present_coding_problem,
-    evaluate_problem_solving,
-    present_system_design,
-    evaluate_behavioral_response,
-    handle_candidate_questions,
-    conclude_interview,
-    process_devops_experience,
-    present_aws_scenario,
-    evaluate_aws_knowledge,
-    present_kubernetes_challenge,
-    evaluate_kubernetes_knowledge,
-    present_python_challenge,
-    evaluate_python_skills,
-    present_incident_scenario,
-    evaluate_troubleshooting_skills,
-    handle_candidate_questions,
     conclude_interview,
     end_interview,
+    evaluate_aws_knowledge,
+    evaluate_behavioral_response,
+    evaluate_kubernetes_knowledge,
+    evaluate_problem_solving,
+    evaluate_python_skills,
+    evaluate_troubleshooting_skills,
+    handle_candidate_questions,
+    present_aws_scenario,
+    present_coding_problem,
+    present_incident_scenario,
+    present_kubernetes_challenge,
+    present_python_challenge,
+    present_system_design,
+    process_background_info,
+    process_devops_experience,
 )
+from .interview_flow import InterviewFlow
 
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
 async def main():
@@ -40,9 +36,7 @@ async def main():
     )
     parser.add_argument("-u", "--url", type=str, help="Room URL", required=True)
     parser.add_argument("-t", "--token", type=str, help="Room token", required=True)
-    parser.add_argument(
-        "-s", "--session_id", type=str, help="Session ID", required=True
-    )
+    parser.add_argument("-s", "--session_id", type=str, help="Session ID", required=True)
 
     args = parser.parse_args()
     db_manager = DatabaseManager()
