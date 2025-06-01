@@ -38,16 +38,3 @@ export const initializeStores = async () => {
     console.error("Error initializing stores:", error);
   }
 };
-
-// Clear all stores (useful for logout)
-export const clearAllStores = () => {
-  const authStore = useAuthStore.getState();
-  const candidatesStore = useCandidatesStore.getState();
-  const jobsStore = useJobsStore.getState();
-  const interviewsStore = useInterviewsStore.getState();
-
-  authStore.logout();
-  candidatesStore.invalidateCache();
-  jobsStore.invalidateCache();
-  interviewsStore.invalidateCache();
-};

@@ -19,18 +19,12 @@ export default function AuthListener({
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event);
 
-      if (event === "SIGNED_OUT" || !session) {
-        // Simple cleanup on logout
-        const { clearAllStores } = await import("../../store");
-        clearAllStores();
-        return;
-      }
-
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        // Simple initialization on sign in
+        // Initialize stores on sign in
         const { initializeStores } = await import("../../store");
         await initializeStores();
       }
+      // Note: No need to clear stores on SIGNED_OUT - logout functions handle that
     });
 
     return () => {
