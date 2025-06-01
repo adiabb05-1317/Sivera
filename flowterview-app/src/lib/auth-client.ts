@@ -23,7 +23,10 @@ export const getCookie = (name: string): string | null => {
 };
 
 export const deleteCookie = (name: string) => {
+  // Multiple attempts to ensure cookie is deleted
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/`;
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=${window.location.hostname}`;
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=.${window.location.hostname}`;
 };
 
 // User context interface
@@ -99,10 +102,32 @@ export const getUserContext = (): UserContext | null => {
 
 // Clear user context from cookies
 export const clearUserContext = () => {
+  console.log("Clearing user context cookies...");
   deleteCookie("user_id");
   deleteCookie("user_email");
   deleteCookie("organization_id");
   deleteCookie("user_context");
+
+  // Clear all Supabase localStorage items
+  try {
+    // Clear all localStorage items that start with 'sb-' (Supabase)
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("sb-")) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+      console.log(`Removed Supabase storage: ${key}`);
+    });
+  } catch (error) {
+    console.warn("Failed to clear Supabase localStorage:", error);
+  }
+
+  console.log("User context cookies cleared");
 };
 
 // Enhanced API fetch function that includes authentication headers
@@ -180,10 +205,39 @@ export const signup = async (email: string, password: string) => {
   return { data, error };
 };
 
-// Simple logout function
 export const logout = async () => {
+  console.log("Starting Supabase logout...");
+
+  // Clear user context and all localStorage first
   clearUserContext();
-  const { error } = await supabase.auth.signOut();
+
+  // Force Supabase logout
+  const { error } = await supabase.auth.signOut({ scope: "global" });
+
+  if (error) {
+    console.warn("Supabase logout error:", error);
+  } else {
+    console.log("Supabase logout successful");
+  }
+
+  // Double-check: Clear any remaining Supabase storage after signOut
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("sb-")) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+      console.log(`Force removed remaining Supabase storage: ${key}`);
+    });
+  } catch (cleanupError) {
+    console.warn("Failed final cleanup:", cleanupError);
+  }
+
   return { error };
 };
 
@@ -199,7 +253,6 @@ export const getSession = async () => {
   return { session: data.session, error };
 };
 
-// Set session from tokens (useful for auth callback)
 export const setSessionFromTokens = async (
   accessToken: string,
   refreshToken?: string
@@ -216,7 +269,6 @@ export const setSessionFromTokens = async (
   return result;
 };
 
-// Initialize user context on app start
 export const initializeUserContext = async () => {
   try {
     const {

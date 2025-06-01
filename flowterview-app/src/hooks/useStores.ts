@@ -10,22 +10,15 @@ import {
 export const useAuth = () => {
   const auth = useAuthStore();
 
-  useEffect(() => {
-    // Initialize auth when component mounts
-    if (!auth.isAuthenticated && !auth.isLoading) {
-      auth.initialize();
-    }
-  }, []);
+  // Remove auto-initialization to prevent redundant calls
+  // Auth will be initialized by AuthListener or StoreInitializer
 
   return {
     user: auth.user,
     organization: auth.organization,
     isAuthenticated: auth.isAuthenticated,
     isLoading: auth.isLoading,
-    login: async (email: string, password: string) => {
-      // You'll need to implement this in your auth client
-      // and then call auth.fetchUserProfile()
-    },
+    login: async (email: string, password: string) => {},
     logout: auth.logout,
     refresh: auth.fetchUserProfile,
   };

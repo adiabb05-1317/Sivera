@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, ReactNode } from "react";
+import { useEffect, ReactNode, useRef } from "react";
 import { initializeStores } from "../../store";
 
 interface StoreInitializerProps {
@@ -8,9 +8,14 @@ interface StoreInitializerProps {
 }
 
 export default function StoreInitializer({ children }: StoreInitializerProps) {
+  const initialized = useRef(false);
+
   useEffect(() => {
-    // Initialize all stores when the app starts
-    initializeStores();
+    // Initialize all stores when the app starts - only once
+    if (!initialized.current) {
+      initialized.current = true;
+      initializeStores();
+    }
   }, []);
 
   return <>{children}</>;

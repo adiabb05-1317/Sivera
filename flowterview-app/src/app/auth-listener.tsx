@@ -17,24 +17,19 @@ export default function AuthListener({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        // Dynamic import to avoid SSR issues
-        const { useAuthStore, clearAllStores, initializeStores } = await import(
-          "../../store"
-        );
+      console.log("Auth state changed:", event);
 
-        if (event === "SIGNED_OUT" || !session) {
-          // Clear all stores on logout
-          clearAllStores();
-          router.refresh();
-        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-          // Re-initialize stores on login/token refresh
-          await initializeStores();
-          router.refresh();
-        }
-      } catch (error) {
-        console.error("Error handling auth state change:", error);
-        router.refresh();
+      if (event === "SIGNED_OUT" || !session) {
+        // Simple cleanup on logout
+        const { clearAllStores } = await import("../../store");
+        clearAllStores();
+        return;
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        // Simple initialization on sign in
+        const { initializeStores } = await import("../../store");
+        await initializeStores();
       }
     });
 

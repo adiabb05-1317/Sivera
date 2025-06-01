@@ -16,22 +16,23 @@ export type * from "./types";
 // Store initialization helper
 export const initializeStores = async () => {
   const authStore = useAuthStore.getState();
-  const candidatesStore = useCandidatesStore.getState();
-  const jobsStore = useJobsStore.getState();
-  const interviewsStore = useInterviewsStore.getState();
 
   try {
     // Initialize auth first
     await authStore.initialize();
 
-    // If user is authenticated, fetch initial data
+    // Only fetch data if user is authenticated - don't force it
     if (authStore.isAuthenticated) {
-      // Fetch data in parallel
-      await Promise.allSettled([
+      const candidatesStore = useCandidatesStore.getState();
+      const jobsStore = useJobsStore.getState();
+      const interviewsStore = useInterviewsStore.getState();
+
+      // Fetch data in parallel but don't wait for all
+      Promise.allSettled([
         candidatesStore.fetchCandidatesByJob(),
         jobsStore.fetchJobs(),
         interviewsStore.fetchInterviews(),
-      ]);
+      ]).catch(console.error);
     }
   } catch (error) {
     console.error("Error initializing stores:", error);

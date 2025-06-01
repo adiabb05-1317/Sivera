@@ -44,6 +44,11 @@ export default function AuthCallbackPage() {
           console.log("User data:", userData);
           const email = userData?.user?.email || "";
           if (!email) throw new Error("No email found for logged in user");
+
+          // FIXED: Set user context and cookies first
+          const { setUserContext } = await import("@/lib/auth-client");
+          await setUserContext(userData?.user?.id!, email);
+
           // 3. Check if user exists in backend
           const resp = await authenticatedFetch(
             process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL +
@@ -51,7 +56,7 @@ export default function AuthCallbackPage() {
               encodeURIComponent(email)
           );
           if (resp.ok) {
-            // User exists, redirect
+            // User exists, redirect directly
             window.location.href = "/dashboard";
             return;
           } else {
@@ -96,6 +101,8 @@ export default function AuthCallbackPage() {
                   "Failed to create user"
               );
             }
+
+            // User created successfully, redirect directly
             window.location.href = "/dashboard";
             return;
           }

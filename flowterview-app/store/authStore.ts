@@ -5,6 +5,7 @@ import {
   authenticatedFetch,
   getCurrentUser,
   getSession,
+  clearUserContext,
 } from "@/lib/auth-client";
 
 interface AuthState {
@@ -101,18 +102,36 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        console.log("Starting logout process...");
+
+        // Clear cookies first
+        clearUserContext();
+
+        // Clear Zustand state
         set({
           user: null,
           organization: null,
           isAuthenticated: false,
           isLoading: false,
         });
+
+        // Clear ALL persistent storage comprehensively
+        try {
+          // Clear specific auth storage
+          localStorage.removeItem("auth-storage");
+
+          console.log("Cleared all persistent storage");
+        } catch (error) {
+          console.warn("Failed to clear storage:", error);
+        }
+
+        console.log("Logout process completed");
       },
 
       initialize: async () => {
         try {
           const { session } = await getSession();
-          if (session) {
+          if (session?.user) {
             await get().fetchUserProfile();
           } else {
             set({ isAuthenticated: false, isLoading: false });

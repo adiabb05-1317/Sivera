@@ -40,14 +40,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleSignOut = async () => {
     try {
-      await logout();
-      // Dynamic import to avoid SSR issues
+      // Clear everything immediately and synchronously
+      logout(); // Clear Zustand store and cookies
+
+      // Also clear Supabase session immediately
+      const { logout: supabaseLogout } = await import("@/lib/auth-client");
+      await supabaseLogout();
+
+      // Clear all stores
       const { clearAllStores } = await import("../../../store");
       clearAllStores();
-      router.push("/auth/login");
+
+      // Force page reload to ensure clean state
+      window.location.href = "/auth/login";
     } catch (error) {
       console.error("Error during sign out:", error);
-      router.push("/auth/login");
+      // Force redirect even on error
+      window.location.href = "/auth/login";
     }
   };
 

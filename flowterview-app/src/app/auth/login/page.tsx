@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { setUserContext, initializeUserContext } from "@/lib/auth-client";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
@@ -33,12 +34,20 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      // Clear any existing auth state first to prevent conflicts
+      const { clearUserContext } = await import("@/lib/auth-client");
+      clearUserContext();
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (session && session.user.email_confirmed_at) {
         console.log("User is already logged in, redirecting to dashboard...");
         router.push("/dashboard");
+      } else {
+        // Ensure clean state if no valid session
+        const { clearAllStores } = await import("../../../../store");
+        clearAllStores();
       }
       setSessionLoading(false);
     };
@@ -62,7 +71,7 @@ export default function LoginPage() {
       if (password && password.trim() !== "") {
         // If password provided, do password login
         console.log("Attempting password login...");
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -75,9 +84,14 @@ export default function LoginPage() {
           return;
         }
 
-        console.log("Login successful, redirecting...");
-        // Hard redirect to dashboard
-        window.location.href = "/dashboard";
+        // FIXED: Set user context and cookies after successful login
+        if (data?.user) {
+          console.log("Login successful, setting user context...");
+          await setUserContext(data.user.id, data.user.email!);
+
+          console.log("Redirecting to dashboard...");
+          router.push("/dashboard");
+        }
         return;
       }
 
