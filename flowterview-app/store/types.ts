@@ -96,6 +96,7 @@ export interface InterviewDataResponse {
     available_count: number;
   };
   skills: string[];
+  duration: number;
 }
 
 // Pagination support

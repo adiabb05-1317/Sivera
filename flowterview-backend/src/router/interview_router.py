@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import json
 
 # Set up more detailed logging
 import os
@@ -9,7 +10,6 @@ import time
 from typing import Any, Dict, List, Literal, Optional
 import urllib.parse
 import uuid
-import json
 
 import aiosmtplib
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -23,8 +23,8 @@ from src.core.config import Config
 from src.utils.auth_middleware import (
     require_organization,
 )
-from storage.db_manager import DatabaseError, DatabaseManager
 from src.utils.llm_factory import generate_text
+from storage.db_manager import DatabaseError, DatabaseManager
 
 # Ensure loguru is capturing all levels
 loguru_logger.add("interview_router.log", level="DEBUG", rotation="5 MB")
@@ -101,6 +101,12 @@ class AddCandidateRequest(BaseModel):
 
 class BulkAddCandidatesRequest(BaseModel):
     candidate_ids: List[str]
+
+
+class InterviewFlowUpdate(BaseModel):
+    skills: Optional[List[str]]
+    duration: Optional[int]
+    flow_json: Optional[dict]
 
 
 async def send_verification_email(email: str, name: str, job: str, token: str) -> None:
@@ -480,15 +486,15 @@ async def fetch_jobs(request: Request):
 @router.post("/extract-skills")
 async def extract_skills_from_description(request: GenerateFlowRequest) -> Dict[str, Any]:
     """
-    Extracts skills from a job description using an LLM.    
-    """ 
+    Extracts skills from a job description using an LLM.
+    """
     try:
         logger.info(f"Extracting skills from job description: {request.job_description[:100]}...")
-        
-        prompt = f"""
-You are an expert in analyzing job descriptions to extract the 10 most important and relevant skills that can be evaluated through assessments or questions during a pre-screening interview. Please review the following job description and identify the key skills required for the role. The extracted skills should be presented in a format suitable for interviewers to frame questions and effectively evaluate a candidate’s qualifications.
 
-Job Title: 
+        prompt = f"""
+You are an expert in analyzing job descriptions to extract the 10 most important and relevant skills that can be evaluated through assessments or questions during a pre-screening interview. Please review the following job description and identify the key skills required for the role. The extracted skills should be presented in a format suitable for interviewers to frame questions and effectively evaluate a candidate's qualifications.
+
+Job Title:
 {request.role}
 
 Job Description:
@@ -515,16 +521,16 @@ Guidelines:
 
         # Use the LLM to extract skills
         logger.info("Sending prompt to LLM for skill extraction...")
-        
+
         response = generate_text(
             prompt=prompt,
             provider="openai",
             model="gpt-4.1",
             temperature=0.3,
         )
-        
+
         logger.info(f"LLM response received: {response[:200]}...")
-        
+
         try:
             response_cleaned = response.strip()
             if response_cleaned.startswith("```json"):
@@ -532,52 +538,43 @@ Guidelines:
             if response_cleaned.endswith("```"):
                 response_cleaned = response_cleaned[:-3]
             response_cleaned = response_cleaned.strip()
-            
+
             skills_data = json.loads(response_cleaned)
-            
-            logger.info(f"Successfully extracted {sum(len(v) for v in skills_data.values() if isinstance(v, list))} skills")
-            
-            return {
-                "error": False,
-                "skills": skills_data
-            }
-            
+
+            logger.info(
+                f"Successfully extracted {sum(len(v) for v in skills_data.values() if isinstance(v, list))} skills"
+            )
+
+            return {"error": False, "skills": skills_data}
+
         except json.JSONDecodeError as json_error:
             logger.error(f"Failed to parse LLM response as JSON: {json_error}")
             logger.error(f"Raw response: {response}")
-            
+
             # Fallback: try to extract basic information manually
             fallback_skills = {
                 "skills": [],
                 "experience_level": "mid",
                 "years_experience": "",
-                "education_requirements": []
+                "education_requirements": [],
             }
-            
+
             return {
                 "result": fallback_skills,
                 "error": True,
-                "message": "Failed to parse LLM response, returning empty skills structure"
+                "message": "Failed to parse LLM response, returning empty skills structure",
             }
-    
+
     except Exception as e:
         logger.error(f"Error in extract_skills_from_description: {str(e)}")
         import traceback
+
         logger.error(f"Detailed error trace: {traceback.format_exc()}")
-        
+
         # Return empty structure on error
-        empty_skills = {
-            "result": [],
-            "experience_level": "mid",
-            "years_experience": "",
-            "education_requirements": []
-        }
-        
-        return {
-            "error": True,
-            "result": empty_skills,
-            "message": f"Error extracting skills: {str(e)}"
-        }
+        empty_skills = {"result": [], "experience_level": "mid", "years_experience": "", "education_requirements": []}
+
+        return {"error": True, "result": empty_skills, "message": f"Error extracting skills: {str(e)}"}
 
 
 @router.post("/create-user")
@@ -1096,6 +1093,40 @@ async def update_interview(interview_id: str, updates: InterviewUpdate, request:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/interview-flows/{flow_id}")
+async def update_interview_flow(flow_id: str, updates: InterviewFlowUpdate, request: Request):
+    """Update interview flow with new skills, duration, and flow_json"""
+    try:
+        # Require authentication with organization context
+        user_context = require_organization(request)
+
+        # Fetch the current interview flow record
+        current = db.fetch_one("interview_flows", {"id": flow_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Interview flow not found")
+
+        # Build update dictionary with only non-None values
+        update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No valid updates provided")
+
+        # Update the interview flow
+        db.update("interview_flows", update_dict, {"id": flow_id})
+
+        # Fetch and return the updated record
+        updated = db.fetch_one("interview_flows", {"id": flow_id})
+        return {
+            "id": updated["id"],
+            "skills": updated.get("skills", []),
+            "duration": updated.get("duration"),
+            "flow_json": updated.get("flow_json", {}),
+            "updated_at": updated.get("updated_at"),
+        }
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{interview_id}")
 async def get_interview(interview_id: str, request: Request):
     """Get interview details with all related data in a single optimized query"""
@@ -1106,7 +1137,7 @@ async def get_interview(interview_id: str, request: Request):
         # Optimized query with single JOIN (interviews + jobs + interview_flows)
         interviews = db.fetch_all(
             table="interviews",
-            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(skills))",
+            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(skills,duration))",
             query_params={"id": interview_id},
             limit=1,  # Ensure only one record is fetched
         )
@@ -1168,7 +1199,10 @@ async def get_interview(interview_id: str, request: Request):
         # It will be null if jobs.flow_id is null or if there's no matching flow.
         flow_details_from_job = job_data.get("interview_flows")
         if flow_details_from_job and flow_details_from_job.get("skills") is not None:
-            flow_data = {"skills": flow_details_from_job.get("skills")}
+            flow_data = {
+                "skills": flow_details_from_job.get("skills"),
+                "duration": flow_details_from_job.get("duration"),
+            }
 
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
@@ -1176,6 +1210,8 @@ async def get_interview(interview_id: str, request: Request):
 
         # Build optimized response
         response = {
+            "skills": flow_data.get("skills", []),
+            "duration": flow_data.get("duration", 10),
             "interview": {
                 "id": interview_data["id"],
                 "status": interview_data.get("status", "draft"),
@@ -1190,7 +1226,6 @@ async def get_interview(interview_id: str, request: Request):
                 "organization_id": job_data.get("organization_id"),
                 "flow_id": job_data.get("flow_id"),
             },
-            "flow": flow_data,
             "candidates": {
                 "invited": invited_candidates,
                 "available": available_candidates,

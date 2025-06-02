@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS interview_flows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR NOT NULL,
     flow_json JSONB NOT NULL,
+    skills VARCHAR[] NOT NULL,
+    duration INT NOT NULL,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -141,6 +143,10 @@ CREATE INDEX IF NOT EXISTS idx_verification_tokens_expires_at ON verification_to
 -- Add columns to existing candidate_interviews table if they don't exist
 ALTER TABLE candidate_interviews ADD COLUMN IF NOT EXISTS room_url VARCHAR;
 ALTER TABLE candidate_interviews ADD COLUMN IF NOT EXISTS bot_token VARCHAR;
+
+-- Add skills and duration columns to interview_flows table if they don't exist
+ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}';
+ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 10;
 
 -- -- FEEDBACK (missing table from your schema)
 -- CREATE TABLE IF NOT EXISTS feedback (

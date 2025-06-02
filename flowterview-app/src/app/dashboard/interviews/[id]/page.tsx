@@ -4,8 +4,20 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Mail, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Mail,
+  Users,
+  Brain,
+  Clock,
+  X,
+  Save,
+  Loader2,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectTrigger,
@@ -13,10 +25,16 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
-import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
+import { useInterviewDetails } from "@/hooks/useStores";
+import { authenticatedFetch, getCookie } from "@/lib/auth-client";
 
 // Move nodeTypes outside the component to prevent recreation on every render
 interface Candidate {
@@ -62,6 +80,7 @@ interface InterviewData {
   interview: Interview;
   candidates: CandidatesData;
   skills: string[];
+  duration: number;
 }
 
 export default function InterviewDetailsPage() {
@@ -75,8 +94,6 @@ export default function InterviewDetailsPage() {
     isLoading: loading,
     error,
   } = useInterviewDetails(id as string);
-  const { candidates } = useCandidates();
-
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
@@ -87,7 +104,87 @@ export default function InterviewDetailsPage() {
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
+
+  // Skills and timer state
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
+  const [selectedTimer, setSelectedTimer] = useState(10);
+  const [saving, setSaving] = useState(false);
+  const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+  const [firstChange, setFirstChange] = useState(false);
+
   const { toast } = useToast();
+
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+  const CORE_BACKEND_URL =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+
+  // Timer options and logic
+  const timerOptions = [10, 20, 30];
+
+  const getTimerStatus = (time: number) => {
+    const skillCount = selectedSkills.length;
+    if (time === 10 && skillCount >= 6)
+      return { disabled: true, reason: "10 mins is too short for 6+ skills" };
+    if (time === 20 && skillCount >= 11)
+      return { disabled: true, reason: "20 mins is too short for 11+ skills" };
+    return { disabled: false, reason: "" };
+  };
+
+  // Auto-adjust timer based on skill count
+  useEffect(() => {
+    if (firstChange === false) return;
+    const skillCount = selectedSkills.length;
+    if (skillCount >= 11) {
+      setSelectedTimer(30);
+    } else if (skillCount >= 6) {
+      setSelectedTimer(20);
+    } else {
+      setSelectedTimer(10);
+    }
+  }, [selectedSkills.length]);
+
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills((prev) => {
+      if (prev.includes(skill)) {
+        return prev.filter((s) => s !== skill);
+      } else {
+        // Limit to 15 skills maximum
+        if (prev.length >= 15) {
+          toast({
+            title: "Maximum skills reached",
+            description: "You can select up to 15 skills maximum.",
+            variant: "destructive",
+          });
+          return prev;
+        }
+        return [...prev, skill];
+      }
+    });
+  };
+
+  const addCustomSkill = () => {
+    setFirstChange(true);
+    if (newSkill.trim() && !selectedSkills.includes(newSkill.trim())) {
+      // Limit to 15 skills maximum
+      if (selectedSkills.length >= 15) {
+        toast({
+          title: "Maximum skills reached",
+          description: "You can select up to 15 skills maximum.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedSkills((prev) => [...prev, newSkill.trim()]);
+      setExtractedSkills((prev) => [...prev, newSkill.trim()]);
+      setNewSkill("");
+    }
+  };
+
+  const removeSkill = (skill: string) => {
+    setSelectedSkills((prev) => prev.filter((s) => s !== skill));
+  };
 
   // Update local state when store data changes
   useEffect(() => {
@@ -97,10 +194,105 @@ export default function InterviewDetailsPage() {
       setInvitedCandidates(details.candidates.invited || []);
       setAvailableCandidates(details.candidates.available || []);
 
-      // Set up React Flow
-      console.log(details.skills);
+      // Set skills and duration from the flow data
+      if (details.skills && details.skills.length > 0) {
+        setSelectedSkills(details.skills);
+        setExtractedSkills(details.skills);
+      }
+
+      // Set timer duration from flow data
+      if (details.duration) {
+        setSelectedTimer(details.duration);
+      }
     }
   }, [details]);
+
+  const handleSaveChanges = async () => {
+    const user_id = getCookie("user_id");
+    const organization_id = getCookie("organization_id");
+
+    if (!user_id || !organization_id) {
+      toast({
+        title: "Authentication Error",
+        description: "Missing user or organization information",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      // Generate new flow data with updated skills and duration
+      const flowData = await fetch(
+        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            job_role: job?.title || "",
+            job_description: job?.description || "",
+            skills: selectedSkills,
+            duration: selectedTimer,
+          }),
+        }
+      );
+
+      if (!flowData.ok) {
+        throw new Error(`Flow generation failed: ${flowData.status}`);
+      }
+
+      const flowDataJson = await flowData.json();
+
+      // Update the interview flow with new skills, duration, and flow_json
+      const updateData = {
+        skills: selectedSkills,
+        duration: selectedTimer,
+        flow_json: flowDataJson,
+      };
+
+      // Find the flow_id from the job details
+      const flowId = (details?.job as any)?.flow_id;
+      if (!flowId) {
+        throw new Error("Could not find interview flow ID");
+      }
+
+      const response = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/interviews/interview-flows/${flowId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Update failed: ${response.status} - ${errorText}`);
+      }
+
+      toast({
+        title: "Success!",
+        description: "Interview settings updated successfully",
+      });
+
+      // Refresh the data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating interview:", error);
+      toast({
+        title: "Error updating interview",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleInvitesSent = () => {
     // Refresh the data after invites are sent
@@ -145,6 +337,188 @@ export default function InterviewDetailsPage() {
             className="flex flex-col gap-6 px-4"
             style={{ minHeight: "calc(100vh - 100px)" }}
           >
+            {/* Skills and Timer Configuration */}
+            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+              <CardContent className="py-4 px-3">
+                <div className="m-5 mt-0 flex items-center justify-between">
+                  <h3 className="font-semibold mb-2 dark:text-white">
+                    Interview Configuration
+                  </h3>
+                  <Button
+                    onClick={handleSaveChanges}
+                    disabled={saving}
+                    variant="outline"
+                    className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  >
+                    {saving && (
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    )}
+                    {!saving && <Save className="mr-2 h-4 w-4" />}
+                    Save Changes
+                  </Button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Skills Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4" />
+                        <label className="text-sm font-medium dark:text-gray-200">
+                          Skills
+                        </label>
+                      </div>
+                      {selectedSkills.length >= 15 && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400">
+                          Maximum skills reached
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected Skills Display */}
+                    <div className="flex flex-wrap gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50 min-h-[60px]">
+                      {selectedSkills.map((skill) => (
+                        <Badge
+                          key={skill}
+                          variant="outline"
+                          className="flex items-center gap-1 px-3 py-2 bg-app-blue-100 text-app-blue-800 dark:bg-app-blue-900/30 dark:text-app-blue-300"
+                        >
+                          {skill}
+                          <button
+                            onClick={() => removeSkill(skill)}
+                            className="ml-1 hover:bg-app-blue-200 dark:hover:bg-app-blue-800 rounded-full p-0.5 cursor-pointer"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      {selectedSkills.length === 0 && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                          No skills selected
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Available Skills */}
+                    {extractedSkills.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          Available Skills (click to add)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {extractedSkills
+                            .filter((skill) => !selectedSkills.includes(skill))
+                            .map((skill) => (
+                              <Badge
+                                key={skill}
+                                variant="outline"
+                                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-700 ${
+                                  selectedSkills.length >= 15
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }`}
+                                onClick={() => toggleSkill(skill)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                {skill}
+                              </Badge>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Custom Skill */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add custom skill..."
+                        value={newSkill}
+                        onChange={(e) => setNewSkill(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && addCustomSkill()
+                        }
+                        className="flex-1"
+                        disabled={selectedSkills.length >= 15}
+                      />
+                      <Button
+                        onClick={addCustomSkill}
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          !newSkill.trim() || selectedSkills.length >= 15
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Timer Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Interview duration
+                      </label>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <Carousel className="w-full max-w-xs">
+                        <CarouselContent>
+                          {timerOptions.map((time) => {
+                            const status = getTimerStatus(time);
+                            return (
+                              <CarouselItem key={time} className="basis-1/3">
+                                <div className="p-1">
+                                  <Card
+                                    className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                      selectedTimer === time
+                                        ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                        : status.disabled
+                                        ? "opacity-30 cursor-not-allowed border-red-300 bg-red-50 dark:bg-red-900/10"
+                                        : "hover:border-gray-400"
+                                    }`}
+                                    onClick={() => {
+                                      if (!status.disabled) {
+                                        setSelectedTimer(time);
+                                        setFirstChange(true);
+                                      }
+                                    }}
+                                    title={
+                                      status.disabled
+                                        ? status.reason
+                                        : `Select ${time} minutes`
+                                    }
+                                  >
+                                    <CardContent className="flex aspect-square items-center justify-center p-6">
+                                      <span
+                                        className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                          selectedTimer === time
+                                            ? "text-app-blue-600 dark:text-app-blue-400"
+                                            : status.disabled
+                                            ? "text-red-500 dark:text-red-400"
+                                            : "text-gray-700 dark:text-gray-300"
+                                        }`}
+                                      >
+                                        <div className="text-2xl font-semibold">
+                                          {time}
+                                        </div>
+                                        <div className="text-xs">minutes</div>
+                                      </span>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                              </CarouselItem>
+                            );
+                          })}
+                        </CarouselContent>
+                      </Carousel>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Candidates Section */}
             <div className="w-full">
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <CardContent className="py-4 px-3">
