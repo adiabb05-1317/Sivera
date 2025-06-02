@@ -8,11 +8,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 
 from src.core.config import Config
 from src.llm_handler.analytics import InterviewAnalytics
-from src.llm_handler.flow_generator import (
-    convert_flow_to_react_flow,
-    generate_interview_flow_from_jd,
-    generate_react_flow_json,
-)
+from src.llm_handler.flow_generator import generate_interview_flow_from_jd
 from src.utils.logger import logger
 
 UPLOAD_DIR = Config.UPLOAD_DIR
@@ -115,33 +111,22 @@ async def rtvi_disconnect(token: str, request: Request):
         logger.error(f"Error during disconnect: {e}")
         raise HTTPException(status_code=500, detail=f"Disconnect failed: {str(e)}")
 
+@router.get("/hellos")
+async def hellos(request: Request):
+    return {"message": "Hello, world!"}
 
-@router.post("/generate_interview_flow")
-async def generate_interview_flow(
-    request: Request,
-    data: dict = Body(...),
-):
+
+@router.post("/generate_interview_flow_from_description")
+async def generate_interview_flow_from_description(request: Request, data: dict = Body(...)):
     """
-    Generate an interview flow JSON using Gemini LLM, given org ID and job description.
-    Also generates a React Flow compatible version for visualization.
+    Generate an interview flow JSON from a job description using Gemini LLM.
     """
-    if not data["job_description"] or len(data["job_description"]) < 30:
-        raise HTTPException(
-            status_code=400,
-            detail="organization_id and a valid job_description are required.",
-        )
 
-    flow_json = await generate_interview_flow_from_jd(data["job_description"])
-    print(flow_json)
+    job_role = data["job_role"]
+    job_description = data["job_description"]
+    skills = data["skills"]
+    duration = data["duration"]
 
-    try:
-        react_flow_json = await generate_react_flow_json(flow_json)
-        print(react_flow_json)
-    except Exception as e:
-        logger.warning(f"Failed to generate React Flow JSON directly: {e}")
-        react_flow_json = convert_flow_to_react_flow(flow_json)
+    flow_json = await generate_interview_flow_from_jd(job_role, job_description, skills, duration)
 
-    return {
-        "flow": flow_json,
-        "react_flow": react_flow_json,
-    }
+    return flow_json

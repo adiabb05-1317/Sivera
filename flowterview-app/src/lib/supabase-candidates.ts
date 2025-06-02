@@ -69,14 +69,14 @@ export type CandidateStatus =
   | "On_hold"
   | "Rejected";
 
-export async function generateInterviewFlow(
+export async function extractSkillsFromJobDetails(
+  role: string,
   jobDescription: string
 ): Promise<
   | { flow: Record<string, unknown>; react_flow: Record<string, unknown> }
   | { error: string }
 > {
   try {
-    console.log(jobDescription);
     if (!jobDescription) {
       return { error: "Job description is required" };
     }
@@ -87,13 +87,14 @@ export async function generateInterviewFlow(
 
     // Call your backend service
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_CORE_BACKEND_URL}/api/v1/generate_interview_flow`,
+      `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/extract-skills`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          role: role,
           job_description: jobDescription,
         }),
       }
@@ -102,40 +103,8 @@ export async function generateInterviewFlow(
     const data = await response.json();
 
     if (!response.ok) {
-      return { error: data.error || "Failed to generate interview flow" };
+      return { error: data.error || "Failed to extract skills from JD." };
     }
-
-    if (data.flow && data.react_flow) {
-      // Validate the standard flow format
-      if (
-        !data.flow.initial_node ||
-        !data.flow.nodes ||
-        typeof data.flow.nodes !== "object"
-      ) {
-        return { error: "Invalid flow data received from backend" };
-      }
-
-      // Validate the React Flow format
-      if (
-        !Array.isArray(data.react_flow.nodes) ||
-        !Array.isArray(data.react_flow.edges)
-      ) {
-        return { error: "Invalid React Flow data received from backend" };
-      }
-    }
-
-    // Legacy format validation
-    if (
-      !data.flow.initial_node ||
-      !data.react_flow.nodes ||
-      typeof data.react_flow.nodes !== "object"
-    ) {
-      return { error: "Invalid flow data received from backend" };
-    }
-
-    // Force revalidate interviews store to refresh the interviews list
-    const interviewsStore = useInterviewsStore.getState();
-    interviewsStore.invalidateCache();
 
     return data;
   } catch (error) {

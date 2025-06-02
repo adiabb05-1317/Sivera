@@ -1,8 +1,16 @@
 INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE = """
 You are an expert AI system designed to create structured interview flows for job candidates. Based on the following job description, generate a JSON interview flow that follows our exact format.
 
+Job Role:
+{job_role}
 Job Description:
 {job_description}
+
+The skills required for the job are:
+{skills}
+so, you need to tailor the flow for the AI system to ask questions based on the skills.
+
+The duration of the interview will be is: {duration} minutes.
 
 Create an interview flow JSON that EXACTLY follows this structure:
 {

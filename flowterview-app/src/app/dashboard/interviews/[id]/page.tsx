@@ -1,21 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import ReactFlow, {
-  ReactFlowProvider,
-  useNodesState,
-  useEdgesState,
-  Controls,
-  Background,
-  ReactFlowInstance,
-  ConnectionLineType,
-  Node,
-  Edge,
-} from "reactflow";
-import "reactflow/dist/style.css";
-import InterviewNode from "@/components/flow/InterviewNode";
-import { improveLayout as improveLayoutUtil } from "@/utils/flowUtils";
+
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Mail, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,10 +19,6 @@ import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 
 // Move nodeTypes outside the component to prevent recreation on every render
-const nodeTypes = {
-  interview: InterviewNode,
-};
-
 interface Candidate {
   id: string;
   name: string;
@@ -78,12 +61,7 @@ interface InterviewData {
   job: Job;
   interview: Interview;
   candidates: CandidatesData;
-  flow?: {
-    react_flow_json?: {
-      nodes: Node[];
-      edges: Edge[];
-    };
-  };
+  skills: string[];
 }
 
 export default function InterviewDetailsPage() {
@@ -104,11 +82,8 @@ export default function InterviewDetailsPage() {
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
     []
   );
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAllCandidates, setShowAllCandidates] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
-  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
@@ -123,18 +98,9 @@ export default function InterviewDetailsPage() {
       setAvailableCandidates(details.candidates.available || []);
 
       // Set up React Flow
-      if (details.flow && details.flow.react_flow_json) {
-        setNodes(details.flow.react_flow_json.nodes || []);
-        setEdges(details.flow.react_flow_json.edges || []);
-        improveLayout();
-      }
+      console.log(details.skills);
     }
   }, [details]);
-
-  // Layout utility
-  const improveLayout = useCallback(() => {
-    improveLayoutUtil(setNodes, reactFlowInstanceRef);
-  }, [setNodes]);
 
   const handleInvitesSent = () => {
     // Refresh the data after invites are sent
@@ -181,10 +147,10 @@ export default function InterviewDetailsPage() {
           >
             <div className="w-full">
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                <CardContent className="py-4">
+                <CardContent className="py-4 px-3">
                   <div className="m-5 mt-0 flex items-center justify-between">
                     <h3 className="font-semibold mb-2 dark:text-white">
-                      Candidates ({invitedCandidates.length})
+                      Candidates
                     </h3>
                     <div className="flex items-center gap-2">
                       <Select
@@ -329,41 +295,6 @@ export default function InterviewDetailsPage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
-            <div className="w-full rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mt-0 bg-white dark:bg-gray-900">
-              <ReactFlowProvider>
-                <div
-                  style={{ height: "600px", width: "100%" }}
-                  className="bg-white dark:bg-gray-900"
-                >
-                  <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    nodeTypes={nodeTypes}
-                    defaultEdgeOptions={{
-                      type: "default",
-                      animated: true,
-                    }}
-                    fitView
-                    fitViewOptions={{
-                      padding: 0.3,
-                      includeHiddenNodes: true,
-                    }}
-                    minZoom={0.1}
-                    maxZoom={2}
-                    proOptions={{ hideAttribution: true }}
-                    onInit={(instance) => {
-                      reactFlowInstanceRef.current = instance;
-                    }}
-                    connectionLineType={ConnectionLineType.Bezier}
-                  >
-                    <Background color="#aaa" gap={16} size={1} />
-                    <Controls />
-                  </ReactFlow>
-                </div>
-              </ReactFlowProvider>
             </div>
           </div>
 

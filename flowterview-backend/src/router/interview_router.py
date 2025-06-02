@@ -9,6 +9,7 @@ import time
 from typing import Any, Dict, List, Literal, Optional
 import urllib.parse
 import uuid
+import json
 
 import aiosmtplib
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -23,6 +24,7 @@ from src.utils.auth_middleware import (
     require_organization,
 )
 from storage.db_manager import DatabaseError, DatabaseManager
+from src.utils.llm_factory import generate_text
 
 # Ensure loguru is capturing all levels
 loguru_logger.add("interview_router.log", level="DEBUG", rotation="5 MB")
@@ -34,8 +36,8 @@ db = DatabaseManager()
 
 # Pydantic models for request validation
 class GenerateFlowRequest(BaseModel):
+    role: str = Field(..., min_length=1, description="Job role for the position")
     job_description: str = Field(..., min_length=50, description="Job description for the interview flow")
-    organization_id: str = Field(..., description="Organization ID")
 
 
 class SendInviteRequest(BaseModel):
@@ -86,8 +88,9 @@ class InterviewOut(BaseModel):
 class CreateInterviewFromDescriptionRequest(BaseModel):
     title: str
     job_description: str
+    skills: List[str]
+    duration: int
     flow_json: dict
-    react_flow_json: dict
     organization_id: str
     created_by: str
 
@@ -474,6 +477,109 @@ async def fetch_jobs(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/extract-skills")
+async def extract_skills_from_description(request: GenerateFlowRequest) -> Dict[str, Any]:
+    """
+    Extracts skills from a job description using an LLM.    
+    """ 
+    try:
+        logger.info(f"Extracting skills from job description: {request.job_description[:100]}...")
+        
+        prompt = f"""
+You are an expert in analyzing job descriptions to extract the 10 most important and relevant skills that can be evaluated through assessments or questions during a pre-screening interview. Please review the following job description and identify the key skills required for the role. The extracted skills should be presented in a format suitable for interviewers to frame questions and effectively evaluate a candidate’s qualifications.
+
+Job Title: 
+{request.role}
+
+Job Description:
+{request.job_description}
+
+Please extract and categorize the skills into the following categories. Return your response as a valid JSON object with the following structure:
+
+{{
+    "skills": [
+        "Docker",
+        "JavaScript",
+        ""
+        ...(rest)
+    ],
+    "experience_level": "junior|mid|senior",
+    "years_experience": "number or range like '3-5'",
+}}
+
+Guidelines:
+- Only include skills that are explicitly mentioned or clearly implied in the job description
+- For experience_level, choose: "junior" (0-2 years), "mid" (3-5 years), or "senior" (6+ years)
+- Return only the JSON object, no additional text
+"""
+
+        # Use the LLM to extract skills
+        logger.info("Sending prompt to LLM for skill extraction...")
+        
+        response = generate_text(
+            prompt=prompt,
+            provider="openai",
+            model="gpt-4.1",
+            temperature=0.3,
+        )
+        
+        logger.info(f"LLM response received: {response[:200]}...")
+        
+        try:
+            response_cleaned = response.strip()
+            if response_cleaned.startswith("```json"):
+                response_cleaned = response_cleaned[7:]
+            if response_cleaned.endswith("```"):
+                response_cleaned = response_cleaned[:-3]
+            response_cleaned = response_cleaned.strip()
+            
+            skills_data = json.loads(response_cleaned)
+            
+            logger.info(f"Successfully extracted {sum(len(v) for v in skills_data.values() if isinstance(v, list))} skills")
+            
+            return {
+                "error": False,
+                "skills": skills_data
+            }
+            
+        except json.JSONDecodeError as json_error:
+            logger.error(f"Failed to parse LLM response as JSON: {json_error}")
+            logger.error(f"Raw response: {response}")
+            
+            # Fallback: try to extract basic information manually
+            fallback_skills = {
+                "skills": [],
+                "experience_level": "mid",
+                "years_experience": "",
+                "education_requirements": []
+            }
+            
+            return {
+                "result": fallback_skills,
+                "error": True,
+                "message": "Failed to parse LLM response, returning empty skills structure"
+            }
+    
+    except Exception as e:
+        logger.error(f"Error in extract_skills_from_description: {str(e)}")
+        import traceback
+        logger.error(f"Detailed error trace: {traceback.format_exc()}")
+        
+        # Return empty structure on error
+        empty_skills = {
+            "result": [],
+            "experience_level": "mid",
+            "years_experience": "",
+            "education_requirements": []
+        }
+        
+        return {
+            "error": True,
+            "result": empty_skills,
+            "message": f"Error extracting skills: {str(e)}"
+        }
+
+
 @router.post("/create-user")
 async def create_user(request: CreateUserRequest) -> Dict[str, Any]:
     """
@@ -762,13 +868,13 @@ async def create_interview_from_description(
     request: CreateInterviewFromDescriptionRequest,
 ):
     try:
-        # 1. Store the flow in interview_flows (now with react_flow_json)
         flow = db.execute_query(
             "interview_flows",
             {
                 "name": request.title,
                 "flow_json": request.flow_json,
-                "react_flow_json": request.react_flow_json,
+                "skills": request.skills,
+                "duration": request.duration,
                 "created_by": request.created_by,
             },
         )
@@ -794,6 +900,8 @@ async def create_interview_from_description(
             "date": interview["created_at"][:10] if interview.get("created_at") else "",
             "job_id": job_id,
             "flow_id": flow_id,
+            "skills": request.skills,
+            "duration": request.duration,
         }
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -998,7 +1106,7 @@ async def get_interview(interview_id: str, request: Request):
         # Optimized query with single JOIN (interviews + jobs + interview_flows)
         interviews = db.fetch_all(
             table="interviews",
-            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(react_flow_json))",
+            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(skills))",
             query_params={"id": interview_id},
             limit=1,  # Ensure only one record is fetched
         )
@@ -1059,8 +1167,8 @@ async def get_interview(interview_id: str, request: Request):
         # The 'interview_flows' object is now expected to be part of job_data
         # It will be null if jobs.flow_id is null or if there's no matching flow.
         flow_details_from_job = job_data.get("interview_flows")
-        if flow_details_from_job and flow_details_from_job.get("react_flow_json") is not None:
-            flow_data = {"react_flow_json": flow_details_from_job.get("react_flow_json")}
+        if flow_details_from_job and flow_details_from_job.get("skills") is not None:
+            flow_data = {"skills": flow_details_from_job.get("skills")}
 
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]

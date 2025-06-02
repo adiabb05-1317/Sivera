@@ -95,12 +95,7 @@ export interface InterviewDataResponse {
     invited_count: number;
     available_count: number;
   };
-  flow?: {
-    react_flow_json?: {
-      nodes: any[];
-      edges: any[];
-    };
-  };
+  skills: string[];
 }
 
 // Pagination support

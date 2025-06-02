@@ -1,63 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { Loader2, Save, WandSparkles } from "lucide-react";
-import { Node, Edge } from "reactflow";
+import {
+  Loader2,
+  Save,
+  WandSparkles,
+  Clock,
+  Plus,
+  X,
+  Brain,
+  Check,
+  ArrowLeft,
+} from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { generateInterviewFlow } from "@/lib/supabase-candidates";
+import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
 import { authenticatedFetch, getCookie } from "@/lib/auth-client";
-
-// Dynamically import ReactFlow component to avoid SSR issues
-const InterviewFlow = dynamic(() => import("@/components/flow/InterviewFlow"), {
-  ssr: false,
-});
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import { useRouter } from "next/navigation";
 
 interface FormData {
   title: string;
   jobDescription: string;
 }
 
-interface FlowData {
-  initial_node: string;
-  nodes: Record<
-    string,
-    {
-      task_messages: Array<{ role: string; content: string }>;
-      functions: Array<{
-        type: string;
-        function: {
-          name: string;
-          handler: string;
-          transition_to: string;
-        };
-      }>;
-    }
-  >;
-}
-
-interface ReactFlowData {
-  nodes: Array<Node>;
-  edges: Array<Edge>;
-}
-
 export default function GenerateFromDescriptionPage() {
   const { toast } = useToast();
-  const [flowData, setFlowData] = useState<FlowData | null>(null);
-  const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(
-    null
-  );
+  const router = useRouter();
+  const [showInterviewEditor, setShowInterviewEditor] = useState(false);
+  const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
+  const [selectedTimer, setSelectedTimer] = useState(10);
+  const [isInterviewCreated, setIsInterviewCreated] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const router = useRouter();
 
   const {
     register,
@@ -68,12 +55,64 @@ export default function GenerateFromDescriptionPage() {
 
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+  const CORE_BACKEND_URL =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+
+  // Auto-adjust timer based on skill count
+  useEffect(() => {
+    const skillCount = selectedSkills.length;
+    if (skillCount >= 11) {
+      setSelectedTimer(30);
+    } else if (skillCount >= 6) {
+      setSelectedTimer(20);
+    } else {
+      setSelectedTimer(10);
+    }
+  }, [selectedSkills.length]);
+
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills((prev) => {
+      if (prev.includes(skill)) {
+        return prev.filter((s) => s !== skill);
+      } else {
+        // Limit to 15 skills maximum
+        if (prev.length >= 15) {
+          toast({
+            title: "Maximum skills reached",
+            description: "You can select up to 15 skills maximum.",
+            variant: "destructive",
+          });
+          return prev;
+        }
+        return [...prev, skill];
+      }
+    });
+  };
+
+  const addCustomSkill = () => {
+    if (newSkill.trim() && !selectedSkills.includes(newSkill.trim())) {
+      // Limit to 15 skills maximum
+      if (selectedSkills.length >= 15) {
+        toast({
+          title: "Maximum skills reached",
+          description: "You can select up to 15 skills maximum.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedSkills((prev) => [...prev, newSkill.trim()]);
+      setExtractedSkills((prev) => [...prev, newSkill.trim()]);
+      setNewSkill("");
+    }
+  };
+
+  const removeSkill = (skill: string) => {
+    setSelectedSkills((prev) => prev.filter((s) => s !== skill));
+  };
 
   const onSubmit = async (data: FormData) => {
     try {
       setLoading(true);
-      setFlowData(null);
-      setReactFlowData(null);
 
       const user_id = getCookie("user_id");
       if (!user_id) {
@@ -85,27 +124,30 @@ export default function GenerateFromDescriptionPage() {
         return;
       }
 
-      const result: any = await generateInterviewFlow(data.jobDescription);
+      // Step 1: Generate interview flow
+      const response: any = await extractSkillsFromJobDetails(
+        data.title,
+        data.jobDescription
+      );
 
-      if (!result) {
+      if (!response) {
         throw new Error("Failed to generate interview flow");
       }
 
-      if (result.error) {
-        throw new Error(result.error || "Failed to generate interview flow");
+      if (response.error || !response.skills) {
+        toast({
+          title: "Error generating interview flow",
+          description: response.message || "Please try again.",
+        });
+        return;
       }
 
-      if (result.flow && result.react_flow) {
-        setFlowData(result.flow);
-        setReactFlowData(result.react_flow);
-      } else {
-        throw new Error("Invalid flow data received from backend");
-      }
+      // Step 2: Extract skills from job description
+      setExtractedSkills(response.skills.skills);
+      setSelectedSkills(response.skills.skills.slice(0, 5)); // Pre-select first 7 skills
 
-      toast({
-        title: "Interview flow generated successfully!",
-        description: "You can now save the interview flow.",
-      });
+      // Step 3: Show interview editor
+      setShowInterviewEditor(true);
     } catch (error) {
       console.error("Error generating flow:", error);
       toast({
@@ -118,25 +160,60 @@ export default function GenerateFromDescriptionPage() {
   };
 
   const handleSave = async () => {
-    if (!flowData || !reactFlowData) return;
+    const user_id = getCookie("user_id");
+    const organization_id = getCookie("organization_id");
+
+    if (!user_id || !organization_id) {
+      console.error("❌ Missing user_id or organization_id");
+      toast({
+        title: "Authentication Error",
+        description: "Missing user or organization information",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      setSaving(true);
-      // Get current user info
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        toast({
-          title: "Could not determine current user",
-          description: "Please try again.",
-        });
-        setSaving(false);
-        return;
-      }
-      const created_by = userData.user.id;
-      const organization_id = getCookie("organization_id");
+      // TODO: Generate flow data
+      const flowData = await fetch(
+        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            job_role: getValues("title"),
+            job_description: getValues("jobDescription"),
+            skills: selectedSkills,
+            duration: selectedTimer,
+          }),
+        }
+      );
 
-      // Fetch organization_id from backend
+      if (!flowData.ok) {
+        console.error(
+          "❌ Flow data generation failed:",
+          flowData.status,
+          flowData.statusText
+        );
+        throw new Error(`Flow generation failed: ${flowData.status}`);
+      }
+
+      const flowDataJson = await flowData.json();
+
+      const interviewData = {
+        title: getValues("title"),
+        job_description: getValues("jobDescription"),
+        skills: selectedSkills,
+        duration: selectedTimer,
+        flow_json: flowDataJson,
+        organization_id: organization_id,
+        created_by: user_id,
+      };
+
       const response = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/interviews/from-description`,
         {
@@ -144,148 +221,360 @@ export default function GenerateFromDescriptionPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            title: getValues("title"),
-            job_description: getValues("jobDescription"),
-            flow_json: flowData,
-            react_flow_json: reactFlowData,
-            organization_id,
-            created_by,
-          }),
+          body: JSON.stringify(interviewData),
         }
       );
+
       if (!response.ok) {
-        throw new Error("Failed to save interview flow");
+        console.error(
+          "❌ Interview creation failed:",
+          response.status,
+          response.statusText
+        );
+        const errorText = await response.text();
+        console.error("❌ Error response:", errorText);
+        toast({
+          title: "Error creating interview",
+          description: `Server responded with: ${response.status}`,
+          variant: "destructive",
+        });
+        return;
       }
+
+      const data = await response.json();
+
+      if (!data || data.error) {
+        console.error("❌ Interview creation returned error:", data);
+        toast({
+          title: "Error creating interview",
+          description: data?.message || "Unknown error occurred",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "Interview flow saved successfully!",
-        description: "You can now view the interview flow.",
+        title: "Success!",
+        description: "Interview created successfully",
       });
-      router.push("/dashboard/interviews");
+
+      setIsInterviewCreated(true);
     } catch (error) {
-      console.error("Error saving flow:", error);
+      console.error("💥 Unexpected error in handleSave:", error);
       toast({
-        title: "Error saving interview flow",
-        description: "Please try again.",
+        title: "Error creating interview",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
-        <CardHeader className="flex flex-row items-end justify-between">
-          <div>
-            <h2 className="text-lg font-medium tracking-tight dark:text-white">
-              Interview details
+  const timerOptions = [10, 20, 30];
+
+  const getTimerStatus = (time: number) => {
+    const skillCount = selectedSkills.length;
+    if (time === 10 && skillCount >= 6)
+      return { disabled: true, reason: "10 mins is too short for 6+ skills" };
+    if (time === 20 && skillCount >= 11)
+      return { disabled: true, reason: "20 mins is too short for 11+ skills" };
+    return { disabled: false, reason: "" };
+  };
+
+  if (isInterviewCreated) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center">
+          <Button
+            variant="link"
+            className="text-xs dark:text-gray-300 cursor-pointer"
+            onClick={() => {
+              router.push("/dashboard/interviews");
+            }}
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Return to Interviews
+          </Button>
+        </div>
+
+        <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow dark:border dark:border-gray-800">
+          <div className="p-6 text-center">
+            <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+              <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium tracking-tight dark:text-white">
+              Interview Created Successfully
             </h2>
-            <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
-              Please provide the job title and description to generate an
-              interview.
+            <p className="mt-2 mb-6 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
+              You can now start inviting candidates to the interview.
             </p>
           </div>
-        </CardHeader>
-        <CardContent className="border-t border-gray-200 dark:border-gray-800 pt-5">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium dark:text-gray-200"
-              >
-                Role
-              </label>
-              <Input
-                type="text"
-                id="title"
-                className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                {...register("title", {
-                  required: "Title is required",
-                })}
-                placeholder="e.g., Senior Frontend Developer Interview"
-                disabled={loading}
-              />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.title.message}
-                </p>
-              )}
-            </div>
+        </div>
+      </div>
+    );
+  }
 
-            <div>
-              <label
-                htmlFor="jobDescription"
-                className="block text-sm font-medium dark:text-gray-200"
-              >
-                Job description
-              </label>
-              <Textarea
-                title="Job description"
-                id="jobDescription"
-                className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
-                  errors.jobDescription && "border-red-500"
-                } px-3 py-2 text-sm focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00`}
-                rows={10}
-                placeholder="Paste the job description here..."
-                disabled={loading}
-                {...register("jobDescription", {
-                  required: "Job description is required",
-                  minLength: 50,
-                })}
-              />
-              {errors.jobDescription && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.jobDescription.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                disabled={loading}
-                className={`cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
-                variant="outline"
-              >
-                {loading && <Loader2 className="animate-spin mr-2" />}
-                {!loading && <WandSparkles className="mr-2" />}
-                Create Interview
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {flowData && (
-        <Card className="h-[calc(100vh-200px)] dark:bg-gray-900 dark:border-gray-800">
+  return (
+    <div className="space-y-6">
+      {!showInterviewEditor ? (
+        <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
           <CardHeader className="flex flex-row items-end justify-between">
             <div>
               <h2 className="text-lg font-medium tracking-tight dark:text-white">
-                Generated Interview Flow
+                Interview details
               </h2>
               <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
-                Review the generated interview flow below.
+                Please provide the job title and description to generate an
+                interview.
               </p>
             </div>
-            {flowData && (
+          </CardHeader>
+          <CardContent className="border-t border-gray-200 dark:border-gray-800 pt-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium dark:text-gray-200"
+                >
+                  Role
+                </label>
+                <Input
+                  type="text"
+                  id="title"
+                  className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  {...register("title", {
+                    required: "Title is required",
+                  })}
+                  placeholder="e.g., Senior Frontend Developer Interview"
+                  disabled={loading}
+                />
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.title.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="jobDescription"
+                  className="block text-sm font-medium dark:text-gray-200"
+                >
+                  Job description
+                </label>
+                <Textarea
+                  title="Job description"
+                  id="jobDescription"
+                  className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                    errors.jobDescription && "border-red-500"
+                  } px-3 py-2 text-sm focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00`}
+                  rows={10}
+                  placeholder="Paste the job description here..."
+                  disabled={loading}
+                  {...register("jobDescription", {
+                    required: "Job description is required",
+                    minLength: 50,
+                  })}
+                />
+                {errors.jobDescription && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.jobDescription.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className={`cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
+                  variant="outline"
+                >
+                  {loading && <Loader2 className="animate-spin mr-2" />}
+                  {!loading && <WandSparkles className="mr-2" />}
+                  Create Interview
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-800">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                  Customize Interview
+                </h2>
+                <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                  Configure your interview settings and skills assessment.
+                </p>
+              </div>
               <Button
-                onClick={handleSave}
+                onClick={() => {
+                  console.log("🔘 Save button clicked!");
+                  handleSave();
+                }}
                 disabled={saving}
                 variant="outline"
-                className="cursor-pointer border border-app-blue-100"
+                className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               >
-                <Save className="mr-1 h-4 w-4" />
-                {saving ? "Saving..." : "Save Flow"}
+                {saving && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                {!saving && <Save className="mr-2 h-4 w-4" />}
+                Save Interview
               </Button>
-            )}
+            </div>
           </CardHeader>
-          <CardContent className="h-[calc(100%-3rem)] rounded-lg overflow-hidden dark:bg-gray-900 dark:border-gray-800">
-            <div className="h-full w-full bg-white dark:bg-gray-900">
-              <InterviewFlow
-                flowData={flowData}
-                reactFlowData={reactFlowData || undefined}
-              />
+          <CardContent className="pt-6 space-y-6">
+            {/* Skills Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  <label className="text-sm font-medium dark:text-gray-200">
+                    Skills
+                  </label>
+                </div>
+                {selectedSkills.length >= 15 && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400">
+                    Maximum skills reached
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Skills Display */}
+              <div className="flex flex-wrap gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50 min-h-[60px]">
+                {selectedSkills.map((skill) => (
+                  <Badge
+                    key={skill}
+                    variant="outline"
+                    className="flex items-center gap-1 px-3 py-2 bg-app-blue-100 text-app-blue-800 dark:bg-app-blue-900/30 dark:text-app-blue-300"
+                  >
+                    {skill}
+                    <button
+                      onClick={() => removeSkill(skill)}
+                      className="ml-1 hover:bg-app-blue-200 dark:hover:bg-app-blue-800 rounded-full p-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {selectedSkills.length === 0 && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                    No skills selected
+                  </div>
+                )}
+              </div>
+
+              {/* Available Skills */}
+              {extractedSkills.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    Available Skills (click to add)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {extractedSkills
+                      .filter((skill) => !selectedSkills.includes(skill))
+                      .map((skill) => (
+                        <Badge
+                          key={skill}
+                          variant="outline"
+                          className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-700 ${
+                            selectedSkills.length >= 15
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                          onClick={() => toggleSkill(skill)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {skill}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Custom Skill */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add custom skill..."
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && addCustomSkill()}
+                  className="flex-1"
+                  disabled={selectedSkills.length >= 15}
+                />
+                <Button
+                  onClick={addCustomSkill}
+                  variant="outline"
+                  size="sm"
+                  disabled={!newSkill.trim() || selectedSkills.length >= 15}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Timer Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Interview duration
+                </label>
+              </div>
+
+              <div className="flex justify-center">
+                <Carousel className="w-full max-w-xs">
+                  <CarouselContent>
+                    {timerOptions.map((time) => {
+                      const status = getTimerStatus(time);
+                      return (
+                        <CarouselItem key={time} className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                selectedTimer === time
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : status.disabled
+                                  ? "opacity-30 cursor-not-allowed border-red-300 bg-red-50 dark:bg-red-900/10"
+                                  : "hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                !status.disabled && setSelectedTimer(time)
+                              }
+                              title={
+                                status.disabled
+                                  ? status.reason
+                                  : `Select ${time} minutes`
+                              }
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <span
+                                  className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                    selectedTimer === time
+                                      ? "text-app-blue-600 dark:text-app-blue-400"
+                                      : status.disabled
+                                      ? "text-red-500 dark:text-red-400"
+                                      : "text-gray-700 dark:text-gray-300"
+                                  }`}
+                                >
+                                  <div className="text-2xl font-semibold">
+                                    {time}
+                                  </div>
+                                  <div className="text-xs">minutes</div>
+                                </span>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+                      );
+                    })}
+                  </CarouselContent>
+                </Carousel>
+              </div>
             </div>
           </CardContent>
         </Card>

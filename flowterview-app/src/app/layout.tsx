@@ -12,7 +12,7 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Flowterview · AI Powered Interview Platform",
+  title: "Sivera · AI Powered Interview Platform",
   description:
     "AI-driven interview platform for technical and non-technical interviews",
 };
