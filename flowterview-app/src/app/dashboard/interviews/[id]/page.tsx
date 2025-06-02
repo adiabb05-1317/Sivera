@@ -344,18 +344,20 @@ export default function InterviewDetailsPage() {
                   <h3 className="font-semibold mb-2 dark:text-white">
                     Interview Configuration
                   </h3>
-                  <Button
-                    onClick={handleSaveChanges}
-                    disabled={saving}
-                    variant="outline"
-                    className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                  >
-                    {saving && (
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    )}
-                    {!saving && <Save className="mr-2 h-4 w-4" />}
-                    Save Changes
-                  </Button>
+                  {firstChange && (
+                    <Button
+                      onClick={handleSaveChanges}
+                      disabled={saving}
+                      variant="outline"
+                      className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                    >
+                      {saving && (
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      )}
+                      {!saving && <Save className="mr-2 h-4 w-4" />}
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-6">
