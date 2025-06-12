@@ -12,6 +12,10 @@ import {
   Brain,
   Check,
   ArrowLeft,
+  Phone,
+  FileText,
+  Bot,
+  Route,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +46,13 @@ export default function GenerateFromDescriptionPage() {
   const [newSkill, setNewSkill] = useState("");
   const [selectedTimer, setSelectedTimer] = useState(10);
   const [isInterviewCreated, setIsInterviewCreated] = useState(false);
+
+  // Process toggle states
+  const [processStages, setProcessStages] = useState({
+    phoneInterview: true,
+    assessments: false,
+    aiInterviewer: true,
+  });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -209,6 +220,7 @@ export default function GenerateFromDescriptionPage() {
         job_description: getValues("jobDescription"),
         skills: selectedSkills,
         duration: selectedTimer,
+        process_stages: processStages,
         flow_json: flowDataJson,
         organization_id: organization_id,
         created_by: user_id,
@@ -281,6 +293,13 @@ export default function GenerateFromDescriptionPage() {
     if (time === 20 && skillCount >= 11)
       return { disabled: true, reason: "20 mins is too short for 11+ skills" };
     return { disabled: false, reason: "" };
+  };
+
+  const toggleProcessStage = (stage: keyof typeof processStages) => {
+    setProcessStages((prev) => ({
+      ...prev,
+      [stage]: !prev[stage],
+    }));
   };
 
   if (isInterviewCreated) {
@@ -428,6 +447,117 @@ export default function GenerateFromDescriptionPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
+            {/* Process Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Route className="h-4 w-4" />
+                <label className="text-sm font-medium dark:text-gray-200">
+                  Interview Process
+                </label>
+              </div>
+
+              <div className="flex justify-center">
+                <Carousel className="w-full max-w-md">
+                  <CarouselContent>
+                    {/* Phone Interview */}
+                    <CarouselItem className="basis-1/3">
+                      <div className="p-1">
+                        <Card
+                          className={`cursor-pointer transition-all duration-200 border-2 ${
+                            processStages.phoneInterview
+                              ? "border-green-300/50 bg-green-50/60 text-green-400"
+                              : "border-red-300/50 bg-red-50/60 text-red-400"
+                          }`}
+                          onClick={() => toggleProcessStage("phoneInterview")}
+                          title={`${
+                            processStages.phoneInterview ? "Disable" : "Enable"
+                          } Phone Interview`}
+                        >
+                          <CardContent className="flex aspect-square items-center justify-center p-6">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Phone className="h-6 w-6" />
+                              <div className="text-center">
+                                <div className="text-sm font-semibold">
+                                  Phone
+                                </div>
+                                <div className="text-xs">Interview</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+
+                    {/* Assessments */}
+                    <CarouselItem className="basis-1/3">
+                      <div className="p-1">
+                        <Card
+                          className={`cursor-pointer transition-all duration-200 border-2 ${
+                            processStages.assessments
+                              ? "border-green-300/50 bg-green-50/60 text-green-400"
+                              : "border-red-300/50 bg-red-50/60 text-red-400"
+                          }`}
+                          onClick={() => toggleProcessStage("assessments")}
+                          title={`${
+                            processStages.assessments ? "Disable" : "Enable"
+                          } Assessments`}
+                        >
+                          <CardContent className="flex aspect-square items-center justify-center p-6">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <FileText className="h-6 w-6" />
+                              <div className="text-center">
+                                <div className="text-sm font-semibold">
+                                  Assessment
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+
+                    {/* AI Interviewer */}
+                    <CarouselItem className="basis-1/3">
+                      <div className="p-1">
+                        <Card
+                          className={`cursor-pointer transition-all duration-200 border-2 ${
+                            processStages.aiInterviewer
+                              ? "border-green-300/50 bg-green-50/60 text-green-400"
+                              : "border-red-300/50 bg-red-50/60 text-red-400"
+                          }`}
+                          onClick={() => toggleProcessStage("aiInterviewer")}
+                          title={`${
+                            processStages.aiInterviewer ? "Disable" : "Enable"
+                          } AI Interviewer`}
+                        >
+                          <CardContent className="flex aspect-square items-center justify-center p-6">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Bot className="h-6 w-6" />
+                              <div className="text-center">
+                                <div className="text-sm font-semibold">AI</div>
+                                <div className="text-xs">Interviewer</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+                  </CarouselContent>
+                </Carousel>
+              </div>
+
+              {/* Process Flow Indicator */}
+              <div className="flex justify-center">
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <span>
+                      You can toggle the process stages you want to enable.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Skills Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
