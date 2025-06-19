@@ -30,6 +30,7 @@ interface BulkInviteDialogProps {
   jobTitle: string;
   availableCandidates: Candidate[];
   onInvitesSent: () => void;
+  organizationId: string;
 }
 
 interface BulkInviteStatus {
@@ -57,6 +58,7 @@ export function BulkInviteDialog({
   jobTitle,
   availableCandidates,
   onInvitesSent,
+  organizationId,
 }: BulkInviteDialogProps) {
   const [selectedCandidates, setSelectedCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,6 +116,7 @@ export function BulkInviteDialog({
         emails: selectedCandidates.map((c) => c.email),
         names: selectedCandidates.map((c) => c.name),
         job_title: jobTitle,
+        organization_id: organizationId,
       };
 
       const response = await authenticatedFetch(
@@ -188,18 +191,20 @@ export function BulkInviteDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent
+        className={`max-w-2xl max-h-[80vh] overflow-y-auto ${
+          showStatus ? "pb-0" : ""
+        }`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-app-blue-6/00 dark:text-app-blue-4/00" />
-            Send Bulk Invites
+            Send Invites
           </DialogTitle>
           <DialogDescription>
-            Select candidates to send interview invites for &quot;{jobTitle}
-            &quot;.
-            {availableCandidates.length > 0
-              ? ` ${availableCandidates.length} candidates available.`
-              : " No candidates found for this job."}
+            {showStatus
+              ? "Processing invites for selected candidates. Please wait..."
+              : "Select candidates to send bulk interview invites."}
           </DialogDescription>
         </DialogHeader>
 
@@ -219,21 +224,16 @@ export function BulkInviteDialog({
                   variant="outline"
                   size="sm"
                   className="cursor-pointer"
-                  onClick={selectAllCandidates}
-                  disabled={
+                  onClick={
                     selectedCandidates.length === availableCandidates.length
+                      ? clearSelection
+                      : selectAllCandidates
                   }
+                  disabled={availableCandidates.length === 0}
                 >
-                  Select All
-                </Button>
-                <Button
-                  variant="outline"
-                  className="cursor-pointer"
-                  size="sm"
-                  onClick={clearSelection}
-                  disabled={selectedCandidates.length === 0}
-                >
-                  Clear
+                  {selectedCandidates.length === availableCandidates.length
+                    ? "Clear All"
+                    : "Select All"}
                 </Button>
               </div>
             </div>
@@ -261,11 +261,7 @@ export function BulkInviteDialog({
                       return (
                         <div
                           key={candidate.id}
-                          className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                            isSelected
-                              ? "bg-app-blue-50 dark:bg-app-blue-900/20"
-                              : ""
-                          }`}
+                          className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800`}
                           onClick={() => toggleCandidateSelection(candidate)}
                         >
                           <div className="flex items-center justify-between">
@@ -292,11 +288,6 @@ export function BulkInviteDialog({
                                 </div>
                               </div>
                             </div>
-                            {candidate.status && (
-                              <Badge variant="outline" className="text-xs">
-                                {candidate.status}
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       );
@@ -308,45 +299,41 @@ export function BulkInviteDialog({
           </div>
         ) : (
           /* Status Display */
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-4">
-                  {inviteStatus?.scheduled_count ===
-                  selectedCandidates.length ? (
-                    <Check className="h-6 w-6 text-green-600" />
-                  ) : (
-                    <Loader2 className="h-6 w-6 text-app-blue-6/00 animate-spin" />
-                  )}
-                  <div>
-                    <h3 className="font-semibold">
-                      {inviteStatus?.scheduled_count ===
-                      selectedCandidates.length
-                        ? "All invites sent successfully!"
-                        : "Processing invites..."}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {inviteStatus?.scheduled_count || 0} of{" "}
-                      {selectedCandidates.length} completed
-                    </p>
-                  </div>
-                </div>
+          <div className="space-y-4 pl-3 pr-3">
+            <div className="flex items-center gap-3 mb-4">
+              {inviteStatus?.scheduled_count === selectedCandidates.length ? (
+                <Check className="h-6 w-6 text-app-blue-6/00" />
+              ) : (
+                <Loader2 className="h-6 w-6 text-app-blue-6/00 animate-spin" />
+              )}
+              <div>
+                <h3 className="font-semibold">
+                  {inviteStatus?.scheduled_count === selectedCandidates.length
+                    ? "All invites sent successfully!"
+                    : "Processing invites..."}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {inviteStatus?.scheduled_count || 0} of{" "}
+                  {selectedCandidates.length} completed
+                </p>
+              </div>
+            </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-app-blue-6/00 h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${
-                        ((inviteStatus?.scheduled_count || 0) /
-                          selectedCandidates.length) *
-                        100
-                      }%`,
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            {/* Progress Bar */}
+            <div className="flex justify-center">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-app-blue-6/00 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      ((inviteStatus?.scheduled_count || 0) /
+                        selectedCandidates.length) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
 
             {inviteStatus?.scheduled_count === selectedCandidates.length && (
               <div className="text-center">
@@ -374,7 +361,8 @@ export function BulkInviteDialog({
                 <Button
                   onClick={sendBulkInvites}
                   disabled={isLoading || selectedCandidates.length === 0}
-                  className="bg-app-blue-6/00 hover:bg-app-blue-7/00 text-white"
+                  className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  variant="outline"
                 >
                   {isLoading ? (
                     <>
@@ -384,8 +372,7 @@ export function BulkInviteDialog({
                   ) : (
                     <>
                       <Mail className="mr-2 h-4 w-4" />
-                      Send {selectedCandidates.length} Invite
-                      {selectedCandidates.length !== 1 ? "s" : ""}
+                      Send Invites
                     </>
                   )}
                 </Button>

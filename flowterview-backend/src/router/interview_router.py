@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import json
 
@@ -12,7 +11,7 @@ import urllib.parse
 import uuid
 
 import aiosmtplib
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request
 from loguru import (
     logger,
     logger as loguru_logger,
@@ -109,15 +108,38 @@ class InterviewFlowUpdate(BaseModel):
     flow_json: Optional[dict]
 
 
+async def send_loops_email(to_email: str, template_id: str, variables: Dict[str, Any]) -> None:
+    """Send email via Loops transactional API using SMTP"""
+    try:
+        logger.info(f"Sending Loops email to {to_email} with template {template_id}")
+
+        payload = {"transactionalId": template_id, "email": to_email, "dataVariables": variables}
+
+        msg = MIMEText(json.dumps(payload), "plain")
+        msg["From"] = "team@sivera.io"
+        msg["To"] = to_email
+        msg["Subject"] = "ignored by Loops"  # Subject is handled by Loops template
+
+        await aiosmtplib.send(
+            msg,
+            hostname=Config.SMTP_HOST,
+            port=Config.SMTP_PORT,
+            start_tls=True,
+            username=Config.SMTP_USER,
+            password=Config.SMTP_PASS,
+        )
+
+        logger.info(f"Loops email sent successfully to {to_email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send Loops email to {to_email}: {e}")
+        raise
+
+
 async def send_verification_email(email: str, name: str, job: str, token: str) -> None:
-    """Background task to send verification email for new candidates"""
+    """Background task to send verification email for new candidates via Loops"""
     logger.info(f"Starting to send verification email to {email} with token {token[:10]}...")
     try:
-        message = MIMEMultipart()
-        message["From"] = f"Flowterview Team <{Config.SMTP_USER}>"
-        message["To"] = email
-        message["Subject"] = f"You're Invited: Interview for {job} at Flowterview! (Email Verification Required)"
-
         # Make sure the token is URL safe and properly encoded
         import urllib.parse
 
@@ -125,117 +147,31 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         verify_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview?token={encoded_token}"
         logger.info(f"Generated verification URL with token: {encoded_token[:10]}...")
 
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; background: #f7f7fa; padding: 32px;">
-            <div style="max-width: 540px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #e0e7ff; padding: 32px;">
-                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">Congratulations, {name}! 🎉</h2>
-                <p style="font-size: 1.1em; color: #333;">
-                    We are excited to invite you for an interview for the <b>{job}</b> position.
-                </p>
-                <p style="font-size: 1.05em; color: #444;">
-                    Your skills and experience have impressed our team, and we'd love to get to know you better!
-                </p>
-                <div style="margin: 24px 0;">
-                    <a href="{verify_url}" style="display:inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 1.1em; font-weight: bold;">Verify Email & Start Your Interview</a>
-                </div>
-                <p style="color: #555;">
-                    Please verify your email to continue to the interview process.<br>
-                    This link will expire in 7 days.<br>
-                    If you have any questions, just reply to this email.
-                </p>
-                <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
-                <p style="font-size: 0.95em; color: #888;">
-                    Best regards,<br>
-                    The Flowterview Team
-                </p>
-            </div>
-        </div>
-        """
-        message.attach(MIMEText(html_content, "html"))
+        # Prepare variables for Loops template
+        variables = {"name": name, "job": job, "company": "Sivera", "verify_url": verify_url}
 
-        logger.info(f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}")
-
-        try:
-            await aiosmtplib.send(
-                message,
-                hostname=Config.SMTP_HOST,
-                port=Config.SMTP_PORT,
-                username=Config.SMTP_USER,
-                password=Config.SMTP_PASS,
-                use_tls=True,
-            )
-            logger.info(f"SMTP send operation completed for {email}")
-        except Exception as smtp_error:
-            logger.error(f"SMTP error: {str(smtp_error)}")
-            import traceback
-
-            smtp_trace = traceback.format_exc()
-            logger.error(f"SMTP error trace: {smtp_trace}")
+        await send_loops_email(email, Config.LOOPS_VERIFICATION_TEMPLATE, variables)
         logger.info(f"Verification email sent successfully to {email}")
+
     except Exception as e:
         logger.error(f"Failed to send verification email to {email}: {e}")
+        raise
 
 
 async def send_interview_email(email: str, name: str, job: str, interview_url: str) -> None:
-    """Background task to send direct interview email for existing candidates"""
+    """Background task to send direct interview email for existing candidates via Loops"""
     try:
-        message = MIMEMultipart()
-        message["From"] = f"Flowterview Team <{Config.SMTP_USER}>"
-        message["To"] = email
-        message["Subject"] = f"You're Invited: Interview for {job} at Flowterview!"
+        logger.info(f"Sending interview email to {email} for job {job}")
 
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; background: #f7f7fa; padding: 32px;">
-            <div style="max-width: 540px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #e0e7ff; padding: 32px;">
-                <h2 style="color: #4f46e5; margin-bottom: 0.5em;">Congratulations, {name}! 🎉</h2>
-                <p style="font-size: 1.1em; color: #333;">
-                    We are excited to invite you for an interview for the <b>{job}</b> position.
-                </p>
-                <p style="font-size: 1.05em; color: #444;">
-                    Your skills and experience have impressed our team, and we'd love to get to know you better!
-                </p>
-                <div style="margin: 24px 0;">
-                    <a href="{interview_url}" style="display:inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 1.1em; font-weight: bold;">Start Your Interview</a>
-                </div>
-                <p style="color: #555;">
-                    This link will take you directly to your interview.<br>
-                    If you have any questions, just reply to this email.
-                </p>
-                <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
-                <p style="font-size: 0.95em; color: #888;">
-                    Best regards,<br>
-                    The Flowterview Team
-                </p>
-            </div>
-        </div>
-        """
-        message.attach(MIMEText(html_content, "html"))
+        # Prepare variables for Loops template
+        variables = {"name": name, "job": job, "company": "Sivera", "verify_url": interview_url}
 
-        # Send email using aiosmtplib
-        # Log SMTP settings (without password)
-        logger.info(f"Sending email using SMTP: {Config.SMTP_HOST}:{Config.SMTP_PORT}, user: {Config.SMTP_USER}")
-
-        try:
-            await aiosmtplib.send(
-                message,
-                hostname=Config.SMTP_HOST,
-                port=Config.SMTP_PORT,
-                username=Config.SMTP_USER,
-                password=Config.SMTP_PASS,
-                use_tls=True,
-            )
-            logger.info(f"SMTP send operation completed for {email}")
-        except Exception as smtp_error:
-            logger.error(f"SMTP error: {str(smtp_error)}")
-            # Don't raise as this is a background task
-            # But log detailed error
-            import traceback
-
-            smtp_trace = traceback.format_exc()
-            logger.error(f"SMTP error trace: {smtp_trace}")
+        await send_loops_email(email, Config.LOOPS_INTERVIEW_TEMPLATE, variables)
         logger.info(f"Interview email sent successfully to {email}")
+
     except Exception as e:
         logger.error(f"Failed to send interview email to {email}: {e}")
+        raise
 
 
 @router.post("/send-invite")
@@ -275,34 +211,36 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
             logger.info(f"Candidate {request.email} exists, sending direct interview link")
 
             # Update candidate's organization_id if it's different
-            if candidate.get("organization_id") != request.organization_id:
+            if candidate and candidate.get("organization_id") != request.organization_id:
                 db.update(
                     "candidates",
                     {"organization_id": request.organization_id},
                     {"id": candidate["id"]},
                 )
 
-            # If we have a matching interview, add candidate to it
+            # If we have a matching interview, create a candidate_interview record
             if interview_id:
-                # Fetch current candidates_invited
-                current_interview = db.fetch_one("interviews", {"id": interview_id})
-                current_invited = current_interview.get("candidates_invited", [])
-
-                if candidate["id"] not in current_invited:
-                    updated_invited = current_invited + [candidate["id"]]
-                    db.update(
-                        "interviews",
-                        {"candidates_invited": updated_invited},
-                        {"id": interview_id},
+                try:
+                    ci_record = db.execute_query(
+                        "candidate_interviews",
+                        {
+                            "interview_id": interview_id,
+                            "candidate_id": candidate["id"],
+                        },
                     )
-
+                    candidate_interview_id = ci_record["id"]
+                except Exception as e:
+                    logger.error(f"Failed to create candidate_interview record for existing user: {e}")
+                    raise HTTPException(status_code=500, detail="Could not schedule interview.")
             else:
                 # No interview found, return error
                 logger.error(f"No active interview found for job {request.job} in org {request.organization_id}")
                 raise HTTPException(status_code=404, detail="No active interview found for this job.")
 
             # Generate interview link
-            interview_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{interview_id}"
+            interview_url = (
+                f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{candidate_interview_id}/start"
+            )
 
             # Send interview email
             background_tasks.add_task(
@@ -459,7 +397,6 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
 
 @router.get("/job-id")
 async def get_job_id_by_title(title: str, organization_id: str, request: Request):
-    print(title, organization_id)
     try:
         job = db.fetch_one("jobs", {"title": title, "organization_id": organization_id})
         if not job:
@@ -637,81 +574,91 @@ async def create_user(request: CreateUserRequest) -> Dict[str, Any]:
 @router.post("/verify-token")
 async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
     """
-    Verify a token from an email verification link
+    Verify a token and check if user needs registration or can proceed directly
     """
-    logger.info(f"Verifying token: {request.token[:10]}...")
+    token = request.token
+    if not token:
+        return {"success": False, "message": "Token is required"}
 
     try:
         # Try both URL-decoded and original token
-        decoded_token = urllib.parse.unquote_plus(request.token)
-        possible_tokens = [decoded_token, request.token]
+        decoded_token = urllib.parse.unquote_plus(token)
+        possible_tokens = [decoded_token, token]
 
         token_data = None
-        for token in possible_tokens:
-            token_data = db.fetch_one("verification_tokens", {"token": token})
+        for t in possible_tokens:
+            token_data = db.fetch_one("verification_tokens", {"token": t})
             if token_data:
-                logger.info(f"Token found for: {token_data.get('email')}")
+                logger.info(f"Token found for verification: {token_data.get('email')}")
                 break
 
         if not token_data:
-            logger.warning(f"Token not found: {request.token[:10]}...")
-            return {
-                "valid": False,
-                "message": "Invalid verification token. Please check your email and try again.",
-            }
+            logger.error(f"Invalid verification token provided: {token}")
+            return {"success": False, "message": "Invalid verification token"}
 
         # Check if token is expired
         try:
             expires_at = datetime.fromisoformat(token_data["expires_at"])
-            # Make sure both datetimes are naive (no timezone info)
             if expires_at.tzinfo is not None:
                 expires_at = expires_at.replace(tzinfo=None)
 
             if expires_at < datetime.now():
-                logger.warning(f"Token expired at {expires_at}")
-                return {
-                    "valid": False,
-                    "message": "This verification link has expired. Please request a new invitation.",
-                }
+                return {"success": False, "message": "This verification link has expired"}
         except Exception as date_error:
-            logger.error(f"Error parsing dates: {str(date_error)}")
-            return {
-                "valid": False,
-                "message": "Error validating token expiration. Please try again or request a new invitation.",
-            }
+            logger.error(f"Error comparing dates: {str(date_error)}")
+            return {"success": False, "message": "Error validating token expiration"}
 
-        # Token is valid
-        logger.info(f"Token validation successful for {token_data.get('email')}")
-        return {
-            "valid": True,
-            "name": token_data.get("name", ""),
-            "email": token_data.get("email", ""),
-            "job_title": token_data.get("job_title", ""),
-            "organization_id": token_data.get("organization_id", ""),
-            "interview_id": token_data.get("interview_id", ""),  # Include interview_id in response
-        }
+        # Check if user already exists
+        user = db.fetch_one("users", {"email": token_data["email"]})
+
+        if user:
+            # User exists, create a candidate_interview and return direct URL
+            interview_id = token_data.get("interview_id")
+            if not interview_id:
+                return {"success": False, "message": "No interview associated with this token"}
+
+            candidate = db.fetch_one("candidates", {"email": token_data["email"]})
+            if not candidate:
+                return {"success": False, "message": "Candidate record not found for existing user"}
+
+            # Create candidate_interview record
+            try:
+                candidate_interview = db.execute_query(
+                    "candidate_interviews",
+                    {"interview_id": interview_id, "candidate_id": candidate["id"]},
+                )
+                candidate_interview_id = candidate_interview["id"]
+            except Exception as e:
+                logger.error(f"Failed to create candidate_interview: {e}")
+                return {"success": False, "message": "Failed to set up interview session."}
+
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+            interview_url = f"{frontend_url}/interview/{candidate_interview_id}/start"
+
+            return {"success": True, "message": "Token verified successfully", "interview_url": interview_url}
+        else:
+            # New user, needs registration
+            return {"success": True, "message": "Please complete registration", "name": token_data.get("name")}
+
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
-        import traceback
-
-        logger.error(f"Detailed error trace: {traceback.format_exc()}")
-        return {
-            "valid": False,
-            "message": "An error occurred while verifying your token. Please try again or request a new invitation.",
-        }
+        return {"success": False, "message": "Failed to verify token"}
 
 
 @router.post("/complete-registration")
-async def complete_registration(request: CompleteRegistrationRequest) -> Dict[str, Any]:
+async def complete_registration(
+    token: str = Form(...),
+    name: str = Form(...),
+) -> Dict[str, Any]:
     """
     Complete registration for a new candidate
     """
-    logger.info(f"Starting complete registration with token: {request.token[:10]}...")
+    logger.info(f"Starting complete registration with token: {token[:10]}...")
 
     try:
         # Try both URL-decoded and original token
-        decoded_token = urllib.parse.unquote_plus(request.token)
-        possible_tokens = [decoded_token, request.token]
+        decoded_token = urllib.parse.unquote_plus(token)
+        possible_tokens = [decoded_token, token]
 
         token_data = None
         for token in possible_tokens:
@@ -809,35 +756,36 @@ async def complete_registration(request: CompleteRegistrationRequest) -> Dict[st
                 logger.info(f"Created new job with ID: {job_id}")
 
             # Create the candidate
-            db.execute_query(
-                "candidates",
-                {
-                    "id": candidate_id,
-                    "name": token_data.get("name", ""),
-                    "email": token_data.get("email", ""),
-                    "organization_id": org_id,
-                    "job_id": job_id,
-                    "created_at": datetime.now().isoformat(),
-                },
-            )
+            candidate_data = {
+                "id": candidate_id,
+                "name": name or token_data.get("name", ""),
+                "email": token_data.get("email", ""),
+                "organization_id": org_id,
+                "job_id": job_id,
+                "created_at": datetime.now().isoformat(),
+            }
 
-        # If we have an interview_id, add candidate to it
+            db.execute_query("candidates", candidate_data)
+
+        candidate_interview_id = None
+        # If we have an interview_id, add candidate to it by creating a candidate_interview
         if interview_id:
-            current_interview = db.fetch_one("interviews", {"id": interview_id})
-            if current_interview:
-                current_invited = current_interview.get("candidates_invited", [])
-                if candidate_id not in current_invited:
-                    updated_invited = current_invited + [candidate_id]
-                    db.update(
-                        "interviews",
-                        {"candidates_invited": updated_invited},
-                        {"id": interview_id},
-                    )
-                logger.info(f"Added candidate {candidate_id} to interview {interview_id}")
+            try:
+                candidate_interview = db.execute_query(
+                    "candidate_interviews",
+                    {"interview_id": interview_id, "candidate_id": candidate_id},
+                )
+                candidate_interview_id = candidate_interview["id"]
+                logger.info(
+                    f"Created candidate_interview {candidate_interview_id} for candidate {candidate_id} and interview {interview_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create candidate_interview: {e}")
+                # We can still proceed without it, but analytics will be affected.
 
         # Generate interview URL
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
-        interview_url = f"{frontend_url}/interview/{interview_id}/start" if interview_id else None
+        interview_url = f"{frontend_url}/interview/{candidate_interview_id}/start" if candidate_interview_id else None
 
         # Delete the used token
         db.delete("verification_tokens", {"token": token_data["token"]})
@@ -1247,3 +1195,140 @@ async def get_interview(interview_id: str, request: Request):
     except Exception as e:
         logger.error(f"Error fetching interview {interview_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch interview: {str(e)}")
+
+
+@router.get("/{interview_id}/candidate-access")
+async def validate_candidate_access(interview_id: str) -> Dict[str, Any]:
+    """
+    Validate if a candidate has access to a specific interview
+    Returns interview details and candidate info if access is granted
+    """
+    try:
+        logger.info(f"Validating candidate access for interview {interview_id}")
+
+        # Check if interview exists
+        interview = db.fetch_one("interviews", {"id": interview_id})
+        if not interview:
+            return {"success": False, "message": "Interview not found"}
+
+        # Get job details for the interview
+        job = db.fetch_one("jobs", {"id": interview["job_id"]})
+        if not job:
+            return {"success": False, "message": "Job not found for this interview"}
+
+        # Get interview flow details
+        flow = db.fetch_one("interview_flows", {"id": job.get("flow_id")}) if job.get("flow_id") else None
+
+        # For now, allow access if interview exists
+        # In production, this should validate candidate authentication via token or session
+
+        response_data = {
+            "success": True,
+            "message": "Access granted",
+            "interview": {
+                "id": interview_id,
+                "title": job.get("title", "Interview"),
+                "company": "TechCorp",  # This should come from organization
+                "duration": flow.get("duration", 30) if flow else 30,
+                "skills": flow.get("skills", []) if flow else [],
+            },
+            "candidate": {
+                "name": "Candidate",  # This should come from candidate session/token
+                "email": "candidate@example.com",  # This should come from candidate session/token
+            },
+        }
+
+        logger.info(f"Access granted for interview {interview_id}")
+        return response_data
+
+    except Exception as e:
+        logger.error(f"Error validating candidate access for interview {interview_id}: {str(e)}")
+        return {"success": False, "message": "Failed to validate access"}
+
+
+@router.post("/{interview_id}/join")
+async def join_interview(interview_id: str, request: Request) -> Dict[str, Any]:
+    """
+    Create or join an interview room for a candidate
+    """
+    try:
+        logger.info(f"Candidate joining interview {interview_id}")
+
+        # Check if interview exists
+        interview = db.fetch_one("interviews", {"id": interview_id})
+        if not interview:
+            return {"success": False, "message": "Interview not found"}
+
+        # Get the manager from app state to create a real Daily.co room
+        manager = request.app.state.manager
+        room_url, bot_token = await manager.create_room_and_token()
+
+        logger.info(f"Created interview room for interview {interview_id}: {room_url}")
+
+        return {
+            "success": True,
+            "message": "Interview room created successfully",
+            "room_url": room_url,
+            "bot_token": bot_token,
+        }
+
+    except Exception as e:
+        logger.error(f"Error joining interview {interview_id}: {str(e)}")
+        return {"success": False, "message": "Failed to create interview room"}
+
+
+@router.get("/candidate-interviews/{candidate_interview_id}")
+async def get_candidate_interview_details(candidate_interview_id: str, request: Request):
+    """
+    Get all details required to start a candidate interview.
+    This is an unauthenticated endpoint, access is granted by knowing the candidate_interview_id.
+    """
+    try:
+        # Use Supabase client to fetch data with joins
+        result = (
+            db.supabase.table("candidate_interviews")
+            .select(
+                """
+                candidate_interview_id:id,
+                candidate:candidates(id, name, email),
+                interview:interviews(
+                    id,
+                    job:jobs(
+                        id,
+                        title,
+                        organization:organizations(name),
+                        flow:interview_flows(flow_json, duration, skills)
+                    )
+                )
+            """
+            )
+            .eq("id", candidate_interview_id)
+            .single()
+            .execute()
+        )
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Candidate interview not found")
+
+        # Flatten the nested structure into the desired format
+        data = result.data
+        details = {
+            "candidate_interview_id": data["candidate_interview_id"],
+            "candidate_id": data["candidate"]["id"],
+            "candidate_name": data["candidate"]["name"],
+            "candidate_email": data["candidate"]["email"],
+            "interview_id": data["interview"]["id"],
+            "job_id": data["interview"]["job"]["id"],
+            "job_title": data["interview"]["job"]["title"],
+            "company_name": data["interview"]["job"]["organization"]["name"],
+            "flow_json": data["interview"]["job"]["flow"]["flow_json"] if data["interview"]["job"]["flow"] else None,
+            "duration": data["interview"]["job"]["flow"]["duration"] if data["interview"]["job"]["flow"] else 30,
+            "skills": data["interview"]["job"]["flow"]["skills"] if data["interview"]["job"]["flow"] else [],
+        }
+
+        return {"success": True, "details": details}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error fetching candidate interview details for {candidate_interview_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch interview details.")

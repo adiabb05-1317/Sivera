@@ -363,58 +363,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flowterview-backend"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "aiosmtplib" },
-    { name = "anthropic" },
-    { name = "email-validator" },
-    { name = "fastapi", extra = ["standard"] },
-    { name = "google-generativeai" },
-    { name = "httpx" },
-    { name = "loguru" },
-    { name = "openai" },
-    { name = "pipecat-ai" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "python-dotenv" },
-    { name = "supabase" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pre-commit" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = ">=3.8.0" },
-    { name = "aiosmtplib", specifier = ">=2.0.2" },
-    { name = "anthropic", specifier = ">=0.52.1" },
-    { name = "email-validator", specifier = ">=2.1.0.post1" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.8" },
-    { name = "google-generativeai", specifier = ">=0.8.5" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "openai", specifier = ">=1.82.1" },
-    { name = "pipecat-ai", specifier = ">=0.0.1" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
-    { name = "pydantic", specifier = ">=2.6.1" },
-    { name = "pydantic-settings", specifier = ">=2.2.1" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "supabase", specifier = ">=1.0.3" },
-    { name = "uvicorn", specifier = ">=0.34.0" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "frozenlist"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1636,6 +1584,58 @@ sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755 },
 ]
+
+[[package]]
+name = "sivera-backend"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aiosmtplib" },
+    { name = "anthropic" },
+    { name = "email-validator" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "google-generativeai" },
+    { name = "httpx" },
+    { name = "loguru" },
+    { name = "openai" },
+    { name = "pipecat-ai" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "supabase" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "pre-commit" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.8.0" },
+    { name = "aiosmtplib", specifier = ">=2.0.2" },
+    { name = "anthropic", specifier = ">=0.52.1" },
+    { name = "email-validator", specifier = ">=2.1.0.post1" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.8" },
+    { name = "google-generativeai", specifier = ">=0.8.5" },
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "openai", specifier = ">=1.82.1" },
+    { name = "pipecat-ai", specifier = ">=0.0.1" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
+    { name = "pydantic", specifier = ">=2.6.1" },
+    { name = "pydantic-settings", specifier = ">=2.2.1" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "supabase", specifier = ">=1.0.3" },
+    { name = "uvicorn", specifier = ">=0.34.0" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "six"

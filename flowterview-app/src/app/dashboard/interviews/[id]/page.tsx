@@ -34,7 +34,11 @@ import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { useInterviewDetails } from "@/hooks/useStores";
-import { authenticatedFetch, getCookie } from "@/lib/auth-client";
+import {
+  authenticatedFetch,
+  getCookie,
+  getUserContext,
+} from "@/lib/auth-client";
 
 // Move nodeTypes outside the component to prevent recreation on every render
 interface Candidate {
@@ -101,6 +105,7 @@ export default function InterviewDetailsPage() {
   );
   const [showAllCandidates, setShowAllCandidates] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
@@ -192,7 +197,7 @@ export default function InterviewDetailsPage() {
       setJob(details.job);
       setInterviewStatus(details.interview.status || "draft");
       setInvitedCandidates(details.candidates.invited || []);
-      setAvailableCandidates(details.candidates.available || []);
+      // Don't set availableCandidates from backend - we fetch them manually
 
       // Set skills and duration from the flow data
       if (details.skills && details.skills.length > 0) {
@@ -297,6 +302,52 @@ export default function InterviewDetailsPage() {
   const handleInvitesSent = () => {
     // Refresh the data after invites are sent
     window.location.reload();
+  };
+
+  // Fetch available candidates for bulk invite
+  const fetchAvailableCandidates = async () => {
+    if (!job?.id) {
+      toast({
+        title: "Error",
+        description: "No job_id found for this interview",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingCandidates(true);
+    try {
+      // Directly fetch candidates by job_id - much simpler approach
+      const candidatesResp = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/candidates/by-job/${job.id}`
+      );
+
+      if (!candidatesResp.ok) {
+        if (candidatesResp.status === 404) {
+          // No candidates found for this job
+          setAvailableCandidates([]);
+          setBulkInviteOpen(true);
+          return;
+        }
+        throw new Error(`Failed to fetch candidates: ${candidatesResp.status}`);
+      }
+
+      const allCandidates = await candidatesResp.json();
+
+      // Show all candidates - the dialog can handle filtering if needed
+      setAvailableCandidates(allCandidates || []);
+      setBulkInviteOpen(true);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch candidates";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCandidates(false);
+    }
   };
 
   // Get candidates available for bulk invite (not already invited)
@@ -565,16 +616,24 @@ export default function InterviewDetailsPage() {
                       </Select>
 
                       {/* Bulk Invite Button */}
-                      {getAvailableCandidates().length > 0 && (
-                        <Button
-                          onClick={() => setBulkInviteOpen(true)}
-                          className="cursor-pointer border border-green-500/80 dark:border-green-400/80 hover:bg-green-500/10 dark:hover:bg-green-900/20 text-green-600 dark:text-green-300 hover:text-green-700 dark:hover:text-green-200 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                          variant="outline"
-                        >
-                          <Mail className="mr-2 h-4 w-4" />
-                          Bulk Invite ({getAvailableCandidates().length})
-                        </Button>
-                      )}
+                      <Button
+                        onClick={fetchAvailableCandidates}
+                        disabled={loadingCandidates}
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="outline"
+                      >
+                        {loadingCandidates ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Invite Candidates
+                          </>
+                        )}
+                      </Button>
 
                       <Button
                         onClick={() =>
@@ -682,6 +741,7 @@ export default function InterviewDetailsPage() {
             jobTitle={job?.title || "Interview"}
             availableCandidates={getAvailableCandidates()}
             onInvitesSent={handleInvitesSent}
+            organizationId={getUserContext()?.organization_id || ""}
           />
         </>
       )}

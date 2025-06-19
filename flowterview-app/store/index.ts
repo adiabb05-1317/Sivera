@@ -27,8 +27,8 @@ export const initializeStores = async () => {
       const jobsStore = useJobsStore.getState();
       const interviewsStore = useInterviewsStore.getState();
 
-      // Fetch data in parallel but don't wait for all
-      Promise.allSettled([
+      // Fetch data in parallel, wait for all to complete
+      await Promise.all([
         candidatesStore.fetchCandidatesByJob(),
         jobsStore.fetchJobs(),
         interviewsStore.fetchInterviews(),

@@ -1,7 +1,7 @@
 [project]
-name = "flowterview-backend"
+name = "sivera-backend"
 version = "0.1.0"
-description = "Flowterview Backend Service"
+description = "Sivera Backend Service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -218,6 +218,9 @@ export default function AuthCallbackPage() {
             </CardTitle>
             <CardDescription className="dark:text-gray-300">
               Setting up your account...
+              <p className="text-xs text-gray-400 dark:text-gray-300">
+                Please don&apos;t close this page.
+              </p>
             </CardDescription>
           </CardHeader>
           <CardContent>
