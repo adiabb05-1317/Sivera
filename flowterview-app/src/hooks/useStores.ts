@@ -4,6 +4,7 @@ import {
   useCandidatesStore,
   useJobsStore,
   useInterviewsStore,
+  useDashboardStore,
 } from "../../store";
 
 // Auth hooks
@@ -24,17 +25,17 @@ export const useAuth = () => {
   };
 };
 
-// Candidates hooks
-export const useCandidates = () => {
+// Candidates hooks (lazy loading - only fetch when page needs it)
+export const useCandidates = (autoFetch = false) => {
   const store = useCandidatesStore();
   const auth = useAuthStore();
 
   useEffect(() => {
-    // Auto-fetch candidates when user is authenticated
-    if (auth.isAuthenticated && store.candidatesByJob.isStale) {
+    // Only auto-fetch if explicitly requested
+    if (autoFetch && auth.isAuthenticated && store.candidatesByJob.isStale) {
       store.fetchCandidatesByJob();
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, autoFetch]);
 
   return {
     // Data
@@ -66,17 +67,17 @@ export const useCandidates = () => {
   };
 };
 
-// Jobs hooks
-export const useJobs = () => {
+// Jobs hooks (lazy loading - only fetch when page needs it)
+export const useJobs = (autoFetch = false) => {
   const store = useJobsStore();
   const auth = useAuthStore();
 
   useEffect(() => {
-    // Auto-fetch jobs when user is authenticated
-    if (auth.isAuthenticated && store.jobs.isStale) {
+    // Only auto-fetch if explicitly requested
+    if (autoFetch && auth.isAuthenticated && store.jobs.isStale) {
       store.fetchJobs();
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, autoFetch]);
 
   return {
     // Data
@@ -101,17 +102,17 @@ export const useJobs = () => {
   };
 };
 
-// Interviews hooks
-export const useInterviews = () => {
+// Interviews hooks (lazy loading - only fetch when page needs it)
+export const useInterviews = (autoFetch = false) => {
   const store = useInterviewsStore();
   const auth = useAuthStore();
 
   useEffect(() => {
-    // Auto-fetch interviews when user is authenticated
-    if (auth.isAuthenticated && store.interviews.isStale) {
+    // Only auto-fetch if explicitly requested
+    if (autoFetch && auth.isAuthenticated && store.interviews.isStale) {
       store.fetchInterviews();
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, autoFetch]);
 
   return {
     // Data
@@ -149,12 +150,12 @@ export const useInterviews = () => {
   };
 };
 
-// Combined hook for dashboard pages that need multiple stores
+// Combined hook for pages that need multiple stores (enables auto-fetch)
 export const useDashboard = () => {
   const auth = useAuth();
-  const candidates = useCandidates();
-  const jobs = useJobs();
-  const interviews = useInterviews();
+  const candidates = useCandidates(true); // Enable auto-fetch
+  const jobs = useJobs(true); // Enable auto-fetch
+  const interviews = useInterviews(true); // Enable auto-fetch
 
   const isLoading =
     candidates.isLoading || jobs.isLoading || interviews.isLoading;
@@ -193,5 +194,41 @@ export const useInterviewDetails = (interviewId: string) => {
     isLoading: details?.isLoading || false,
     error: details?.error || null,
     refresh: () => store.fetchInterviewDetails(interviewId, true),
+  };
+};
+
+// Hook for fast dashboard data
+export const useFastDashboard = () => {
+  const store = useDashboardStore();
+  const auth = useAuth();
+
+  useEffect(() => {
+    // Auto-fetch dashboard data when user is authenticated
+    if (auth.isAuthenticated && store.dashboard.isStale) {
+      store.fetchDashboardData();
+    }
+  }, [auth.isAuthenticated]);
+
+  return {
+    // Data
+    stats: store.dashboard.data.stats,
+    recentInterviews: store.dashboard.data.recentInterviews,
+    isLoading: store.dashboard.isLoading,
+    error: store.dashboard.error,
+
+    // Actions
+    refresh: () => store.fetchDashboardData(true),
+    invalidateCache: store.invalidateCache,
+  };
+};
+
+// Hook for comprehensive app loading state (now only checks auth)
+export const useAppLoadingState = () => {
+  const auth = useAuth();
+
+  // Only check auth loading for app initialization
+  return {
+    isLoading: auth.isLoading,
+    stage: auth.isLoading ? "auth" : "complete",
   };
 };

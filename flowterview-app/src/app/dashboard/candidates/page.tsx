@@ -96,8 +96,8 @@ export default function CandidatesPage() {
     isLoading: loading,
     error,
     refresh: reload,
-  } = useCandidates();
-  const { jobs, fetchJobs } = useJobs();
+  } = useCandidates(true); // Enable auto-fetch for candidates page
+  const { jobs, fetchJobs } = useJobs(true); // Enable auto-fetch for jobs too
 
   // Status badge color mapping (for capitalized statuses)
   const statusColors: Record<string, string> = {
