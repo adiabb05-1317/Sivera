@@ -111,11 +111,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isLoading: false,
     });
 
-    // Reset store initialization state
-    import("./index").then(({ resetInitialization }) => {
-      resetInitialization();
-    });
-
     console.log("Auth state cleared");
   },
 

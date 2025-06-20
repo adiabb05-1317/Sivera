@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster } from "react-hot-toast";
 import { ModeToggle } from "@/components/dark-mode-toggle";
-import { useAuth, useAppLoadingState } from "@/hooks/useStores";
+import { useAuth } from "@/hooks/useStores";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -28,11 +28,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Use auth for authentication state and user data
-  const { user, logout } = useAuth();
-
-  // Use comprehensive app loading state that accounts for all stores
-  const { isLoading, stage } = useAppLoadingState();
+  // Use our new auth store instead of manual checks
+  const { user, isLoading, logout } = useAuth();
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -161,13 +158,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[60vh] space-y-4">
+            <div className="flex items-center justify-center h-full min-h-[60vh]">
               <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {stage === "auth"
-                  ? "Authenticating..."
-                  : "Loading dashboard data..."}
-              </p>
             </div>
           ) : (
             children

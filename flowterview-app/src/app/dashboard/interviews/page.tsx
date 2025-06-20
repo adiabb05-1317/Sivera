@@ -33,9 +33,9 @@ export default function InterviewsPage() {
   const { toast } = useToast();
 
   // Use our store hooks instead of manual API calls
-  const { interviews, isLoading: loading, error } = useInterviews(true); // Enable auto-fetch
+  const { interviews, isLoading: loading, error } = useInterviews();
   console.log(interviews);
-  const { candidates } = useCandidates(true); // Enable auto-fetch for interviews page
+  const { candidates } = useCandidates();
 
   // Status badge color mapping
   const getStatusBadgeClass = (status: string) => {

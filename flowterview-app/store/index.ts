@@ -3,44 +3,38 @@ import { useAuthStore } from "./authStore";
 import { useCandidatesStore } from "./candidatesStore";
 import { useJobsStore } from "./jobsStore";
 import { useInterviewsStore } from "./interviewsStore";
-import { useDashboardStore } from "./dashboardStore";
 
 // Main store exports
 export { useAuthStore } from "./authStore";
 export { useCandidatesStore } from "./candidatesStore";
 export { useJobsStore } from "./jobsStore";
 export { useInterviewsStore } from "./interviewsStore";
-export { useDashboardStore } from "./dashboardStore";
 
 // Type exports
 export type * from "./types";
 
-// Store initialization helper with proper state management
-let isInitializing = false;
-let hasInitialized = false;
-
-export const initializeStores = async (force = false) => {
-  // Prevent duplicate initialization calls
-  if (isInitializing || (hasInitialized && !force)) {
-    return;
-  }
-
-  isInitializing = true;
+// Store initialization helper
+export const initializeStores = async () => {
   const authStore = useAuthStore.getState();
 
   try {
-    // Only initialize auth - let pages load their own data as needed
+    // Initialize auth first
     await authStore.initialize();
-    hasInitialized = true;
-  } catch (error) {
-    console.error("Error initializing auth:", error);
-  } finally {
-    isInitializing = false;
-  }
-};
 
-// Reset initialization state (useful for testing or logout)
-export const resetInitialization = () => {
-  isInitializing = false;
-  hasInitialized = false;
+    // Only fetch data if user is authenticated - don't force it
+    if (authStore.isAuthenticated) {
+      const candidatesStore = useCandidatesStore.getState();
+      const jobsStore = useJobsStore.getState();
+      const interviewsStore = useInterviewsStore.getState();
+
+      // Fetch data in parallel, wait for all to complete
+      await Promise.all([
+        candidatesStore.fetchCandidatesByJob(),
+        jobsStore.fetchJobs(),
+        interviewsStore.fetchInterviews(),
+      ]).catch(console.error);
+    }
+  } catch (error) {
+    console.error("Error initializing stores:", error);
+  }
 };
