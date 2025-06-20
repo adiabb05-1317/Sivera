@@ -17,7 +17,6 @@ const VisualLayer = ({ className }: { className?: string }) => {
   // Initial setup for first load
   useEffect(() => {
     if (sources.length > 0 && initialLoadRef.current) {
-      console.log("Initial load detected");
       initialLoadRef.current = false;
 
       // For first load, show loader briefly then set displayed source
@@ -44,8 +43,6 @@ const VisualLayer = ({ className }: { className?: string }) => {
           JSON.stringify(sources[0]?.metadata));
 
     if (hasSourceChanged) {
-      console.log("Source changed, starting transition sequence");
-
       // 1. Immediately hide current content and show loader
       setImageLoaded(false);
       setIsLoading(true);
@@ -68,7 +65,6 @@ const VisualLayer = ({ className }: { className?: string }) => {
 
       // 4. Safety timeout to ensure we eventually show something
       const safetyTimer = setTimeout(() => {
-        console.log("Safety timeout triggered - forcing content display");
         setImageLoaded(true);
         setIsLoading(false);
         setDisplayedSource(sources[0]);
@@ -85,14 +81,12 @@ const VisualLayer = ({ className }: { className?: string }) => {
   }, [sources]);
 
   const handleImageLoad = () => {
-    console.log("Image loaded event fired");
     // Only update states if we're still on the same image that started loading
     if (
       displayedSource?.metadata?.link === currentImageSrc ||
       // Also handle first load case
       (initialLoadRef.current === false && displayedSource && !currentImageSrc)
     ) {
-      console.log("Image load confirmed, updating state");
       setImageLoaded(true);
       setTimeout(() => {
         setIsLoading(false);

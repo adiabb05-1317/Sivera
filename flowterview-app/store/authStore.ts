@@ -49,6 +49,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         return;
       }
 
+      // Ensure user context is set in cookies for authenticatedFetch
+      const authClient = await import("@/lib/auth-client");
+      await authClient.setUserContext(currentUser.id, currentUser.email!);
+
       // Fetch user profile from backend
       const response = await authenticatedFetch(
         `${
@@ -69,10 +73,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           if (user.organization_id) {
             get().fetchOrganization();
           }
+        } else {
+          console.warn("⚠️ No user data found in response");
+          set({ user: null, isAuthenticated: false });
         }
+      } else {
+        console.error("❌ Failed to fetch user profile:", response.status);
+        set({ user: null, isAuthenticated: false });
       }
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error("❌ Error fetching user profile:", error);
       set({ user: null, isAuthenticated: false });
     } finally {
       set({ isLoading: false });
@@ -98,8 +108,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   logout: () => {
-    console.log("Clearing auth state...");
-
     // Clear our custom cookies
     clearUserContext();
 
@@ -115,8 +123,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     import("./index").then(({ resetInitialization }) => {
       resetInitialization();
     });
-
-    console.log("Auth state cleared");
   },
 
   initialize: async () => {
@@ -129,7 +135,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         set({ isAuthenticated: false, isLoading: false });
       }
     } catch (error) {
-      console.error("Error initializing auth:", error);
+      console.error("❌ Error initializing auth:", error);
       set({ isAuthenticated: false, isLoading: false });
     }
   },

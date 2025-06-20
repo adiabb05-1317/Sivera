@@ -367,7 +367,16 @@ export default function InterviewDetailsPage() {
         </Button>
         <div className="flex flex-col justify-center gap-1">
           <h2 className="text-xl font-bold dark:text-white">
-            {job?.title || "Loading..."}
+            {job?.title || (
+              <span
+                className="text-xs"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                Loading...
+              </span>
+            )}
           </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
             Interview Details
@@ -375,7 +384,12 @@ export default function InterviewDetailsPage() {
         </div>
       </div>
       {loading ? (
-        <div className="p-6 text-center text-gray-500 dark:text-gray-300">
+        <div
+          className="p-6 text-center text-gray-500 dark:text-gray-300 text-xs"
+          style={{
+            fontFamily: "KyivType Sans",
+          }}
+        >
           Loading interview...
         </div>
       ) : error ? (

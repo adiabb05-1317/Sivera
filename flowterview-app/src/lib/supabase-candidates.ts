@@ -212,7 +212,6 @@ export async function fetchInterviewIdFromJobId(jobId: string) {
 export async function fetchInterviewById(
   interviewId: string
 ): Promise<{ id: string; job_id: string } | null> {
-  console.log("interviewId", interviewId);
   const response = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/job`
   );
@@ -268,7 +267,6 @@ export async function addBulkCandidates({
   if (!jobId) throw new Error("Could not determine job_id for selected job.");
 
   // Step 1: Upload all resumes in parallel
-  console.log("Uploading resumes in parallel...");
   const resumeUploadPromises = candidates.map(async (candidate, index) => {
     if (candidate.resumeFile) {
       const resume_url = await uploadResume(
@@ -283,7 +281,6 @@ export async function addBulkCandidates({
   const resumeResults = await Promise.all(resumeUploadPromises);
 
   // Step 2: Create all candidates using bulk API
-  console.log("Creating candidates using bulk API...");
   const candidatesData = candidates.map((candidate, index) => {
     const resumeResult = resumeResults.find((r) => r.index === index);
     return {
@@ -311,9 +308,6 @@ export async function addBulkCandidates({
   }
 
   const bulkResult = await bulkResponse.json();
-  console.log(
-    `Bulk created ${bulkResult.created_count} candidates successfully`
-  );
 
   if (bulkResult.failed_candidates.length > 0) {
     console.warn(
@@ -324,7 +318,6 @@ export async function addBulkCandidates({
 
   // Step 3: Update interview with all candidate IDs using bulk API
   if (interviewId && bulkResult.candidates.length > 0) {
-    console.log("Updating interview with all candidates using bulk API...");
     const candidateIds = bulkResult.candidates.map((c: any) => c.id);
 
     const addResp = await authenticatedFetch(
@@ -338,9 +331,6 @@ export async function addBulkCandidates({
 
     if (!addResp.ok) {
       // Fallback to individual updates if bulk endpoint fails
-      console.log(
-        "Bulk interview update failed, falling back to individual updates..."
-      );
       const updatePromises = candidateIds.map((candidateId: string) =>
         authenticatedFetch(
           `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
@@ -355,9 +345,6 @@ export async function addBulkCandidates({
       await Promise.all(updatePromises);
     } else {
       const addResult = await addResp.json();
-      console.log(
-        `Added ${addResult.added_count} candidates to interview successfully`
-      );
     }
   }
 

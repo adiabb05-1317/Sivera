@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  useJobs,
-  useAddCandidate,
-  useBulkAddCandidates,
-} from "./supabase-hooks";
+import { useAddCandidate, useBulkAddCandidates } from "./supabase-hooks";
+import { useJobs } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import { ArrowLeft, Send, X, Plus, UploadCloud, Check } from "lucide-react";
@@ -49,7 +46,7 @@ export default function InviteCandidatesPage() {
   const [isSent, setIsSent] = useState(false);
 
   // Fetch jobs from backend
-  const { jobs, loadJobs } = useJobs();
+  const { jobs, isLoading: jobsLoading, error: jobsError } = useJobs();
   const {
     submitCandidate,
     loading: addLoading,
@@ -70,7 +67,6 @@ export default function InviteCandidatesPage() {
   const orgEmail = session?.user?.email ?? "";
 
   useEffect(() => {
-    loadJobs();
     if (interviewIdFromQuery) setSelectedInterview(interviewIdFromQuery);
   }, [interviewIdFromQuery]);
 

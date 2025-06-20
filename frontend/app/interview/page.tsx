@@ -104,10 +104,7 @@ function InterviewContent() {
       if (data.success) {
         // Update interview data from backend response
         if (data.interview_data) {
-          console.log("Received interview data:", data.interview_data);
           usePathStore.setState({ jobId: data.interview_data.job_id });
-          console.log(data.interview_data.room_url);
-          console.log(data.interview_data.bot_token);
           setInterviewData({
             title: data.interview_data.job_title,
             company: data.interview_data.company,

@@ -39,7 +39,6 @@ export default function LoginPage() {
       } = await supabase.auth.getSession();
 
       if (session && session.user.email_confirmed_at) {
-        console.log("User is already logged in, redirecting to dashboard...");
         router.push("/dashboard");
       }
 
@@ -64,7 +63,6 @@ export default function LoginPage() {
 
       if (password && password.trim() !== "") {
         // If password provided, do password login
-        console.log("Attempting password login...");
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -80,17 +78,13 @@ export default function LoginPage() {
 
         // FIXED: Set user context and cookies after successful login
         if (data?.user) {
-          console.log("Login successful, setting user context...");
           await setUserContext(data.user.id, data.user.email!);
-
-          console.log("Redirecting to dashboard...");
           router.push("/dashboard");
         }
         return;
       }
 
       // If no password, send magic link
-      console.log("Sending magic link...");
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -107,7 +101,6 @@ export default function LoginPage() {
         return;
       }
 
-      console.log("Magic link sent successfully");
       setMagicLinkSent(true);
     } catch (error: unknown) {
       console.error("Login error:", error);
@@ -135,7 +128,14 @@ export default function LoginPage() {
             SIVERA
           </div>
           <div className="text-center">
-            <p className="mt-4 text-gray-600 dark:text-gray-300">Loading...</p>
+            <p
+              className="mt-4 text-gray-600 dark:text-gray-300 text-xs"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              Loading...
+            </p>
             <div className="mt-6 flex justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
             </div>

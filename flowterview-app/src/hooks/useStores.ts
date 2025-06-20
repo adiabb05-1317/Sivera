@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   useAuthStore,
   useCandidatesStore,
@@ -28,13 +28,26 @@ export const useAuth = () => {
 export const useCandidates = () => {
   const store = useCandidatesStore();
   const auth = useAuthStore();
+  const fetchTriggered = useRef(false);
 
   useEffect(() => {
-    // Auto-fetch candidates when user is authenticated
-    if (auth.isAuthenticated && store.candidatesByJob.isStale) {
-      store.fetchCandidatesByJob();
+    // Auto-fetch candidates when user is authenticated and data is stale
+    if (
+      auth.isAuthenticated &&
+      store.candidatesByJob.isStale &&
+      !store.candidatesByJob.isLoading &&
+      !fetchTriggered.current
+    ) {
+      fetchTriggered.current = true;
+      store.fetchCandidatesByJob().finally(() => {
+        fetchTriggered.current = false;
+      });
     }
-  }, [auth.isAuthenticated]);
+  }, [
+    auth.isAuthenticated,
+    store.candidatesByJob.isStale,
+    store.candidatesByJob.isLoading,
+  ]);
 
   return {
     // Data
@@ -70,13 +83,22 @@ export const useCandidates = () => {
 export const useJobs = () => {
   const store = useJobsStore();
   const auth = useAuthStore();
+  const fetchTriggered = useRef(false);
 
   useEffect(() => {
-    // Auto-fetch jobs when user is authenticated
-    if (auth.isAuthenticated && store.jobs.isStale) {
-      store.fetchJobs();
+    // Auto-fetch jobs when user is authenticated and data is stale
+    if (
+      auth.isAuthenticated &&
+      store.jobs.isStale &&
+      !store.jobs.isLoading &&
+      !fetchTriggered.current
+    ) {
+      fetchTriggered.current = true;
+      store.fetchJobs().finally(() => {
+        fetchTriggered.current = false;
+      });
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, store.jobs.isStale, store.jobs.isLoading]);
 
   return {
     // Data
@@ -105,13 +127,26 @@ export const useJobs = () => {
 export const useInterviews = () => {
   const store = useInterviewsStore();
   const auth = useAuthStore();
+  const fetchTriggered = useRef(false);
 
   useEffect(() => {
-    // Auto-fetch interviews when user is authenticated
-    if (auth.isAuthenticated && store.interviews.isStale) {
-      store.fetchInterviews();
+    // Auto-fetch interviews when user is authenticated and data is stale
+    if (
+      auth.isAuthenticated &&
+      store.interviews.isStale &&
+      !store.interviews.isLoading &&
+      !fetchTriggered.current
+    ) {
+      fetchTriggered.current = true;
+      store.fetchInterviews().finally(() => {
+        fetchTriggered.current = false;
+      });
     }
-  }, [auth.isAuthenticated]);
+  }, [
+    auth.isAuthenticated,
+    store.interviews.isStale,
+    store.interviews.isLoading,
+  ]);
 
   return {
     // Data

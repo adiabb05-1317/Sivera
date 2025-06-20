@@ -81,6 +81,9 @@ export const useJobsStore = create<JobsState>()(
           return;
         }
 
+        if (jobs.isLoading) {
+          return;
+        }
         set((state) => ({
           jobs: {
             ...state.jobs,
@@ -101,6 +104,7 @@ export const useJobsStore = create<JobsState>()(
             },
           });
         } catch (error) {
+          console.error("❌ Jobs fetch failed:", error);
           set((state) => ({
             jobs: {
               ...state.jobs,

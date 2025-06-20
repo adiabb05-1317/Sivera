@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, ArrowRight, Users } from "lucide-react";
+import { Search, Filter, ArrowRight, Users, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,6 @@ export default function InterviewsPage() {
 
   // Use our store hooks instead of manual API calls
   const { interviews, isLoading: loading, error } = useInterviews();
-  console.log(interviews);
   const { candidates } = useCandidates();
 
   // Status badge color mapping
@@ -88,7 +87,12 @@ export default function InterviewsPage() {
       {/* Interviews List */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow p-0 border dark:border-gray-800">
         {loading ? (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-300">
+          <div
+            className="p-6 text-center text-gray-500 dark:text-gray-300 text-xs"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
             Loading interviews...
           </div>
         ) : error ? (
@@ -133,6 +137,7 @@ export default function InterviewsPage() {
                         </span>
                       </div>
                     </div>
+                    <ChevronRight className="ml-auto h-4 w-4 text-gray-400 dark:text-gray-500" />
                   </CardContent>
                 </li>
               ))

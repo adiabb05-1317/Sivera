@@ -76,7 +76,7 @@ export default function DashboardPage() {
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
                     {stat.name}
                   </dt>
-                  <dd className="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
+                  <dd className="mt-2 text-4xl font-bold text-gray-700 dark:text-white">
                     {stat.value}
                   </dd>
                 </div>

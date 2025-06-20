@@ -42,8 +42,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   const handleSignOut = async () => {
-    console.log("User clicked sign out");
-
     try {
       // 1. Supabase logout
       const { logout: supabaseLogout } = await import("@/lib/auth-client");
@@ -133,7 +131,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <div>
                   <p className="text-sm font-light text-gray-800 dark:text-gray-200">
-                    {user?.email || "Loading..."}
+                    {user?.email || (
+                      <span
+                        className="text-xs"
+                        style={{
+                          fontFamily: "KyivType Sans",
+                        }}
+                      >
+                        Loading...
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -161,9 +168,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[60vh] space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+            <div
+              className="flex flex-col items-center justify-center h-full min-h-[60vh] space-y-4 gap-2"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-app-blue-300 opacity-70" />
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {stage === "auth"
                   ? "Authenticating..."
                   : "Loading dashboard data..."}

@@ -206,12 +206,7 @@ export default function CandidatesPage() {
           title: "Interview invitation sent",
           description: `Interview invitation sent to ${candidate.email}`,
           action: (
-            <ToastAction
-              altText="Undo"
-              onClick={() =>
-                console.log("Undo sending invite to", candidate.email)
-              }
-            >
+            <ToastAction altText="Undo" onClick={() => {}}>
               Undo
             </ToastAction>
           ),

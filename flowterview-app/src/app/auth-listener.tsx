@@ -17,8 +17,6 @@ export default function AuthListener({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         // Force re-initialization on sign in to fetch fresh data
         const { initializeStores } = await import("../../store");
