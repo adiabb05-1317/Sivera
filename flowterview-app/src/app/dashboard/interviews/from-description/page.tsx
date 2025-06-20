@@ -91,7 +91,6 @@ export default function GenerateFromDescriptionPage() {
           toast({
             title: "Maximum skills reached",
             description: "You can select up to 15 skills maximum.",
-            variant: "destructive",
           });
           return prev;
         }
@@ -107,7 +106,6 @@ export default function GenerateFromDescriptionPage() {
         toast({
           title: "Maximum skills reached",
           description: "You can select up to 15 skills maximum.",
-          variant: "destructive",
         });
         return;
       }
@@ -171,15 +169,18 @@ export default function GenerateFromDescriptionPage() {
   };
 
   const handleSave = async () => {
+    // Prevent multiple concurrent executions
+    if (saving) {
+      return;
+    }
+
     const user_id = getCookie("user_id");
     const organization_id = getCookie("organization_id");
 
     if (!user_id || !organization_id) {
-      console.error("❌ Missing user_id or organization_id");
       toast({
         title: "Authentication Error",
         description: "Missing user or organization information",
-        variant: "destructive",
       });
       return;
     }
@@ -187,7 +188,7 @@ export default function GenerateFromDescriptionPage() {
     setSaving(true);
 
     try {
-      // TODO: Generate flow data
+      // Generate flow data
       const flowData = await fetch(
         `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
         {
@@ -205,11 +206,6 @@ export default function GenerateFromDescriptionPage() {
       );
 
       if (!flowData.ok) {
-        console.error(
-          "❌ Flow data generation failed:",
-          flowData.status,
-          flowData.statusText
-        );
         throw new Error(`Flow generation failed: ${flowData.status}`);
       }
 
@@ -220,13 +216,12 @@ export default function GenerateFromDescriptionPage() {
         job_description: getValues("jobDescription"),
         skills: selectedSkills,
         duration: selectedTimer,
-        process_stages: processStages,
         flow_json: flowDataJson,
         organization_id: organization_id,
         created_by: user_id,
       };
 
-      const response = await authenticatedFetch(
+      const response = await fetch(
         `${BACKEND_URL}/api/v1/interviews/from-description`,
         {
           method: "POST",
@@ -238,32 +233,15 @@ export default function GenerateFromDescriptionPage() {
       );
 
       if (!response.ok) {
-        console.error(
-          "❌ Interview creation failed:",
-          response.status,
-          response.statusText
-        );
         const errorText = await response.text();
-        console.error("❌ Error response:", errorText);
         toast({
           title: "Error creating interview",
           description: `Server responded with: ${response.status}`,
-          variant: "destructive",
         });
         return;
       }
 
       const data = await response.json();
-
-      if (!data || data.error) {
-        console.error("❌ Interview creation returned error:", data);
-        toast({
-          title: "Error creating interview",
-          description: data?.message || "Unknown error occurred",
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Success!",
@@ -272,12 +250,10 @@ export default function GenerateFromDescriptionPage() {
 
       setIsInterviewCreated(true);
     } catch (error) {
-      console.error("💥 Unexpected error in handleSave:", error);
       toast({
         title: "Error creating interview",
         description:
           error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
       });
     } finally {
       setSaving(false);

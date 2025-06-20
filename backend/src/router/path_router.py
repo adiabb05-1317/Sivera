@@ -25,10 +25,14 @@ async def rtvi_connect(request: Request):
     manager = request.app.state.manager
     room_url, bot_token = await manager.create_room_and_token()
     session_id = str(uuid.uuid4())
+    body = await request.json()
+    job_id = body.get("job_id")
 
     try:
         proc = subprocess.Popen(
-            [f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id}"],
+            [
+                f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id} -j {job_id}"
+            ],
             shell=True,
             bufsize=1,
             cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -110,6 +114,7 @@ async def rtvi_disconnect(token: str, request: Request):
     except Exception as e:
         logger.error(f"Error during disconnect: {e}")
         raise HTTPException(status_code=500, detail=f"Disconnect failed: {str(e)}")
+
 
 @router.get("/hellos")
 async def hellos(request: Request):

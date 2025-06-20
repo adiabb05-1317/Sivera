@@ -53,6 +53,8 @@ class VerifyTokenRequest(BaseModel):
 
 class CompleteRegistrationRequest(BaseModel):
     token: str = Field(..., description="Verification token from email")
+    bot_token: str = Field(..., description="Bot token from email")
+    room_url: str = Field(..., description="Room URL from email")
 
 
 class CreateUserRequest(BaseModel):
@@ -635,10 +637,83 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
             interview_url = f"{frontend_url}/interview/{candidate_interview_id}/start"
 
-            return {"success": True, "message": "Token verified successfully", "interview_url": interview_url}
+            # Fetch interview data for existing user too
+            interview_data = None
+            job_data = None
+            flow_data = None
+            organization_data = None
+
+            if interview_id:
+                interview_data = db.fetch_one("interviews", {"id": interview_id})
+                if interview_data and interview_data.get("job_id"):
+                    job_data = db.fetch_one("jobs", {"id": interview_data["job_id"]})
+                    if job_data:
+                        organization_data = db.fetch_one("organizations", {"id": job_data.get("organization_id")})
+                        if job_data.get("flow_id"):
+                            flow_data = db.fetch_one("interview_flows", {"id": job_data["flow_id"]})
+
+            return {
+                "success": True,
+                "message": "Token verified successfully",
+                "interview_url": interview_url,
+                "interview_data": {
+                    "job_id": job_data.get("id") if job_data else None,
+                    "job_title": job_data.get("title")
+                    if job_data
+                    else token_data.get("job_title", "Software Engineer"),
+                    "company": organization_data.get("name") if organization_data else "Company",
+                    "duration": flow_data.get("duration") if flow_data else 30,
+                    "skills": flow_data.get("skills") if flow_data else [],
+                    "interview_id": interview_id,
+                    "bot_token": "abcde",
+                    "room_url": "fghij",
+                },
+            }
         else:
             # New user, needs registration
-            return {"success": True, "message": "Please complete registration", "name": token_data.get("name")}
+            # Fetch actual interview data to send to frontend
+            interview_data = None
+            job_data = None
+            flow_data = None
+            organization_data = None
+
+            interview_id = token_data.get("interview_id")
+            if interview_id:
+                # Get interview details
+                interview_data = db.fetch_one("interviews", {"id": interview_id})
+
+                if interview_data and interview_data.get("job_id"):
+                    # Get job details
+                    job_data = db.fetch_one("jobs", {"id": interview_data["job_id"]})
+
+                    if job_data:
+                        # Get organization details
+                        organization_data = db.fetch_one("organizations", {"id": job_data.get("organization_id")})
+
+                        # Get flow details if available
+                        if job_data.get("flow_id"):
+                            flow_data = db.fetch_one("interview_flows", {"id": job_data["flow_id"]})
+
+            # Prepare response with actual data or fallbacks
+            response_data = {
+                "success": True,
+                "message": "Please complete registration",
+                "name": token_data.get("name"),
+                "interview_data": {
+                    "job_id": job_data.get("id") if job_data else None,
+                    "job_title": job_data.get("title")
+                    if job_data
+                    else token_data.get("job_title", "Software Engineer"),
+                    "company": organization_data.get("name") if organization_data else "Company",
+                    "duration": flow_data.get("duration") if flow_data else 30,
+                    "skills": flow_data.get("skills") if flow_data else [],
+                    "interview_id": interview_id,
+                    "bot_token": "abcde",
+                    "room_url": "fghij",
+                },
+            }
+
+            return response_data
 
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
@@ -773,7 +848,13 @@ async def complete_registration(
             try:
                 candidate_interview = db.execute_query(
                     "candidate_interviews",
-                    {"interview_id": interview_id, "candidate_id": candidate_id},
+                    {
+                        "interview_id": interview_id,
+                        "candidate_id": candidate_id,
+                        "room_url": room_url,
+                        "bot_token": bot_token,
+                        "started_at": datetime.now().isoformat(),
+                    },
                 )
                 candidate_interview_id = candidate_interview["id"]
                 logger.info(

@@ -36,6 +36,10 @@ type CodingProblem = {
 };
 
 type TPathStore = {
+  // Job ID
+  jobId: string;
+  setJobId: (jobId: string) => void;
+
   // Toast management
   showToast: (message: string, type: "info" | "success" | "error") => void;
   toasts: Array<{ message: string; type: "info" | "success" | "error" }>;
@@ -150,6 +154,10 @@ type TPathStore = {
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
+  // Job ID
+  jobId: "",
+  setJobId: (jobId: string) => set({ jobId }),
+
   // UI States
   isHeaderVisible: true,
   setIsHeaderVisible: (isVisible) => set({ isHeaderVisible: isVisible }),

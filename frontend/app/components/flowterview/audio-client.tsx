@@ -312,6 +312,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
           videoTrack: videoTrack,
+          requestData: {
+            job_id: usePathStore.getState().jobId,
+          },
         },
         transport: new DailyTransport({
           dailyFactoryOptions: {
