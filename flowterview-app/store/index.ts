@@ -13,28 +13,47 @@ export { useInterviewsStore } from "./interviewsStore";
 // Type exports
 export type * from "./types";
 
-// Store initialization helper
-export const initializeStores = async () => {
+// Store initialization helper with proper state management
+let isInitializing = false;
+let hasInitialized = false;
+
+export const initializeStores = async (force = false) => {
+  // Prevent duplicate initialization calls
+  if (isInitializing || (hasInitialized && !force)) {
+    return;
+  }
+
+  isInitializing = true;
   const authStore = useAuthStore.getState();
 
   try {
     // Initialize auth first
     await authStore.initialize();
 
-    // Only fetch data if user is authenticated - don't force it
+    // Only fetch data if user is authenticated
     if (authStore.isAuthenticated) {
       const candidatesStore = useCandidatesStore.getState();
       const jobsStore = useJobsStore.getState();
       const interviewsStore = useInterviewsStore.getState();
 
-      // Fetch data in parallel, wait for all to complete
+      // Fetch data in parallel for better performance
       await Promise.all([
         candidatesStore.fetchCandidatesByJob(),
         jobsStore.fetchJobs(),
         interviewsStore.fetchInterviews(),
       ]).catch(console.error);
     }
+
+    hasInitialized = true;
   } catch (error) {
     console.error("Error initializing stores:", error);
+  } finally {
+    isInitializing = false;
   }
+};
+
+// Reset initialization state (useful for testing or logout)
+export const resetInitialization = () => {
+  isInitializing = false;
+  hasInitialized = false;
 };

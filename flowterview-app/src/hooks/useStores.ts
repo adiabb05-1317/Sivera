@@ -195,3 +195,33 @@ export const useInterviewDetails = (interviewId: string) => {
     refresh: () => store.fetchInterviewDetails(interviewId, true),
   };
 };
+
+// Hook for comprehensive app loading state
+export const useAppLoadingState = () => {
+  const auth = useAuth();
+  const candidates = useCandidatesStore();
+  const jobs = useJobsStore();
+  const interviews = useInterviewsStore();
+
+  // If auth is loading, the whole app is loading
+  if (auth.isLoading) {
+    return { isLoading: true, stage: "auth" };
+  }
+
+  // If not authenticated, no other loading needed
+  if (!auth.isAuthenticated) {
+    return { isLoading: false, stage: "none" };
+  }
+
+  // Check if any store is loading initial data
+  const isAnyStoreLoading =
+    (candidates.candidatesByJob.isStale &&
+      candidates.candidatesByJob.isLoading) ||
+    (jobs.jobs.isStale && jobs.jobs.isLoading) ||
+    (interviews.interviews.isStale && interviews.interviews.isLoading);
+
+  return {
+    isLoading: isAnyStoreLoading,
+    stage: isAnyStoreLoading ? "data" : "complete",
+  };
+};

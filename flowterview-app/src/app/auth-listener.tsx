@@ -20,9 +20,9 @@ export default function AuthListener({
       console.log("Auth state changed:", event);
 
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        // Initialize stores on sign in
+        // Force re-initialization on sign in to fetch fresh data
         const { initializeStores } = await import("../../store");
-        await initializeStores();
+        await initializeStores(true); // Force refresh on auth change
       }
       // Note: No need to clear stores on SIGNED_OUT - logout functions handle that
     });
