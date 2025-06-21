@@ -367,16 +367,7 @@ export default function InterviewDetailsPage() {
         </Button>
         <div className="flex flex-col justify-center gap-1">
           <h2 className="text-xl font-bold dark:text-white">
-            {job?.title || (
-              <span
-                className="text-xs"
-                style={{
-                  fontFamily: "KyivType Sans",
-                }}
-              >
-                Loading...
-              </span>
-            )}
+            {job?.title || "Loading..."}
           </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
             Interview Details

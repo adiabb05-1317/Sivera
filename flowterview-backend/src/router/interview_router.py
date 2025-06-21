@@ -94,6 +94,8 @@ class CreateInterviewFromDescriptionRequest(BaseModel):
     flow_json: dict
     organization_id: str
     created_by: str
+    process_stages: dict
+    phone_screen_questions: List[str]
 
 
 class AddCandidateRequest(BaseModel):
