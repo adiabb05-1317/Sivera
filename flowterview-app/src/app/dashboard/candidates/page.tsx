@@ -394,40 +394,51 @@ export default function CandidatesPage() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredCandidates.map((candidate) => (
-                <tr
-                  key={candidate.id}
-                  className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
-                  onClick={() => setSelectedCandidate(candidate)}
-                >
-                  <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {candidate.name}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.email}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.jobs?.title || "-"}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm">
-                    <span
-                      className={
-                        statusColors[candidate.status] ||
-                        "bg-gray-100 text-gray-800"
-                      }
-                    >
-                      <Badge variant="outline">
-                        {statusLabels[candidate.status] || candidate.status}
-                      </Badge>
-                    </span>
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.created_at
-                      ? new Date(candidate.created_at).toLocaleDateString()
-                      : "-"}
+              {filteredCandidates.length > 0 ? (
+                filteredCandidates.map((candidate) => (
+                  <tr
+                    key={candidate.id}
+                    className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                    onClick={() => setSelectedCandidate(candidate)}
+                  >
+                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      {candidate.name}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.email}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.jobs?.title || "-"}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm">
+                      <span
+                        className={
+                          statusColors[candidate.status] ||
+                          "bg-gray-100 text-gray-800"
+                        }
+                      >
+                        <Badge variant="outline">
+                          {statusLabels[candidate.status] || candidate.status}
+                        </Badge>
+                      </span>
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.created_at
+                        ? new Date(candidate.created_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-300"
+                  >
+                    No candidates found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

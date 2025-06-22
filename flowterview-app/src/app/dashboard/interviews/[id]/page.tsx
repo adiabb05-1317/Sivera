@@ -14,6 +14,10 @@ import {
   X,
   Save,
   Loader2,
+  Phone,
+  FileText,
+  Bot,
+  Route,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -118,6 +122,19 @@ export default function InterviewDetailsPage() {
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
   const [firstChange, setFirstChange] = useState(false);
 
+  // Process toggle states - initialize with defaults, will be updated from DB
+  const [processStages, setProcessStages] = useState({
+    phoneInterview: false,
+    assessments: false,
+    aiInterviewer: false,
+  });
+
+  // Phone screen questions state
+  const [phoneScreenQuestions, setPhoneScreenQuestions] = useState<string[]>(
+    []
+  );
+  const [newQuestion, setNewQuestion] = useState("");
+
   const { toast } = useToast();
 
   const BACKEND_URL =
@@ -191,6 +208,37 @@ export default function InterviewDetailsPage() {
     setSelectedSkills((prev) => prev.filter((s) => s !== skill));
   };
 
+  const toggleProcessStage = (stage: keyof typeof processStages) => {
+    setProcessStages((prev) => ({
+      ...prev,
+      [stage]: !prev[stage],
+    }));
+    setFirstChange(true);
+  };
+
+  // Phone screen question management functions
+  const addPhoneScreenQuestion = () => {
+    if (newQuestion.trim() && phoneScreenQuestions.length < 5) {
+      if (!phoneScreenQuestions.includes(newQuestion.trim())) {
+        setPhoneScreenQuestions((prev) => [...prev, newQuestion.trim()]);
+        setNewQuestion("");
+        setFirstChange(true);
+      }
+    }
+  };
+
+  const removePhoneScreenQuestion = (index: number) => {
+    setPhoneScreenQuestions((prev) => prev.filter((_, i) => i !== index));
+    setFirstChange(true);
+  };
+
+  const handleQuestionKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addPhoneScreenQuestion();
+    }
+  };
+
   // Update local state when store data changes
   useEffect(() => {
     if (details) {
@@ -208,6 +256,25 @@ export default function InterviewDetailsPage() {
       // Set timer duration from flow data
       if (details.duration) {
         setSelectedTimer(details.duration);
+      }
+
+      // Set process stages from the job data (stored in jobs table as jsonb)
+      if (details.job && (details.job as any).process_stages) {
+        setProcessStages((details.job as any).process_stages);
+      } else {
+        // If no process stages are stored, set reasonable defaults
+        setProcessStages({
+          phoneInterview: true,
+          assessments: true,
+          aiInterviewer: true,
+        });
+      }
+
+      // Set phone screen questions from the job data (stored in jobs table as jsonb)
+      if (details.job && (details.job as any).phone_screen_questions) {
+        setPhoneScreenQuestions((details.job as any).phone_screen_questions);
+      } else {
+        setPhoneScreenQuestions([]);
       }
     }
   }, [details]);
@@ -251,8 +318,8 @@ export default function InterviewDetailsPage() {
 
       const flowDataJson = await flowData.json();
 
-      // Update the interview flow with new skills, duration, and flow_json
-      const updateData = {
+      // Update the interview flow with new skills, duration and flow_json
+      const flowUpdateData = {
         skills: selectedSkills,
         duration: selectedTimer,
         flow_json: flowDataJson,
@@ -264,20 +331,46 @@ export default function InterviewDetailsPage() {
         throw new Error("Could not find interview flow ID");
       }
 
-      const response = await authenticatedFetch(
+      const flowResponse = await authenticatedFetch(
         `${BACKEND_URL}/api/v1/interviews/interview-flows/${flowId}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(updateData),
+          body: JSON.stringify(flowUpdateData),
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Update failed: ${response.status} - ${errorText}`);
+      if (!flowResponse.ok) {
+        const errorText = await flowResponse.text();
+        throw new Error(
+          `Flow update failed: ${flowResponse.status} - ${errorText}`
+        );
+      }
+
+      // Update the job with process stages and phone screen questions (stored as JSONB in jobs table)
+      const jobUpdateData = {
+        process_stages: processStages,
+        phone_screen_questions: phoneScreenQuestions,
+      };
+
+      const jobResponse = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/interviews/jobs/${job?.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(jobUpdateData),
+        }
+      );
+
+      if (!jobResponse.ok) {
+        const errorText = await jobResponse.text();
+        throw new Error(
+          `Job update failed: ${jobResponse.status} - ${errorText}`
+        );
       }
 
       toast({
@@ -394,12 +487,17 @@ export default function InterviewDetailsPage() {
             style={{ minHeight: "calc(100vh - 100px)" }}
           >
             {/* Skills and Timer Configuration */}
-            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-              <CardContent className="py-4 px-3">
-                <div className="m-5 mt-0 flex items-center justify-between">
-                  <h3 className="font-semibold mb-2 dark:text-white">
-                    Interview Configuration
-                  </h3>
+            <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
+              <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+                <div className="flex flex-row items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                      Interview Configuration
+                    </h2>
+                    <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                      Configure your interview settings and skills assessment.
+                    </p>
+                  </div>
                   {firstChange && (
                     <Button
                       onClick={handleSaveChanges}
@@ -415,51 +513,327 @@ export default function InterviewDetailsPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+              <CardContent className="pt-6 space-y-6">
+                {/* Process Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Route className="h-4 w-4" />
+                    <label className="text-sm font-medium dark:text-gray-200">
+                      Interview Process
+                    </label>
+                  </div>
 
-                <div className="space-y-6">
-                  {/* Skills Section */}
+                  <div className="flex justify-center">
+                    <Carousel className="w-full max-w-md">
+                      <CarouselContent>
+                        {/* Phone Interview */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.phoneInterview
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                toggleProcessStage("phoneInterview")
+                              }
+                              title={`${
+                                processStages.phoneInterview
+                                  ? "Disable"
+                                  : "Enable"
+                              } Phone Interview`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Phone
+                                    className={`h-6 w-6 ${
+                                      processStages.phoneInterview
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.phoneInterview
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      Phone
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.phoneInterview
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Interview
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+
+                        {/* Assessments */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.assessments
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() => toggleProcessStage("assessments")}
+                              title={`${
+                                processStages.assessments ? "Disable" : "Enable"
+                              } Technical Assessment`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <FileText
+                                    className={`h-6 w-6 ${
+                                      processStages.assessments
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.assessments
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      Technical
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.assessments
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Assessment
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+
+                        {/* AI Interviewer */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.aiInterviewer
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                toggleProcessStage("aiInterviewer")
+                              }
+                              title={`${
+                                processStages.aiInterviewer
+                                  ? "Disable"
+                                  : "Enable"
+                              } AI Interviewer`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Bot
+                                    className={`h-6 w-6 ${
+                                      processStages.aiInterviewer
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.aiInterviewer
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      AI
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.aiInterviewer
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Interviewer
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+                      </CarouselContent>
+                    </Carousel>
+                  </div>
+
+                  {/* Process Flow Indicator */}
+                  <div className="flex justify-center">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium dark:text-gray-200">
+                          Toggle the process stages you want.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Screen Questions Section */}
+                {processStages.phoneInterview && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Brain className="h-4 w-4" />
+                        <Phone className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
                         <label className="text-sm font-medium dark:text-gray-200">
-                          Skills
+                          Phone Screen Questions
                         </label>
                       </div>
-                      {selectedSkills.length >= 15 && (
-                        <div className="text-xs text-amber-600 dark:text-amber-400">
-                          Maximum skills reached
+                      {phoneScreenQuestions.length >= 5 && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
+                          Maximum questions reached (5)
                         </div>
                       )}
                     </div>
 
-                    {/* Selected Skills Display */}
-                    <div className="flex flex-wrap gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50 min-h-[60px]">
-                      {selectedSkills.map((skill) => (
-                        <Badge
-                          key={skill}
-                          variant="outline"
-                          className="flex items-center gap-1 px-3 py-2 bg-app-blue-100 text-app-blue-800 dark:bg-app-blue-900/30 dark:text-app-blue-300"
-                        >
-                          {skill}
-                          <button
-                            onClick={() => removeSkill(skill)}
-                            className="ml-1 hover:bg-app-blue-200 dark:hover:bg-app-blue-800 rounded-full p-0.5 cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                      {selectedSkills.length === 0 && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                          No skills selected
+                    {/* Questions Container */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
+                      {/* Current Questions Display */}
+                      {phoneScreenQuestions.length > 0 && (
+                        <div className="space-y-3">
+                          {phoneScreenQuestions.map((question, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <span className="text-xs font-semibold text-app-blue-600 dark:text-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/30 rounded-full min-w-[24px] h-6 flex items-center justify-center mt-0.5">
+                                {index + 1}
+                              </span>
+                              <span className="flex-1 text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+                                {question}
+                              </span>
+                              <Button
+                                onClick={() => removePhoneScreenQuestion(index)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-full shrink-0"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                       )}
+
+                      {/* Empty State */}
+                      {phoneScreenQuestions.length === 0 && (
+                        <div className="text-center py-8">
+                          <Phone className="mx-auto h-8 w-8 mb-3 text-gray-300 dark:text-gray-600" />
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                            No questions added yet
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Add up to 5 questions for phone screening
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Add New Question */}
+                      <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <Input
+                          placeholder="Enter a phone screen question..."
+                          value={newQuestion}
+                          onChange={(e) => setNewQuestion(e.target.value)}
+                          onKeyPress={handleQuestionKeyPress}
+                          className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
+                          disabled={phoneScreenQuestions.length >= 5}
+                        />
+                        <Button
+                          onClick={addPhoneScreenQuestion}
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !newQuestion.trim() ||
+                            phoneScreenQuestions.length >= 5
+                          }
+                          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
+                      <label className="text-sm font-medium dark:text-gray-200">
+                        Skills
+                      </label>
+                    </div>
+                    {selectedSkills.length >= 15 && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
+                        Maximum skills reached
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skills Container */}
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
+                    {/* Selected Skills Display */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2 min-h-[40px] items-center justify-center p-3">
+                        {selectedSkills.map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="outline"
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-app-blue-50 text-app-blue-700 dark:bg-app-blue-900/40 dark:text-app-blue-300 border-app-blue-200 dark:border-app-blue-700 text-xs font-medium hover:bg-app-blue-100 dark:hover:bg-app-blue-900/60 transition-colors"
+                          >
+                            {skill}
+                            <button
+                              onClick={() => removeSkill(skill)}
+                              className="ml-0.5 hover:bg-app-blue-200 dark:hover:bg-app-blue-800 rounded-full p-0.5 cursor-pointer transition-colors"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {selectedSkills.length === 0 && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center w-full py-2 font-medium">
+                            No skills selected
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
                     </div>
 
                     {/* Available Skills */}
                     {extractedSkills.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           Available Skills (click to add)
                         </label>
@@ -486,7 +860,7 @@ export default function InterviewDetailsPage() {
                     )}
 
                     {/* Add Custom Skill */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
                       <Input
                         placeholder="Add custom skill..."
                         value={newSkill}
@@ -494,7 +868,7 @@ export default function InterviewDetailsPage() {
                         onKeyPress={(e) =>
                           e.key === "Enter" && addCustomSkill()
                         }
-                        className="flex-1"
+                        className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
                         disabled={selectedSkills.length >= 15}
                       />
                       <Button
@@ -504,73 +878,75 @@ export default function InterviewDetailsPage() {
                         disabled={
                           !newSkill.trim() || selectedSkills.length >= 15
                         }
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
                       </Button>
                     </div>
                   </div>
+                </div>
 
-                  {/* Timer Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Interview duration
-                      </label>
-                    </div>
+                {/* Timer Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Interview duration
+                    </label>
+                  </div>
 
-                    <div className="flex justify-center">
-                      <Carousel className="w-full max-w-xs">
-                        <CarouselContent>
-                          {timerOptions.map((time) => {
-                            const status = getTimerStatus(time);
-                            return (
-                              <CarouselItem key={time} className="basis-1/3">
-                                <div className="p-1">
-                                  <Card
-                                    className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                                      selectedTimer === time
-                                        ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
-                                        : status.disabled
-                                        ? "opacity-30 cursor-not-allowed border-red-300 bg-red-50 dark:bg-red-900/10"
-                                        : "hover:border-gray-400"
-                                    }`}
-                                    onClick={() => {
-                                      if (!status.disabled) {
-                                        setSelectedTimer(time);
-                                        setFirstChange(true);
-                                      }
-                                    }}
-                                    title={
-                                      status.disabled
-                                        ? status.reason
-                                        : `Select ${time} minutes`
+                  <div className="flex justify-center">
+                    <Carousel className="w-full max-w-xs">
+                      <CarouselContent>
+                        {timerOptions.map((time) => {
+                          const status = getTimerStatus(time);
+                          return (
+                            <CarouselItem key={time} className="basis-1/3">
+                              <div className="p-1">
+                                <Card
+                                  className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                    selectedTimer === time
+                                      ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                      : status.disabled
+                                      ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
+                                      : "hover:border-gray-400"
+                                  }`}
+                                  onClick={() => {
+                                    if (!status.disabled) {
+                                      setSelectedTimer(time);
+                                      setFirstChange(true);
                                     }
-                                  >
-                                    <CardContent className="flex aspect-square items-center justify-center p-6">
-                                      <span
-                                        className={`text-2xl font-semibold flex flex-col items-center justify-center ${
-                                          selectedTimer === time
-                                            ? "text-app-blue-600 dark:text-app-blue-400"
-                                            : status.disabled
-                                            ? "text-red-500 dark:text-red-400"
-                                            : "text-gray-700 dark:text-gray-300"
-                                        }`}
-                                      >
-                                        <div className="text-2xl font-semibold">
-                                          {time}
-                                        </div>
-                                        <div className="text-xs">minutes</div>
-                                      </span>
-                                    </CardContent>
-                                  </Card>
-                                </div>
-                              </CarouselItem>
-                            );
-                          })}
-                        </CarouselContent>
-                      </Carousel>
-                    </div>
+                                  }}
+                                  title={
+                                    status.disabled
+                                      ? status.reason
+                                      : `Select ${time} minutes`
+                                  }
+                                >
+                                  <CardContent className="flex aspect-square items-center justify-center p-6">
+                                    <span
+                                      className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                        selectedTimer === time
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : status.disabled
+                                          ? "text-gray-400 dark:text-gray-600"
+                                          : "text-gray-700 dark:text-gray-300"
+                                      }`}
+                                    >
+                                      <div className="text-2xl font-semibold">
+                                        {time}
+                                      </div>
+                                      <div className="text-xs">minutes</div>
+                                    </span>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </CarouselItem>
+                          );
+                        })}
+                      </CarouselContent>
+                    </Carousel>
                   </div>
                 </div>
               </CardContent>

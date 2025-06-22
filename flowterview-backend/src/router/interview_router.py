@@ -112,6 +112,13 @@ class InterviewFlowUpdate(BaseModel):
     flow_json: Optional[dict]
 
 
+class JobUpdate(BaseModel):
+    title: Optional[str]
+    description: Optional[str]
+    process_stages: Optional[dict]
+    phone_screen_questions: Optional[List[str]]  # This will be handled separately for phone_screen table
+
+
 async def send_loops_email(to_email: str, template_id: str, variables: Dict[str, Any]) -> None:
     """Send email via Loops transactional API using SMTP"""
     try:
@@ -907,7 +914,18 @@ async def create_interview_from_description(
             },
         )
         flow_id = flow["id"]
-        # 2. Create the job
+
+        phone_screen_id = None
+        # Check for phone interview in process stages (using the key from frontend)
+        phone_interview_enabled = request.process_stages.get("phoneInterview", False)
+        if phone_interview_enabled and request.phone_screen_questions:
+            questions = {
+                "questions": request.phone_screen_questions,
+                "answers": [],
+            }
+            phone_screen = db.execute_query("phone_screen", {"questions": questions})
+            phone_screen_id = phone_screen["id"]
+
         job = db.execute_query(
             "jobs",
             {
@@ -915,12 +933,14 @@ async def create_interview_from_description(
                 "description": request.job_description,
                 "organization_id": request.organization_id,
                 "flow_id": flow_id,
+                "phone_screen_id": phone_screen_id,
+                "process_stages": request.process_stages,
             },
         )
         job_id = job["id"]
-        # 3. Create the interview
-        interview = db.execute_query("interviews", {"job_id": job_id, "status": "draft"})
-        # 4. Return the interview info (with job title)
+
+        interview = db.execute_query("interviews", {"job_id": job_id, "status": "draft", "created_by": request.created_by})
+
         return {
             "id": interview["id"],
             "title": job["title"],
@@ -1158,6 +1178,95 @@ async def update_interview_flow(flow_id: str, updates: InterviewFlowUpdate, requ
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/jobs/{job_id}")
+async def update_job(job_id: str, updates: JobUpdate, request: Request):
+    """Update job with new process stages and phone screen questions"""
+    try:
+        # Require authentication with organization context
+        user_context = require_organization(request)
+
+        # Fetch the current job record
+        current = db.fetch_one("jobs", {"id": job_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # Verify organization access
+        if current.get("organization_id") != user_context.organization_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: Job not in your organization",
+            )
+
+        # Handle phone screen questions separately
+        phone_screen_questions = updates.phone_screen_questions
+        
+        # Build update dictionary with only non-None values (excluding phone_screen_questions)
+        update_dict = {k: v for k, v in updates.dict().items() if v is not None and k != "phone_screen_questions"}
+
+        # Update phone screen if questions are provided
+        if phone_screen_questions is not None:
+            phone_screen_id = current.get("phone_screen_id")
+            
+            if phone_screen_questions:  # If there are questions
+                questions_data = {
+                    "questions": phone_screen_questions,
+                    "answers": [],
+                }
+                
+                if phone_screen_id:
+                    # Update existing phone screen
+                    db.update("phone_screen", {"questions": questions_data}, {"id": phone_screen_id})
+                else:
+                    # Create new phone screen
+                    phone_screen = db.execute_query("phone_screen", {"questions": questions_data})
+                    update_dict["phone_screen_id"] = phone_screen["id"]
+            else:
+                # Remove phone screen reference if no questions
+                if phone_screen_id:
+                    # Optionally delete the phone screen record
+                    # db.delete("phone_screen", {"id": phone_screen_id})
+                    update_dict["phone_screen_id"] = None
+
+        if update_dict:
+            # Update the job
+            db.update("jobs", update_dict, {"id": job_id})
+
+        # Fetch the updated record with phone screen data
+        updated_job = db.fetch_all(
+            table="jobs",
+            select="id,title,description,process_stages,phone_screen_id,phone_screen(questions)",
+            query_params={"id": job_id},
+            limit=1
+        )
+        
+        if not updated_job:
+            raise HTTPException(status_code=404, detail="Updated job not found")
+            
+        job_data = updated_job[0]
+        
+        # Extract phone screen questions for response
+        response_phone_questions = []
+        phone_screen_data = job_data.get("phone_screen")
+        if phone_screen_data and phone_screen_data.get("questions"):
+            questions_data = phone_screen_data.get("questions", {})
+            if isinstance(questions_data, dict) and "questions" in questions_data:
+                response_phone_questions = questions_data["questions"]
+            elif isinstance(questions_data, list):
+                response_phone_questions = questions_data
+
+        return {
+            "id": job_data["id"],
+            "title": job_data.get("title"),
+            "description": job_data.get("description"),
+            "process_stages": job_data.get("process_stages"),
+            "phone_screen_id": job_data.get("phone_screen_id"),
+            "phone_screen_questions": response_phone_questions,
+            "updated_at": job_data.get("updated_at"),
+        }
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{interview_id}")
 async def get_interview(interview_id: str, request: Request):
     """Get interview details with all related data in a single optimized query"""
@@ -1165,10 +1274,10 @@ async def get_interview(interview_id: str, request: Request):
         # Require authentication with organization context
         user_context = require_organization(request)
 
-        # Optimized query with single JOIN (interviews + jobs + interview_flows)
+        # Optimized query with JOINs (interviews + jobs + interview_flows + phone_screen)
         interviews = db.fetch_all(
             table="interviews",
-            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,interview_flows(skills,duration))",
+            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,process_stages,phone_screen_id,interview_flows(skills,duration),phone_screen(questions))",
             query_params={"id": interview_id},
             limit=1,  # Ensure only one record is fetched
         )
@@ -1235,6 +1344,17 @@ async def get_interview(interview_id: str, request: Request):
                 "duration": flow_details_from_job.get("duration"),
             }
 
+        # Extract phone screen questions from the phone_screen table
+        phone_screen_questions = []
+        phone_screen_data = job_data.get("phone_screen")
+        if phone_screen_data and phone_screen_data.get("questions"):
+            # Extract questions from the JSONB structure
+            questions_data = phone_screen_data.get("questions", {})
+            if isinstance(questions_data, dict) and "questions" in questions_data:
+                phone_screen_questions = questions_data["questions"]
+            elif isinstance(questions_data, list):
+                phone_screen_questions = questions_data
+
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
         available_candidates = [c for c in enhanced_candidates if not c["is_invited"]]
@@ -1256,6 +1376,9 @@ async def get_interview(interview_id: str, request: Request):
                 "description": job_data.get("description"),
                 "organization_id": job_data.get("organization_id"),
                 "flow_id": job_data.get("flow_id"),
+                "process_stages": job_data.get("process_stages"),
+                "phone_screen_id": job_data.get("phone_screen_id"),
+                "phone_screen_questions": phone_screen_questions,
             },
             "candidates": {
                 "invited": invited_candidates,

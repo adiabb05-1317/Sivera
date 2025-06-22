@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
-import { authenticatedFetch, getCookie } from "@/lib/auth-client";
+import { getCookie } from "@/lib/auth-client";
 import {
   Carousel,
   CarouselContent,
@@ -292,6 +292,10 @@ export default function GenerateFromDescriptionPage() {
     !processStages.assessments &&
     !processStages.aiInterviewer;
 
+  // Check if phone interview is enabled but no questions are provided
+  const phoneInterviewIncomplete =
+    processStages.phoneInterview && phoneScreenQuestions.length === 0;
+
   // Phone screen question management functions
   const addPhoneScreenQuestion = () => {
     if (newQuestion.trim() && phoneScreenQuestions.length < 5) {
@@ -446,7 +450,9 @@ export default function GenerateFromDescriptionPage() {
                 onClick={() => {
                   handleSave();
                 }}
-                disabled={saving || allProcessStagesDisabled}
+                disabled={
+                  saving || allProcessStagesDisabled || phoneInterviewIncomplete
+                }
                 variant="outline"
                 className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               >

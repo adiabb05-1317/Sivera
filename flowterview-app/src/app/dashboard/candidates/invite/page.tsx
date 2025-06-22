@@ -5,7 +5,15 @@ import { useAddCandidate, useBulkAddCandidates } from "./supabase-hooks";
 import { useJobs } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
 import Link from "next/link";
-import { ArrowLeft, Send, X, Plus, UploadCloud, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  X,
+  Plus,
+  UploadCloud,
+  Check,
+  Info,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,6 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -34,12 +47,22 @@ export default function InviteCandidatesPage() {
   type CandidateRow = {
     name: string;
     email: string;
+    phone: string;
     resume: File | null;
+    resume_url: string;
     id: number;
     status: string;
   };
   const [candidates, setCandidates] = useState<CandidateRow[]>([
-    { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
+    {
+      name: "",
+      email: "",
+      phone: "",
+      resume: null,
+      resume_url: "",
+      id: Date.now(),
+      status: "Applied",
+    },
   ]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +96,15 @@ export default function InviteCandidatesPage() {
   const addCandidateRow = () => {
     setCandidates([
       ...candidates,
-      { name: "", email: "", resume: null, id: Date.now(), status: "Applied" },
+      {
+        name: "",
+        email: "",
+        phone: "",
+        resume: null,
+        resume_url: "",
+        id: Date.now(),
+        status: "Applied",
+      },
     ]);
   };
 
@@ -84,7 +115,7 @@ export default function InviteCandidatesPage() {
 
   const updateCandidate = (
     id: number,
-    field: "name" | "email" | "resume" | "status",
+    field: "name" | "email" | "phone" | "resume" | "resume_url" | "status",
     value: string | File | null
   ) => {
     setCandidates(
@@ -94,9 +125,12 @@ export default function InviteCandidatesPage() {
     );
   };
 
-  // Check if all candidates have uploaded their resumes
+  // Check if all candidates have uploaded their resumes or have resume URLs
   const allCandidatesHaveResumes = () => {
-    return candidates.every((candidate) => candidate.resume !== null);
+    return candidates.every(
+      (candidate) =>
+        candidate.resume !== null || candidate.resume_url.trim() !== ""
+    );
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,20 +147,40 @@ export default function InviteCandidatesPage() {
 
         if (lines.length < 2) {
           setInterviewError(
-            "CSV file must contain at least a header row and one data row."
+            "CSV file must contain at least a header row and one data row. Expected format: full_name, email_address, phone_number, resume_url"
           );
           setIsUploading(false);
           return;
         }
 
-        // Parse CSV (expecting: name, email format)
+        // Parse CSV (expecting: full_name, email_address, phone_number, resume_url format)
         const header = lines[0].toLowerCase();
-        const nameIndex = header.includes("name")
-          ? header.split(",").findIndex((col) => col.trim().includes("name"))
-          : 0;
-        const emailIndex = header.includes("email")
-          ? header.split(",").findIndex((col) => col.trim().includes("email"))
-          : 1;
+        const headerColumns = header.split(",").map((col) => col.trim());
+
+        // Look for exact matches first, then fallback to partial matches
+        const findColumnIndex = (
+          exactNames: string[],
+          partialNames: string[]
+        ) => {
+          // Try exact matches first
+          for (const exactName of exactNames) {
+            const index = headerColumns.indexOf(exactName);
+            if (index !== -1) return index;
+          }
+          // Fallback to partial matches
+          for (const partialName of partialNames) {
+            const index = headerColumns.findIndex((col) =>
+              col.includes(partialName)
+            );
+            if (index !== -1) return index;
+          }
+          return -1;
+        };
+
+        const nameIndex = findColumnIndex(["full_name"], ["name"]);
+        const emailIndex = findColumnIndex(["email_address"], ["email"]);
+        const phoneIndex = findColumnIndex(["phone_number"], ["phone"]);
+        const resumeUrlIndex = findColumnIndex(["resume_url"], ["resume"]);
 
         const newCandidates: CandidateRow[] = [];
 
@@ -136,11 +190,20 @@ export default function InviteCandidatesPage() {
             .split(",")
             .map((v) => v.trim().replace(/"/g, ""));
 
-          if (values.length >= 2 && values[nameIndex] && values[emailIndex]) {
+          // Check if we have at least name and email (required fields)
+          if (
+            nameIndex !== -1 &&
+            emailIndex !== -1 &&
+            values[nameIndex] &&
+            values[emailIndex]
+          ) {
             newCandidates.push({
               name: values[nameIndex],
               email: values[emailIndex],
+              phone: phoneIndex !== -1 ? values[phoneIndex] || "" : "",
               resume: null,
+              resume_url:
+                resumeUrlIndex !== -1 ? values[resumeUrlIndex] || "" : "",
               id: Date.now() + i,
               status: "Applied",
             });
@@ -149,16 +212,15 @@ export default function InviteCandidatesPage() {
 
         if (newCandidates.length > 0) {
           setCandidates(newCandidates);
-          setInterviewError(
-            `Imported ${newCandidates.length} candidates from CSV.`
-          );
         } else {
           setInterviewError(
-            "No valid candidates found in CSV. Please check the format."
+            "No valid candidates found in CSV. Please ensure the format is: full_name, email_address, phone_number, resume_url"
           );
         }
       } catch (error) {
-        setInterviewError("Error parsing CSV file. Please check the format.");
+        setInterviewError(
+          "Error parsing CSV file. Please ensure the format is: full_name, email_address, phone_number, resume_url"
+        );
       } finally {
         setIsUploading(false);
       }
@@ -233,7 +295,9 @@ export default function InviteCandidatesPage() {
       const candidatesData = candidates.map((candidate) => ({
         name: candidate.name,
         email: candidate.email,
+        phone: candidate.phone,
         resumeFile: candidate.resume || undefined,
+        resume_url: candidate.resume_url,
         status: candidate.status as any, // Convert to CandidateStatus
       }));
 
@@ -338,7 +402,7 @@ export default function InviteCandidatesPage() {
                     )}
                   </div>
                 )}
-                <div>
+                <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -357,6 +421,90 @@ export default function InviteCandidatesPage() {
                       </>
                     )}
                   </Button>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        type="button"
+                      >
+                        <Info className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-96 p-5" align="end">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
+                            CSV Format Requirements
+                          </h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+                            Your CSV file should have the following columns
+                            (exact names):
+                          </p>
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono border">
+                            full_name, email_address, phone_number, resume_url
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
+                            Example CSV Content:
+                          </h4>
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono whitespace-pre-line leading-relaxed border overflow-x-auto">
+                            {`full_name,email_address,phone_number,resume_url
+John Doe,john@example.com,+1234567890,https://example.com/resume.pdf
+Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
+                            Bulk Onboarding Process:
+                          </h4>
+                          <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-2">
+                            <li className="flex items-start gap-2">
+                              <span className="text-app-blue-500 font-semibold">
+                                •
+                              </span>
+                              <span>
+                                All candidates will be added to your
+                                organization
+                              </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-app-blue-500 font-semibold">
+                                •
+                              </span>
+                              <span>
+                                Candidates will be linked to the selected
+                                interview
+                              </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-app-blue-500 font-semibold">
+                                •
+                              </span>
+                              <span>
+                                Resume URLs should be publicly accessible PDF
+                                links
+                              </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-app-blue-500 font-semibold">
+                                •
+                              </span>
+                              <span>
+                                Invalid entries will be skipped automatically
+                              </span>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
                   <input
                     id="csv-upload"
                     type="file"
@@ -411,33 +559,77 @@ export default function InviteCandidatesPage() {
                         updateCandidate(candidate.id, "email", e.target.value)
                       }
                     />
-                    <div className="flex items-center space-x-4">
-                      <label
-                        htmlFor={`resume-upload-${candidate.id}`}
-                        className="cursor-pointer"
-                      >
-                        <Button asChild variant="outline">
-                          <span>Choose File</span>
-                        </Button>
-                      </label>
-                      <span className="text-sm text-gray-700">
-                        {candidate.resume?.name || "No file chosen"}
-                      </span>
-                    </div>
-
+                    <span className="text-xs opacity-75 mb-3">
+                      Phone number of the candidate
+                    </span>
                     <Input
-                      id={`resume-upload-${candidate.id}`}
-                      type="file"
-                      accept=".pdf,.doc,.docx"
+                      type="text"
+                      placeholder="+1 234 567 8900"
+                      value={candidate.phone}
                       onChange={(e) =>
-                        updateCandidate(
-                          candidate.id,
-                          "resume",
-                          e.target.files?.[0] ?? null
-                        )
+                        updateCandidate(candidate.id, "phone", e.target.value)
                       }
-                      className="hidden"
                     />
+
+                    {/* Resume Section - Show URL if exists, otherwise show file upload */}
+                    {candidate.resume_url ? (
+                      <div className="space-y-2">
+                        <span className="text-xs opacity-75 mb-3">Resume</span>
+                        <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <div className="flex-shrink-0">
+                            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                              Provided via CSV upload
+                            </p>
+                            <a
+                              href={candidate.resume_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 underline truncate block"
+                            >
+                              {candidate.resume_url}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <span className="text-xs opacity-75 mb-3">
+                          Upload Resume File
+                        </span>
+                        <div className="flex items-center space-x-4">
+                          <label
+                            htmlFor={`resume-upload-${candidate.id}`}
+                            className="cursor-pointer"
+                          >
+                            <Button asChild variant="outline">
+                              <span>Choose File</span>
+                            </Button>
+                          </label>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {candidate.resume?.name || "No file chosen"}
+                          </span>
+                        </div>
+
+                        <Input
+                          id={`resume-upload-${candidate.id}`}
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={(e) =>
+                            updateCandidate(
+                              candidate.id,
+                              "resume",
+                              e.target.files?.[0] ?? null
+                            )
+                          }
+                          className="hidden"
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
