@@ -256,6 +256,7 @@ export async function addBulkCandidates({
     name: string;
     email: string;
     resumeFile?: File;
+    resume_url?: string;
     status?: CandidateStatus;
   }>;
   jobId: string;
@@ -268,14 +269,17 @@ export async function addBulkCandidates({
 
   // Step 1: Upload all resumes in parallel
   const resumeUploadPromises = candidates.map(async (candidate, index) => {
-    if (candidate.resumeFile) {
+    if (candidate.resumeFile && !candidate.resume_url) {
       const resume_url = await uploadResume(
         candidate.resumeFile,
         candidate.name
       );
       return { index, resume_url };
+    } else if (candidate.resume_url) {
+      return { index, resume_url: candidate.resume_url };
+    } else {
+      return { index, resume_url: null, error: "No resume provided" };
     }
-    return { index, resume_url: null };
   });
 
   const resumeResults = await Promise.all(resumeUploadPromises);
