@@ -27,11 +27,12 @@ async def rtvi_connect(request: Request):
     session_id = str(uuid.uuid4())
     body = await request.json()
     job_id = body.get("job_id")
+    candidate_id = body.get("candidate_id")
 
     try:
         proc = subprocess.Popen(
             [
-                f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id} -j {job_id}"
+                f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id} -j {job_id} -c {candidate_id}"
             ],
             shell=True,
             bufsize=1,

@@ -29,6 +29,7 @@ interface TokenData {
     interview_id: string;
     bot_token: string;
     room_url: string;
+    candidate_id: string;
   };
 }
 
@@ -40,6 +41,7 @@ interface InterviewData {
   jobId: string;
   botToken: string;
   roomUrl: string;
+  candidateId: string;
 }
 
 type Step =
@@ -64,6 +66,7 @@ function InterviewContent() {
     jobId: "",
     botToken: "",
     roomUrl: "",
+    candidateId: "",
   });
   const [formData, setFormData] = useState({
     name: "",
@@ -105,6 +108,9 @@ function InterviewContent() {
         // Update interview data from backend response
         if (data.interview_data) {
           usePathStore.setState({ jobId: data.interview_data.job_id });
+          usePathStore.setState({
+            candidateId: data.interview_data.candidate_id,
+          });
           setInterviewData({
             title: data.interview_data.job_title,
             company: data.interview_data.company,
@@ -113,6 +119,7 @@ function InterviewContent() {
             jobId: data.interview_data.job_id,
             botToken: data.interview_data.bot_token,
             roomUrl: data.interview_data.room_url,
+            candidateId: data.interview_data.candidate_id,
           });
         }
 
@@ -151,6 +158,7 @@ function InterviewContent() {
       formDataToSend.append("name", formData.name);
       formDataToSend.append("bot_token", interviewData.botToken);
       formDataToSend.append("room_url", interviewData.roomUrl);
+      // formDataToSend.append("candidate_id", usePathStore.getState().candidateId);
 
       const response = await fetch(
         "http://localhost:8010/api/v1/interviews/complete-registration",
@@ -242,8 +250,16 @@ function InterviewContent() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-red-600">Verification Failed</CardTitle>
-            <CardDescription>{error}</CardDescription>
+            <CardTitle className="text-red-600">
+              {error === "CANDIDATE_ALREADY_STARTED_OR_FINISHED"
+                ? "Interview expired."
+                : "Verification Failed"}
+            </CardTitle>
+            <CardDescription>
+              {error === "CANDIDATE_ALREADY_STARTED_OR_FINISHED"
+                ? "Please contact the recruiter."
+                : error}
+            </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-600 mb-4">

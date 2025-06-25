@@ -619,34 +619,42 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             logger.error(f"Error comparing dates: {str(date_error)}")
             return {"success": False, "message": "Error validating token expiration"}
 
-        # Check if user already exists
-        user = db.fetch_one("users", {"email": token_data["email"]})
+        # Check if candidate already exists
+        candidate = db.fetch_one("candidates", {"email": token_data["email"]})
 
-        if user:
-            # User exists, create a candidate_interview and return direct URL
+        if candidate:
+            # Candidate exists, create a candidate_interview and return direct URL
             interview_id = token_data.get("interview_id")
             if not interview_id:
                 return {"success": False, "message": "No interview associated with this token"}
 
-            candidate = db.fetch_one("candidates", {"email": token_data["email"]})
-            if not candidate:
-                return {"success": False, "message": "Candidate record not found for existing user"}
-
             # Create candidate_interview record
             try:
-                candidate_interview = db.execute_query(
+                # here if the candidate_interview already exists, then we need to reject because the candidate has already started or have finished the interview
+                existing_candidate_interview = db.fetch_one(
                     "candidate_interviews",
                     {"interview_id": interview_id, "candidate_id": candidate["id"]},
                 )
-                candidate_interview_id = candidate_interview["id"]
+                if existing_candidate_interview:
+                    # also delete the verification token
+                    db.delete("verification_tokens", {"token": token})
+                    return {
+                        "success": False,
+                        "message": "CANDIDATE_ALREADY_STARTED_OR_FINISHED",
+                    }
+                db.execute_query(
+                    "candidate_interviews",
+                    {
+                        "interview_id": interview_id,
+                        "candidate_id": candidate["id"],
+                        "room_url": "abcde",
+                        "bot_token": "fghij",
+                    },
+                )
             except Exception as e:
                 logger.error(f"Failed to create candidate_interview: {e}")
                 return {"success": False, "message": "Failed to set up interview session."}
 
-            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
-            interview_url = f"{frontend_url}/interview/{candidate_interview_id}/start"
-
-            # Fetch interview data for existing user too
             interview_data = None
             job_data = None
             flow_data = None
@@ -664,7 +672,6 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             return {
                 "success": True,
                 "message": "Token verified successfully",
-                "interview_url": interview_url,
                 "interview_data": {
                     "job_id": job_data.get("id") if job_data else None,
                     "job_title": job_data.get("title")
@@ -676,10 +683,11 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                     "interview_id": interview_id,
                     "bot_token": "abcde",
                     "room_url": "fghij",
+                    "candidate_id": candidate["id"],
                 },
             }
         else:
-            # New user, needs registration
+            # New candidate, needs registration
             # Fetch actual interview data to send to frontend
             interview_data = None
             job_data = None
@@ -719,6 +727,7 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                     "interview_id": interview_id,
                     "bot_token": "abcde",
                     "room_url": "fghij",
+                    "candidate_id": candidate["id"],
                 },
             }
 
@@ -860,8 +869,8 @@ async def complete_registration(
                     {
                         "interview_id": interview_id,
                         "candidate_id": candidate_id,
-                        "room_url": room_url,
-                        "bot_token": bot_token,
+                        "room_url": "abcde",
+                        "bot_token": "fghij",
                         "started_at": datetime.now().isoformat(),
                     },
                 )

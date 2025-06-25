@@ -294,6 +294,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           videoTrack: videoTrack,
           requestData: {
             job_id: usePathStore.getState().jobId,
+            candidate_id: usePathStore.getState().candidateId,
           },
         },
         transport: new DailyTransport({

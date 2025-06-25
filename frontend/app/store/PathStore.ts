@@ -40,6 +40,10 @@ type TPathStore = {
   jobId: string;
   setJobId: (jobId: string) => void;
 
+  // Candidate ID
+  candidateId: string;
+  setCandidateId: (candidateId: string) => void;
+
   // Toast management
   showToast: (message: string, type: "info" | "success" | "error") => void;
   toasts: Array<{ message: string; type: "info" | "success" | "error" }>;
@@ -157,6 +161,10 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Job ID
   jobId: "",
   setJobId: (jobId: string) => set({ jobId }),
+
+  // Candidate ID
+  candidateId: "",
+  setCandidateId: (candidateId: string) => set({ candidateId }),
 
   // UI States
   isHeaderVisible: true,
