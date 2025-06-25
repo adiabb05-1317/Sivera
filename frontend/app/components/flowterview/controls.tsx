@@ -90,7 +90,6 @@ const Controls = ({
       // Set call status directly to ensure UI updates
       setCallStatus("joining");
       await joinAndLeaveCallHandler("join");
-      console.log("Voice agent connected successfully!");
     } catch (error) {
       console.error("Error connecting to voice chat:", error);
       setTtsConnecting(false);
@@ -120,7 +119,7 @@ const Controls = ({
   // Auto-connect on component mount if needed
   useEffect(() => {
     if (callStatus === "initial" && permissionGranted) {
-      console.log("Auto-connecting on component mount");
+      // Auto-connect logic can be added here if needed
     }
   }, []);
 

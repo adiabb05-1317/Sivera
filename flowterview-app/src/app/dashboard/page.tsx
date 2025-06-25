@@ -11,72 +11,52 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { useDashboard } from "@/hooks/useStores";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [recentInterviews, setRecentInterviews] = useState<
-    Array<{
-      id: string;
-      title: string;
-      candidates: number;
-      status: string;
-      date: string;
-    }>
-  >([]);
 
-  // Placeholder data - in a real application, this would come from an API
+  // Use our dashboard hook for comprehensive data
+  const { candidates, jobs, interviews, isLoading, hasError, refreshAll } =
+    useDashboard();
+
+  // Calculate stats from store data
   const stats = [
     {
       id: 1,
       name: "Active Interviews",
-      value: "12",
+      value: interviews.getActiveInterviews().length.toString(),
       icon: FileText,
     },
     {
       id: 2,
       name: "Total Candidates",
-      value: "48",
+      value: candidates.getCandidatesCount().toString(),
       icon: Users,
     },
     {
       id: 3,
       name: "Completion Rate",
-      value: "92%",
+      value: "92%", // You can calculate this from actual data
       icon: Activity,
     },
   ];
 
-  // Fetch interviews for recentInterviews
-  useEffect(() => {
-    const fetchRecent = async () => {
-      setLoading(true);
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews`
-        );
-        if (!resp.ok) throw new Error("Failed to fetch interviews");
-        const data = await resp.json();
-        setRecentInterviews(data.slice(0, 4));
-      } catch (err: unknown) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch interviews";
-        toast({
-          title: "Error",
-          description: errorMessage,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRecent();
-  }, []);
+  // Get recent interviews (limited to 4)
+  const recentInterviews = interviews.allInterviews.slice(0, 4);
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading dashboard data</p>
+          <Button onClick={refreshAll} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -96,7 +76,7 @@ export default function DashboardPage() {
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
                     {stat.name}
                   </dt>
-                  <dd className="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
+                  <dd className="mt-2 text-4xl font-bold text-gray-700 dark:text-white">
                     {stat.value}
                   </dd>
                 </div>
@@ -114,11 +94,7 @@ export default function DashboardPage() {
           </h2>
         </div>
         <div>
-          {loading ? (
-            <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
-              Loading interviews...
-            </div>
-          ) : recentInterviews.length > 0 ? (
+          {recentInterviews.length > 0 ? (
             recentInterviews.map((interview) => (
               <div
                 key={interview.id}
@@ -146,8 +122,9 @@ export default function DashboardPage() {
                     </Badge>
                   </div>
                   <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                    <span>{interview.candidates} candidates</span>
+                    <span>{interview.candidates || 0} candidates</span>
                     <span className="mx-1">&middot;</span>
+                    <span>{interview.date}</span>
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">
@@ -160,7 +137,7 @@ export default function DashboardPage() {
               No interviews found.
             </div>
           )}
-          {recentInterviews.length === 4 && !loading && (
+          {recentInterviews.length === 4 && !isLoading && (
             <Button
               onClick={() => router.push("/dashboard/interviews")}
               className="cursor-pointer w-full h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 border-0"
@@ -205,10 +182,10 @@ export default function DashboardPage() {
               onClick={() =>
                 router.push("/dashboard/interviews/from-description")
               }
-              variant="outline"
               className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              variant="outline"
             >
-              Generate Workflow
+              Create Interview
             </Button>
           </CardFooter>
         </Card>

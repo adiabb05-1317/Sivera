@@ -1,15 +1,16 @@
 import asyncio
+from datetime import datetime, timedelta
+import secrets
+from typing import Any, Dict, List
 import uuid
-from datetime import datetime
-from typing import Dict, List, Any
-from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
-from pydantic import BaseModel, EmailStr, Field
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from loguru import logger
+from pydantic import BaseModel, EmailStr, Field
 
+from src.lib.manager import ConnectionManager
+from src.router.interview_router import send_verification_email
 from storage.db_manager import DatabaseManager
-from src.router.interview_router import send_interview_email
 
 router = APIRouter(
     prefix="/api/v1/invites",
@@ -26,6 +27,7 @@ class BulkInviteRequest(BaseModel):
     emails: List[EmailStr] = Field(..., description="List of candidate emails")
     names: List[str] = Field(..., description="List of candidate names")
     job_title: str = Field(..., description="Job title for the interview")
+    organization_id: str = Field(..., description="Organization ID")
 
 
 class BulkInviteResponse(BaseModel):
@@ -38,7 +40,7 @@ class BulkInviteResponse(BaseModel):
 
 
 async def create_single_room_and_token(
-    manager, candidate_id: str, interview_id: str
+    manager: ConnectionManager, candidate_id: str, interview_id: str
 ) -> Dict[str, Any]:
     """Create a single room and token for a candidate"""
     try:
@@ -49,9 +51,7 @@ async def create_single_room_and_token(
         )
 
         if existing_candidate_interview:
-            logger.info(
-                f"Candidate interview already exists for candidate {candidate_id} in interview {interview_id}"
-            )
+            logger.info(f"Candidate interview already exists for candidate {candidate_id} in interview {interview_id}")
             return {
                 "success": True,
                 "candidate_id": candidate_id,
@@ -91,38 +91,54 @@ async def create_single_room_and_token(
         }
 
     except Exception as e:
-        logger.error(
-            f"Failed to create room and token for candidate {candidate_id}: {e}"
-        )
+        logger.error(f"Failed to create room and token for candidate {candidate_id}: {e}")
         return {"success": False, "candidate_id": candidate_id, "error": str(e)}
 
 
-async def send_single_email(
-    email: str, name: str, job_title: str, room_url: str
+async def create_verification_token_and_send_email(
+    email: str, name: str, job_title: str, interview_id: str, organization_id: str
 ) -> Dict[str, Any]:
-    """Send a single email to a candidate"""
+    """Create verification token and send email to candidate (same as single invite flow)"""
     try:
-        # Create interview URL with room URL
-        interview_url = f"{room_url}?name={name}"
+        # Generate secure token (same as single invite verification)
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now() + timedelta(days=7)
 
-        await send_interview_email(email, name, job_title, interview_url)
+        # Store token in database with exact same structure as single invites
+        token_data = {
+            "token": str(token),
+            "email": email,
+            "name": name,
+            "organization_id": str(organization_id),
+            "job_title": job_title,
+            "interview_id": interview_id,
+            "expires_at": expires_at.isoformat(),
+        }
 
-        logger.info(f"Email sent successfully to {email}")
+        # Store the token in the database
+        result = db.execute_query("verification_tokens", token_data)
+        logger.info(f"Verification token created for {email}")
 
-        return {"success": True, "email": email, "name": name}
+        # Send verification email using the exact same function as single invites
+        await send_verification_email(email, name, job_title, token)
+
+        logger.info(f"Verification email sent successfully to {email}")
+
+        return {"success": True, "email": email, "name": name, "token": token}
 
     except Exception as e:
-        logger.error(f"Failed to send email to {email}: {e}")
+        logger.error(f"Failed to create token and send email to {email}: {e}")
         return {"success": False, "email": email, "name": name, "error": str(e)}
 
 
 async def process_bulk_invites_background(
-    manager,
+    manager: ConnectionManager,
     interview_id: str,
     candidate_ids: List[str],
     emails: List[EmailStr],
     names: List[str],
     job_title: str,
+    organization_id: str,
 ):
     """Background task to process bulk invites"""
     logger.info(f"Starting bulk invite processing for {len(candidate_ids)} candidates")
@@ -130,8 +146,7 @@ async def process_bulk_invites_background(
     # Phase 1: Create rooms and tokens concurrently
     logger.info("Phase 1: Creating rooms and tokens...")
     room_creation_tasks = [
-        create_single_room_and_token(manager, candidate_id, interview_id)
-        for candidate_id in candidate_ids
+        create_single_room_and_token(manager, candidate_id, interview_id) for candidate_id in candidate_ids
     ]
 
     # Use asyncio.gather with return_exceptions=True to handle failures gracefully
@@ -143,9 +158,7 @@ async def process_bulk_invites_background(
 
     for i, result in enumerate(room_results):
         if isinstance(result, Exception):
-            logger.error(
-                f"Room creation failed for candidate {candidate_ids[i]}: {result}"
-            )
+            logger.error(f"Room creation failed for candidate {candidate_ids[i]}: {result}")
             failed_rooms.append(
                 {
                     "candidate_id": candidate_ids[i],
@@ -160,7 +173,7 @@ async def process_bulk_invites_background(
                     "candidate_id": result["candidate_id"],
                     "email": emails[i],
                     "name": names[i],
-                    "room_url": result["room_url"],
+                    "candidate_interview_id": result["candidate_interview_id"],
                     "already_existed": result.get("already_existed", False),
                 }
             )
@@ -182,14 +195,14 @@ async def process_bulk_invites_background(
         f"Phase 1 complete: {len(new_rooms)} new rooms, {len(existing_rooms)} existing rooms, {len(failed_rooms)} failed"
     )
 
-    # Phase 2: Send emails concurrently for successful room creations
-    if new_rooms:
-        logger.info("Phase 2: Sending emails...")
+    # Phase 2: Create verification tokens and send emails for all successful rooms
+    if successful_rooms:
+        logger.info("Phase 2: Creating verification tokens and sending emails...")
         email_tasks = [
-            send_single_email(
-                room_data["email"], room_data["name"], job_title, room_data["room_url"]
+            create_verification_token_and_send_email(
+                room_data["email"], room_data["name"], job_title, interview_id, organization_id
             )
-            for room_data in new_rooms
+            for room_data in successful_rooms
         ]
 
         email_results = await asyncio.gather(*email_tasks, return_exceptions=True)
@@ -200,41 +213,35 @@ async def process_bulk_invites_background(
 
         for i, result in enumerate(email_results):
             if isinstance(result, Exception):
-                logger.error(
-                    f"Email sending failed for {new_rooms[i]['email']}: {result}"
-                )
+                logger.error(f"Email sending failed for {successful_rooms[i]['email']}: {result}")
                 failed_emails += 1
             elif result.get("success"):
                 successful_emails += 1
             else:
                 logger.error(
-                    f"Email sending failed for {new_rooms[i]['email']}: {result.get('error', 'Unknown error')}"
+                    f"Email sending failed for {successful_rooms[i]['email']}: {result.get('error', 'Unknown error')}"
                 )
                 failed_emails += 1
 
-        logger.info(
-            f"Phase 2 complete: {successful_emails} emails sent, {failed_emails} failed"
-        )
+        logger.info(f"Phase 2 complete: {successful_emails} emails sent, {failed_emails} failed")
 
     total_processed = len(successful_rooms)
     total_failed = len(failed_rooms)
 
-    logger.info(
-        f"Bulk invite processing complete: {total_processed} successful, {total_failed} failed"
-    )
+    logger.info(f"Bulk invite processing complete: {total_processed} successful, {total_failed} failed")
 
     # Update interview status or log completion
     try:
         # Update the interview record to include the successfully invited candidates
-        if new_rooms:
+        if successful_rooms:
             # Get current interview data
             current_interview = db.fetch_one("interviews", {"id": interview_id})
             if current_interview:
                 current_invited = current_interview.get("candidates_invited", [])
-                new_candidate_ids = [room["candidate_id"] for room in new_rooms]
+                invited_candidate_ids = [room["candidate_id"] for room in successful_rooms]
 
                 # Merge with existing invited candidates (avoid duplicates)
-                updated_invited = list(set(current_invited + new_candidate_ids))
+                updated_invited = list(set(current_invited + invited_candidate_ids))
 
                 # Update the interview record using the new array method
                 db.update_array_field(
@@ -244,9 +251,7 @@ async def process_bulk_invites_background(
                     {"id": interview_id},
                 )
 
-                logger.info(
-                    f"Updated interview {interview_id} with {len(new_candidate_ids)} new invited candidates"
-                )
+                logger.info(f"Updated interview {interview_id} with {len(invited_candidate_ids)} invited candidates")
     except Exception as e:
         logger.error(f"Failed to update interview record: {e}")
 
@@ -261,18 +266,14 @@ async def bulk_invite_candidates(
     """
     try:
         # Validate input lengths match
-        if not (
-            len(request.candidate_ids) == len(request.emails) == len(request.names)
-        ):
+        if not (len(request.candidate_ids) == len(request.emails) == len(request.names)):
             raise HTTPException(
                 status_code=400,
                 detail="candidate_ids, emails, and names lists must have the same length",
             )
 
         if len(request.candidate_ids) == 0:
-            raise HTTPException(
-                status_code=400, detail="At least one candidate must be provided"
-            )
+            raise HTTPException(status_code=400, detail="At least one candidate must be provided")
 
         # Validate interview exists
         interview = db.fetch_one("interviews", {"id": request.interview_id})
@@ -282,15 +283,11 @@ async def bulk_invite_candidates(
         # Get the manager from app state
         manager = app_request.app.state.manager
         if not manager:
-            raise HTTPException(
-                status_code=500, detail="Connection manager not initialized"
-            )
+            raise HTTPException(status_code=500, detail="Connection manager not initialized")
 
         total_invites = len(request.candidate_ids)
 
-        logger.info(
-            f"Starting bulk invite for {total_invites} candidates for interview {request.interview_id}"
-        )
+        logger.info(f"Starting bulk invite for {total_invites} candidates for interview {request.interview_id}")
 
         # Start background processing
         background_tasks.add_task(
@@ -301,6 +298,7 @@ async def bulk_invite_candidates(
             request.emails,
             request.names,
             request.job_title,
+            request.organization_id,
         )
 
         return BulkInviteResponse(
@@ -322,14 +320,10 @@ async def get_bulk_invite_status(interview_id: str, request: Request):
     """Get the status of bulk invites for an interview"""
     try:
         # Get all candidate interviews for this interview
-        candidate_interviews = db.fetch_all(
-            "candidate_interviews", {"interview_id": interview_id}
-        )
+        candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview_id})
 
         total_candidates = len(candidate_interviews)
-        scheduled_count = len(
-            [ci for ci in candidate_interviews if ci.get("status") == "scheduled"]
-        )
+        scheduled_count = len([ci for ci in candidate_interviews if ci.get("status") == "scheduled"])
 
         return {
             "interview_id": interview_id,

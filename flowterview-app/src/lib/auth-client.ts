@@ -23,7 +23,10 @@ export const getCookie = (name: string): string | null => {
 };
 
 export const deleteCookie = (name: string) => {
+  // Multiple attempts to ensure cookie is deleted
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/`;
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=${window.location.hostname}`;
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=.${window.location.hostname}`;
 };
 
 // User context interface
@@ -112,6 +115,14 @@ export const authenticatedFetch = async (
 ): Promise<Response> => {
   const userContext = getUserContext();
 
+  // Only log for critical auth issues to reduce noise
+  if (!userContext) {
+    console.warn(
+      "⚠️ No user context found for authenticated request to:",
+      url.replace(process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "", "[BACKEND]")
+    );
+  }
+
   const headers = new Headers(options.headers || {});
 
   if (userContext) {
@@ -128,18 +139,32 @@ export const authenticatedFetch = async (
     } = await supabase.auth.getSession();
     if (session?.access_token) {
       headers.set("Authorization", `Bearer ${session.access_token}`);
+    } else if (!userContext) {
+      console.warn("⚠️ No session token or user context available");
     }
   } catch (error) {
-    console.warn("Failed to get session token:", error);
+    console.warn("❌ Failed to get session token:", error);
   }
 
-  console.log(headers);
-
-  return fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
     credentials: "include", // Include cookies in requests
   });
+
+  // Log errors or empty responses for debugging
+  if (!response.ok) {
+    console.error("📡 API Error:", {
+      url: url.replace(
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "",
+        "[BACKEND]"
+      ),
+      status: response.status,
+      statusText: response.statusText,
+    });
+  }
+
+  return response;
 };
 
 // Simple login function
@@ -182,10 +207,17 @@ export const signup = async (email: string, password: string) => {
   return { data, error };
 };
 
-// Simple logout function
 export const logout = async () => {
-  clearUserContext();
+  // 1. Supabase logout (this should clear all sb-* localStorage)
   const { error } = await supabase.auth.signOut();
+
+  // 2. Clear our custom cookies
+  clearUserContext();
+
+  if (error) {
+    console.warn("Supabase logout error:", error);
+  }
+
   return { error };
 };
 
@@ -201,7 +233,6 @@ export const getSession = async () => {
   return { session: data.session, error };
 };
 
-// Set session from tokens (useful for auth callback)
 export const setSessionFromTokens = async (
   accessToken: string,
   refreshToken?: string
@@ -218,7 +249,6 @@ export const setSessionFromTokens = async (
   return result;
 };
 
-// Initialize user context on app start
 export const initializeUserContext = async () => {
   try {
     const {

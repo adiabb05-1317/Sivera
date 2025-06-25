@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS interview_flows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR NOT NULL,
     flow_json JSONB NOT NULL,
+    skills VARCHAR[] NOT NULL,
+    duration INT NOT NULL,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

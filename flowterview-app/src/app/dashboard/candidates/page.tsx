@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { useState, useEffect } from "react";
-
-import { useCandidatesSortedByJob } from "./supabase-hooks";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -19,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { useJobs } from "./invite/supabase-hooks";
 import {
   Popover,
   PopoverContent,
@@ -35,6 +32,7 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
+import { useCandidates, useJobs } from "@/hooks/useStores";
 
 const CandidateViewDialog = ({
   candidate,
@@ -91,8 +89,15 @@ export default function CandidatesPage() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
   const router = useRouter();
-  const { candidates, loading, error, reload } = useCandidatesSortedByJob();
-  const { jobs, loadJobs } = useJobs();
+
+  // Use our new store hooks instead of the old supabase hooks
+  const {
+    candidates,
+    isLoading: loading,
+    error,
+    refresh: reload,
+  } = useCandidates();
+  const { jobs, fetchJobs } = useJobs();
 
   // Status badge color mapping (for capitalized statuses)
   const statusColors: Record<string, string> = {
@@ -126,7 +131,7 @@ export default function CandidatesPage() {
   ).map((str) => JSON.parse(str));
 
   useEffect(() => {
-    loadJobs();
+    fetchJobs();
   }, []);
 
   useEffect(() => {
@@ -201,12 +206,7 @@ export default function CandidatesPage() {
           title: "Interview invitation sent",
           description: `Interview invitation sent to ${candidate.email}`,
           action: (
-            <ToastAction
-              altText="Undo"
-              onClick={() =>
-                console.log("Undo sending invite to", candidate.email)
-              }
-            >
+            <ToastAction altText="Undo" onClick={() => {}}>
               Undo
             </ToastAction>
           ),
@@ -394,40 +394,51 @@ export default function CandidatesPage() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredCandidates.map((candidate) => (
-                <tr
-                  key={candidate.id}
-                  className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
-                  onClick={() => setSelectedCandidate(candidate)}
-                >
-                  <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {candidate.name}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.email}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.jobs?.title || "-"}
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm">
-                    <span
-                      className={
-                        statusColors[candidate.status] ||
-                        "bg-gray-100 text-gray-800"
-                      }
-                    >
-                      <Badge variant="outline">
-                        {statusLabels[candidate.status] || candidate.status}
-                      </Badge>
-                    </span>
-                  </td>
-                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {candidate.created_at
-                      ? new Date(candidate.created_at).toLocaleDateString()
-                      : "-"}
+              {filteredCandidates.length > 0 ? (
+                filteredCandidates.map((candidate) => (
+                  <tr
+                    key={candidate.id}
+                    className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                    onClick={() => setSelectedCandidate(candidate)}
+                  >
+                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      {candidate.name}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.email}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.jobs?.title || "-"}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm">
+                      <span
+                        className={
+                          statusColors[candidate.status] ||
+                          "bg-gray-100 text-gray-800"
+                        }
+                      >
+                        <Badge variant="outline">
+                          {statusLabels[candidate.status] || candidate.status}
+                        </Badge>
+                      </span>
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {candidate.created_at
+                        ? new Date(candidate.created_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-300"
+                  >
+                    No candidates found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

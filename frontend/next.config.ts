@@ -20,7 +20,14 @@ const nextConfig = {
   output: "standalone",
 
   // Optimize webpack for faster dev builds and fix server-only package bundling
-  webpack: (config, { isServer, dev, webpack }) => {
+  webpack: (
+    config: any,
+    {
+      isServer,
+      dev,
+      webpack,
+    }: { isServer: boolean; dev: boolean; webpack: any }
+  ) => {
     // Prevent server-only packages from being bundled in client-side code
     if (!isServer) {
       // Ignore problematic dynamic imports
@@ -60,19 +67,20 @@ const nextConfig = {
       };
     }
 
-    // Only apply expensive source map processing in production
-    if (!isServer && !dev) {
-      // Add a rule to handle source maps for problematic packages (production only)
+    // Handle source maps for problematic packages in both dev and production
+    if (!isServer) {
       config.module.rules.push({
         test: /\.js$/,
         enforce: "pre",
         use: ["source-map-loader"],
         exclude: [
-          /node_modules[\\/].+[\\/]daily-esm\.js/,
-          /node_modules[\\/].+[\\/]@pipecat-ai[\\/].+\.js/,
-          /node_modules[\\/].+[\\/]@opentelemetry[\\/].+\.js/,
-          /node_modules[\\/].+[\\/]require-in-the-middle[\\/].+\.js/,
-          /node_modules[\\/].+[\\/]monaco-editor[\\/].+\.js/,
+          // Exclude @daily-co/daily-js to prevent source map errors
+          /node_modules[\\/]@daily-co[\\/]daily-js[\\/]/,
+          /node_modules[\\/].+[\\/]daily-esm\.js$/,
+          /node_modules[\\/].+[\\/]@pipecat-ai[\\/].+\.js$/,
+          /node_modules[\\/].+[\\/]@opentelemetry[\\/].+\.js$/,
+          /node_modules[\\/].+[\\/]require-in-the-middle[\\/].+\.js$/,
+          /node_modules[\\/].+[\\/]monaco-editor[\\/].+\.js$/,
         ],
       });
     }
@@ -80,6 +88,8 @@ const nextConfig = {
     // Suppress warnings for both dev and production
     config.ignoreWarnings = [
       { message: /Failed to parse source map/ },
+      { message: /Failed to get source map.*@daily-co\/daily-js/ },
+      { message: /Invalid URL.*daily-esm\.js/ },
       { message: /Critical dependency.*require-in-the-middle/ },
       { message: /Critical dependency.*@opentelemetry/ },
       { message: /the request of a dependency is an expression/ },
@@ -88,7 +98,7 @@ const nextConfig = {
       { message: /Critical dependency.*monaco-editor/ },
     ];
 
-    // Optimize for development speed
+    // Development specific optimizations
     if (dev) {
       // Disable source maps in development for faster builds
       config.devtool = false;
@@ -105,7 +115,6 @@ const nextConfig = {
         ...config.resolve.alias,
       };
 
-      // Reduce the number of modules processed in development
       config.optimization = {
         ...config.optimization,
         removeAvailableModules: false,

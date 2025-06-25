@@ -41,9 +41,13 @@ export default function AuthCallbackPage() {
         } else if (sessionData.session) {
           // 2. Get user info
           const { data: userData } = await supabase.auth.getUser();
-          console.log("User data:", userData);
           const email = userData?.user?.email || "";
           if (!email) throw new Error("No email found for logged in user");
+
+          // FIXED: Set user context and cookies first
+          const { setUserContext } = await import("@/lib/auth-client");
+          await setUserContext(userData?.user?.id!, email);
+
           // 3. Check if user exists in backend
           const resp = await authenticatedFetch(
             process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL +
@@ -51,7 +55,7 @@ export default function AuthCallbackPage() {
               encodeURIComponent(email)
           );
           if (resp.ok) {
-            // User exists, redirect
+            // User exists, redirect directly
             window.location.href = "/dashboard";
             return;
           } else {
@@ -86,7 +90,6 @@ export default function AuthCallbackPage() {
               let data = {};
               try {
                 data = await createResp.json();
-                console.log("Create response:", data);
               } catch (e) {
                 // ignore
               }
@@ -96,18 +99,15 @@ export default function AuthCallbackPage() {
                   "Failed to create user"
               );
             }
+
+            // User created successfully, redirect directly
             window.location.href = "/dashboard";
             return;
           }
         }
 
-        // Detailed logging for debugging
-        console.log("Auth callback triggered");
-        console.log("Current URL:", window.location.href);
-
         // APPROACH 2: Try to extract token from URL hash and set session manually
         const hash = window.location.hash;
-        console.log("URL hash:", hash);
 
         if (!hash || !hash.includes("access_token")) {
           console.error("No access_token found in URL hash");
@@ -120,17 +120,7 @@ export default function AuthCallbackPage() {
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
 
-          console.log(
-            "Access token found:",
-            accessToken ? "YES (hidden)" : "NO"
-          );
-          console.log(
-            "Refresh token found:",
-            refreshToken ? "YES (hidden)" : "NO"
-          );
-
           if (accessToken) {
-            console.log("Setting session with tokens manually...");
             // Manually set the session with the extracted tokens
             const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -144,10 +134,8 @@ export default function AuthCallbackPage() {
                   prev + "\nError setting session: " + setSessionError.message
               );
             } else {
-              console.log("Session set successfully!");
               // Wait a moment to ensure session propagates
               setTimeout(() => {
-                console.log("Redirecting to dashboard now...");
                 window.location.href = "/dashboard";
               }, 1000);
               return;
@@ -156,19 +144,12 @@ export default function AuthCallbackPage() {
         }
 
         // APPROACH 3: Try to get auth data from URL directly
-        console.log("Approach 3: Checking URL parameters");
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
 
         if (code) {
-          console.log("Auth code found in URL, trying to exchange for session");
           // We have a code, but need to handle it
           setDebugInfo((prev) => prev + "\nAuth code found: " + code);
-
-          // Tell user to go to dashboard manually as fallback
-          console.log(
-            "Couldn't automatically redirect, providing manual option"
-          );
           setError(
             "Authentication partially succeeded. Please click the button below to go to the dashboard."
           );
@@ -211,6 +192,14 @@ export default function AuthCallbackPage() {
             </CardTitle>
             <CardDescription className="dark:text-gray-300">
               Setting up your account...
+              <p
+                className="text-xs text-gray-400 dark:text-gray-300"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                Please don&apos;t close this page.
+              </p>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -277,7 +266,12 @@ export default function AuthCallbackPage() {
           >
             SIVERA
           </div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">
+          <p
+            className="mt-4 text-gray-600 dark:text-gray-300 text-xs"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
             Signing you in...
           </p>
           <div className="mt-6 flex justify-center">

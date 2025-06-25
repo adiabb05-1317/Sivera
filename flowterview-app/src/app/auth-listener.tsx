@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-// Simple component to listen for auth changes
+// Enhanced auth listener that integrates with our store system
 export default function AuthListener({
   children,
 }: {
@@ -13,11 +13,16 @@ export default function AuthListener({
   const router = useRouter();
 
   useEffect(() => {
-    // Setup auth listener manually to avoid server module imports
+    // Setup auth listener with store integration
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      router.refresh();
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        // Force re-initialization on sign in to fetch fresh data
+        const { initializeStores } = await import("../../store");
+        await initializeStores(true); // Force refresh on auth change
+      }
+      // Note: No need to clear stores on SIGNED_OUT - logout functions handle that
     });
 
     return () => {

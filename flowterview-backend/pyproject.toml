@@ -1,7 +1,7 @@
 [project]
-name = "flowterview-backend"
+name = "sivera-backend"
 version = "0.1.0"
-description = "Flowterview Backend Service"
+description = "Sivera Backend Service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,6 +17,9 @@ dependencies = [
     "email-validator>=2.1.0.post1",
     "aiohttp>=3.8.0",
     "pipecat-ai>=0.0.1",
+    "openai>=1.82.1",
+    "anthropic>=0.52.1",
+    "google-generativeai>=0.8.5",
 ]
 
 [project.optional-dependencies]

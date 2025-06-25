@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { setUserContext } from "@/lib/auth-client";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
@@ -36,10 +37,11 @@ export default function LoginPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
       if (session && session.user.email_confirmed_at) {
-        console.log("User is already logged in, redirecting to dashboard...");
         router.push("/dashboard");
       }
+
       setSessionLoading(false);
     };
 
@@ -61,8 +63,7 @@ export default function LoginPage() {
 
       if (password && password.trim() !== "") {
         // If password provided, do password login
-        console.log("Attempting password login...");
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -75,14 +76,15 @@ export default function LoginPage() {
           return;
         }
 
-        console.log("Login successful, redirecting...");
-        // Hard redirect to dashboard
-        window.location.href = "/dashboard";
+        // FIXED: Set user context and cookies after successful login
+        if (data?.user) {
+          await setUserContext(data.user.id, data.user.email!);
+          router.push("/dashboard");
+        }
         return;
       }
 
       // If no password, send magic link
-      console.log("Sending magic link...");
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -99,7 +101,6 @@ export default function LoginPage() {
         return;
       }
 
-      console.log("Magic link sent successfully");
       setMagicLinkSent(true);
     } catch (error: unknown) {
       console.error("Login error:", error);
@@ -127,7 +128,14 @@ export default function LoginPage() {
             SIVERA
           </div>
           <div className="text-center">
-            <p className="mt-4 text-gray-600 dark:text-gray-300">Loading...</p>
+            <p
+              className="mt-4 text-gray-600 dark:text-gray-300 text-xs"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              Loading...
+            </p>
             <div className="mt-6 flex justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
             </div>

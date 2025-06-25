@@ -106,20 +106,27 @@ class InterviewFlow:
         bot_token,
         session_id,
         db_manager,
-        flow_config_path="src/services/sde1_interview_flow.json",
-        bot_name="Interviewer",
+        job_id,
+        candidate_id,
+        bot_name="Sia",
     ):
         self.url = url
         self.token = bot_token
         self.session_id = session_id
+        self.candidate_id = candidate_id
         self.bot_name = bot_name
         self.task: Optional[PipelineTask] = None
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
-
-        with open(flow_config_path) as f:
-            self.flow_config = json.load(f)
+        self.job = self.db.fetch_one("jobs", {"id": job_id})
+        self.flow_config = self.db.fetch_one("interview_flows", {"id": self.job.get("flow_id")})[
+            "flow_json"
+        ]
+        self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
+        self.candidate_name = self.candidate.get("name")
+        # TODO: Add resume url
+        # self.resume_url = self.candidate.get("resume_url")
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
@@ -131,12 +138,14 @@ class InterviewFlow:
             messages=[
                 {
                     "role": "system",
-                    "content": """
-                    You are an interviewer. Your responses should be clear, concise, and professional.
-                    Keep your responses under 150 words.
-                    Your output will be converted to audio so don't include special characters in your answers.
+                    "content": f"""
+                    Your name is {self.bot_name}. You are an interviewer taking interview for {self.job.get("title")} role. 
+                    You will be talking with {self.candidate_name}.
+                    Your responses should be clear, concise, and professional.
+                    Keep your responses under 150 words. Your responses will be read aloud, so keep them concise and conversational. Avoid special characters or
+                    formatting. You are allowed to ask follow up questions to the candidate.
                     """,
-                }
+                },
             ]
         )
         self.context_aggregator = self.llm.create_context_aggregator(context)
@@ -158,11 +167,8 @@ class InterviewFlow:
         self.rtvi_observer = InterviewRTVIObserver(rtvi=self.rtvi)
 
     @classmethod
-    async def create(
-        cls, url, bot_token, session_id, flow_config_path=None, bot_name="Interviewer"
-    ):
-        flow_config_path = flow_config_path or "src/services/devops_flow.json"
-        return cls(url, bot_token, session_id, flow_config_path, bot_name)
+    async def create(cls, url, bot_token, session_id, db_manager, job_id, bot_name="Sia"):
+        return cls(url, bot_token, session_id, db_manager, job_id, bot_name)
 
     async def create_transport(self):
         self.aiohttp_session = aiohttp.ClientSession()

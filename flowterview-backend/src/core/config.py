@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -8,15 +9,18 @@ load_dotenv()
 class Config:
     # Load environment variables at import time
     from dotenv import load_dotenv
-    import os
 
     load_dotenv()
 
-    # SMTP Configuration with defaults
-    SMTP_HOST = os.getenv("SMTP_HOST", "smtpout.secureserver.net")
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
-    SMTP_USER = os.getenv("SMTP_USER", "recruiter@flowterview.com")
-    SMTP_PASS = os.getenv("SMTP_PASS", "")
+    # Loops Email Configuration
+    SMTP_HOST = os.getenv("SMTP_HOST", "smtp.loops.so")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER", "loops")
+    SMTP_PASS = os.getenv("SMTP_PASS", "")  # Loops API Key
+
+    # Loops Template IDs
+    LOOPS_VERIFICATION_TEMPLATE = os.getenv("LOOPS_VERIFICATION_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
+    LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
 
     # Frontend URL for generating links
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3001")
@@ -24,20 +28,11 @@ class Config:
     @classmethod
     def validate_smtp_config(cls):
         """Validate that SMTP settings are properly configured"""
-        if (
-            not cls.SMTP_HOST
-            or not cls.SMTP_PORT
-            or not cls.SMTP_USER
-            or not cls.SMTP_PASS
-        ):
+        if not cls.SMTP_HOST or not cls.SMTP_PORT or not cls.SMTP_USER or not cls.SMTP_PASS:
             from loguru import logger
 
-            logger.warning(
-                "⚠️ SMTP settings are not fully configured. Email sending may fail."
-            )
-            logger.debug(
-                f"SMTP_HOST: {cls.SMTP_HOST}, SMTP_PORT: {cls.SMTP_PORT}, SMTP_USER: {cls.SMTP_USER}"
-            )
+            logger.warning("⚠️ SMTP settings are not fully configured. Email sending may fail.")
+            logger.debug(f"SMTP_HOST: {cls.SMTP_HOST}, SMTP_PORT: {cls.SMTP_PORT}, SMTP_USER: {cls.SMTP_USER}")
             return False
         return True
 
@@ -65,18 +60,10 @@ class Config:
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
-    # SMTP settings
-    SMTP_HOST = os.getenv("SMTP_HOST", "smtpout.secureserver.net")
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
-    SMTP_USER = os.getenv("SMTP_USER", "")
-    SMTP_PASS = os.getenv("SMTP_PASS", "")
-
     # Daily.co Configuration
     DAILY_API_KEY = os.getenv("DAILY_API_KEY", "")
     DAILY_ROOM_EXPIRY_MINUTES = 30  # Hardcoded instead of env
-    DAILY_CLEANUP_ON_STARTUP = (
-        os.getenv("DAILY_CLEANUP_ON_STARTUP", "false").lower() == "true"
-    )
+    DAILY_CLEANUP_ON_STARTUP = os.getenv("DAILY_CLEANUP_ON_STARTUP", "false").lower() == "true"
     DAILY_ROOM_SETTINGS = {
         "privacy": "public",
         "properties": {
@@ -90,9 +77,7 @@ class Config:
     def init(cls):
         """Initialize configuration and validate required environment variables."""
         if not cls.validate_config():
-            raise ValueError(
-                "Missing required environment variables for Supabase or SMTP."
-            )
+            raise ValueError("Missing required environment variables for Supabase or SMTP.")
 
     @classmethod
     def validate_config(cls) -> bool:
@@ -105,6 +90,8 @@ class Config:
             "SMTP_USER",
             "SMTP_PASS",
             "DAILY_API_KEY",
+            "LOOPS_VERIFICATION_TEMPLATE",
+            "LOOPS_INTERVIEW_TEMPLATE",
         ]
         missing = [var for var in required_vars if not getattr(cls, var)]
         if missing:

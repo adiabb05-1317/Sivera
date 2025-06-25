@@ -1,24 +1,14 @@
 "use client";
 
-import {
-  Search,
-  Filter,
-  ArrowRight,
-  Mail,
-  Users,
-  SplinePointer,
-  Loader,
-  Loader2,
-} from "lucide-react";
+import { Search, Filter, ArrowRight, Users, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { authenticatedFetch } from "@/lib/auth-client";
-import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useInterviews, useCandidates } from "@/hooks/useStores";
 
 interface Interview {
   id: string;
@@ -41,126 +31,22 @@ interface Candidate {
 export default function InterviewsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
-  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(
-    null
-  );
-  const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
-    []
-  );
-  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
-  useEffect(() => {
-    const fetchInterviews = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews`
-        );
-        if (!resp.ok) throw new Error("Failed to fetch interviews");
-        const data: Interview[] = await resp.json();
-        setInterviews(data);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch interviews";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInterviews();
-  }, []);
-
-  // Fetch available candidates for bulk invite
-  const fetchAvailableCandidates = async (interview: Interview) => {
-    setLoadingCandidates(true);
-    setSelectedInterview(interview);
-    try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-
-      if (!interview.job_id) {
-        throw new Error("No job_id found for this interview");
-      }
-
-      // Directly fetch candidates by job_id - much simpler approach
-      const candidatesResp = await authenticatedFetch(
-        `${backendUrl}/api/v1/candidates/by-job/${interview.job_id}`
-      );
-
-      if (!candidatesResp.ok) {
-        if (candidatesResp.status === 404) {
-          // No candidates found for this job
-          setAvailableCandidates([]);
-          setBulkInviteOpen(true);
-          return;
-        }
-        throw new Error(`Failed to fetch candidates: ${candidatesResp.status}`);
-      }
-
-      const allCandidates = await candidatesResp.json();
-
-      // Show all candidates - the dialog can handle filtering if needed
-      setAvailableCandidates(allCandidates || []);
-      setBulkInviteOpen(true);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch candidates";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCandidates(false);
-    }
-  };
-
-  const handleBulkInviteClick = (e: React.MouseEvent, interview: Interview) => {
-    e.stopPropagation();
-    fetchAvailableCandidates(interview);
-  };
-
-  const handleInvitesSent = () => {
-    // Refresh the interviews list
-    setBulkInviteOpen(false);
-    setSelectedInterview(null);
-    setAvailableCandidates([]);
-
-    // Optionally refresh the interviews list to update candidate counts
-    const fetchInterviews = async () => {
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews`
-        );
-        if (resp.ok) {
-          const data: Interview[] = await resp.json();
-          setInterviews(data);
-        }
-      } catch (err) {
-        console.error("Failed to refresh interviews:", err);
-      }
-    };
-    fetchInterviews();
-  };
+  // Use our store hooks instead of manual API calls
+  const { interviews, isLoading: loading, error } = useInterviews();
+  const { candidates } = useCandidates();
 
   // Status badge color mapping
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300";
+        return "";
       case "completed":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300";
       case "draft":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+        return "bg-app-blue-100/90 dark:bg-app-blue-900/40";
+      case "expired":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
     }
@@ -201,7 +87,12 @@ export default function InterviewsPage() {
       {/* Interviews List */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow p-0 border dark:border-gray-800">
         {loading ? (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-300">
+          <div
+            className="p-6 text-center text-gray-500 dark:text-gray-300 text-xs"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
             Loading interviews...
           </div>
         ) : error ? (
@@ -211,7 +102,7 @@ export default function InterviewsPage() {
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-800">
             {interviews.length > 0 ? (
-              interviews.map((interview) => (
+              interviews.map((interview: any) => (
                 <li key={interview.id} className="group">
                   <CardContent
                     className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800 group-hover:bg-app-blue-50/20 dark:group-hover:bg-app-blue-900/30"
@@ -225,7 +116,11 @@ export default function InterviewsPage() {
                           {interview.title}
                         </h3>
                         <Badge
-                          variant="outline"
+                          variant={
+                            interview.status === "active"
+                              ? "secondary"
+                              : "outline"
+                          }
                           className={`${getStatusBadgeClass(
                             interview.status
                           )} font-normal text-xs border-0 opacity-80`}
@@ -242,30 +137,7 @@ export default function InterviewsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="ml-4 flex-shrink-0 flex items-center gap-2">
-                      {interview.status === "active" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                          onClick={(e) => handleBulkInviteClick(e, interview)}
-                          disabled={loadingCandidates}
-                        >
-                          {loadingCandidates &&
-                          selectedInterview?.id === interview.id ? (
-                            <>
-                              Bulk Invite
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            </>
-                          ) : (
-                            <>
-                              Bulk Invite
-                              <Mail className="mr-1 h-3 -3" />
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
+                    <ChevronRight className="ml-auto h-4 w-4 text-gray-400 dark:text-gray-500" />
                   </CardContent>
                 </li>
               ))
@@ -277,18 +149,6 @@ export default function InterviewsPage() {
           </ul>
         )}
       </Card>
-
-      {/* Bulk Invite Dialog */}
-      {selectedInterview && (
-        <BulkInviteDialog
-          open={bulkInviteOpen}
-          onOpenChange={setBulkInviteOpen}
-          interviewId={selectedInterview.id}
-          jobTitle={selectedInterview.title}
-          availableCandidates={availableCandidates}
-          onInvitesSent={handleInvitesSent}
-        />
-      )}
     </div>
   );
 }

@@ -1,10 +1,12 @@
+from datetime import datetime
+from typing import List
+import uuid
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import List
-from storage.db_manager import DatabaseManager, DatabaseError
-from datetime import datetime
-import uuid
+
 from src.utils.auth_middleware import require_organization
+from storage.db_manager import DatabaseError, DatabaseManager
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["candidates"])
 
@@ -20,6 +22,10 @@ class CandidateIn(BaseModel):
     status: str = "Applied"
 
 
+class BulkCandidateIn(BaseModel):
+    candidates: List[CandidateIn]
+
+
 class CandidateOut(BaseModel):
     id: str
     email: str
@@ -30,6 +36,13 @@ class CandidateOut(BaseModel):
     status: str = "Applied"
     created_at: str
     updated_at: str
+
+
+class BulkCandidateResponse(BaseModel):
+    success: bool
+    created_count: int
+    candidates: List[CandidateOut]
+    failed_candidates: List[dict] = []
 
 
 @router.get("/", response_model=List[CandidateOut])
@@ -60,15 +73,11 @@ async def fetch_candidates_sorted_by_job(request: Request):
                     return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S.%f").timestamp()
                 except Exception:
                     try:
-                        return datetime.strptime(
-                            dt_str, "%Y-%m-%d %H:%M:%S"
-                        ).timestamp()
+                        return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S").timestamp()
                     except Exception:
                         return float("-inf")
 
-        candidates.sort(
-            key=lambda x: (x.get("job_id"), -parse_created_at(x["created_at"]))
-        )
+        candidates.sort(key=lambda x: (x.get("job_id"), -parse_created_at(x["created_at"])))
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -104,9 +113,49 @@ async def get_candidates_by_job(job_id: str, request: Request):
     """Get all candidates for a specific job"""
     try:
         organization_id = require_organization(request).organization_id
-        candidates = db.fetch_all(
-            "candidates", {"job_id": job_id, "organization_id": organization_id}
-        )
+        candidates = db.fetch_all("candidates", {"job_id": job_id, "organization_id": organization_id})
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk", response_model=BulkCandidateResponse)
+async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request):
+    """Create multiple candidates at once for better performance"""
+    try:
+        organization_id = require_organization(request).organization_id
+
+        created_candidates = []
+        failed_candidates = []
+
+        for candidate_data in bulk_request.candidates:
+            try:
+                # Validate that the organization_id matches
+                if candidate_data.organization_id != organization_id:
+                    failed_candidates.append({"candidate": candidate_data.dict(), "error": "Organization mismatch"})
+                    continue
+
+                # Create candidate
+                candidate_id = str(uuid.uuid4())
+                candidate_dict = candidate_data.dict()
+                candidate_dict["id"] = candidate_id
+                candidate_dict["created_at"] = datetime.now().isoformat()
+                candidate_dict["updated_at"] = datetime.now().isoformat()
+
+                created_candidate = db.execute_query("candidates", candidate_dict)
+                created_candidates.append(created_candidate)
+
+            except Exception as e:
+                failed_candidates.append({"candidate": candidate_data.dict(), "error": str(e)})
+
+        return BulkCandidateResponse(
+            success=len(failed_candidates) == 0,
+            created_count=len(created_candidates),
+            candidates=created_candidates,
+            failed_candidates=failed_candidates,
+        )
+
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

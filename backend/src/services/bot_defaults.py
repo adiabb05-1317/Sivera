@@ -37,6 +37,8 @@ async def main():
     parser.add_argument("-u", "--url", type=str, help="Room URL", required=True)
     parser.add_argument("-t", "--token", type=str, help="Room token", required=True)
     parser.add_argument("-s", "--session_id", type=str, help="Session ID", required=True)
+    parser.add_argument("-j", "--job_id", type=str, help="Job ID", required=True)
+    parser.add_argument("-c", "--candidate_id", type=str, help="Candidate ID", required=True)
 
     args = parser.parse_args()
     db_manager = DatabaseManager()
@@ -46,6 +48,8 @@ async def main():
         args.token,
         session_id=args.session_id,
         db_manager=db_manager,
+        job_id=args.job_id,
+        candidate_id=args.candidate_id,
     )
     await bot.create_transport()
     await bot.create_pipeline()

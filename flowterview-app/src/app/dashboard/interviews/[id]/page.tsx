@@ -1,25 +1,27 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import ReactFlow, {
-  ReactFlowProvider,
-  useNodesState,
-  useEdgesState,
-  Controls,
-  Background,
-  ReactFlowInstance,
-  ConnectionLineType,
-  Node,
-  Edge,
-} from "reactflow";
-import "reactflow/dist/style.css";
-import InterviewNode from "@/components/flow/InterviewNode";
-import { improveLayout as improveLayoutUtil } from "@/utils/flowUtils";
+
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Mail, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Mail,
+  Users,
+  Brain,
+  Clock,
+  X,
+  Save,
+  Loader2,
+  Phone,
+  FileText,
+  Bot,
+  Route,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectTrigger,
@@ -27,14 +29,22 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
+import { useInterviewDetails } from "@/hooks/useStores";
+import {
+  authenticatedFetch,
+  getCookie,
+  getUserContext,
+} from "@/lib/auth-client";
 
-const nodeTypes = {
-  interview: InterviewNode,
-};
-
+// Move nodeTypes outside the component to prevent recreation on every render
 interface Candidate {
   id: string;
   name: string;
@@ -77,86 +87,360 @@ interface InterviewData {
   job: Job;
   interview: Interview;
   candidates: CandidatesData;
-  flow?: {
-    react_flow_json?: {
-      nodes: Node[];
-      edges: Edge[];
-    };
-  };
+  skills: string[];
+  duration: number;
 }
 
 export default function InterviewDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Use our store hooks instead of manual API calls
+  const {
+    details,
+    isLoading: loading,
+    error,
+  } = useInterviewDetails(id as string);
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
     []
   );
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAllCandidates, setShowAllCandidates] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
-  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
+
+  // Skills and timer state
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
+  const [selectedTimer, setSelectedTimer] = useState(10);
+  const [saving, setSaving] = useState(false);
+  const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
+  const [firstChange, setFirstChange] = useState(false);
+
+  // Process toggle states - initialize with defaults, will be updated from DB
+  const [processStages, setProcessStages] = useState({
+    phoneInterview: false,
+    assessments: false,
+    aiInterviewer: false,
+  });
+
+  // Phone screen questions state
+  const [phoneScreenQuestions, setPhoneScreenQuestions] = useState<string[]>(
+    []
+  );
+  const [newQuestion, setNewQuestion] = useState("");
+
   const { toast } = useToast();
 
-  // Fetch interview details and candidates
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+  const CORE_BACKEND_URL =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+
+  // Timer options and logic
+  const timerOptions = [10, 20, 30];
+
+  const getTimerStatus = (time: number) => {
+    const skillCount = selectedSkills.length;
+    if (time === 10 && skillCount >= 6)
+      return { disabled: true, reason: "10 mins is too short for 6+ skills" };
+    if (time === 20 && skillCount >= 11)
+      return { disabled: true, reason: "20 mins is too short for 11+ skills" };
+    return { disabled: false, reason: "" };
+  };
+
+  // Auto-adjust timer based on skill count
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+    if (firstChange === false) return;
+    const skillCount = selectedSkills.length;
+    if (skillCount >= 11) {
+      setSelectedTimer(30);
+    } else if (skillCount >= 6) {
+      setSelectedTimer(20);
+    } else {
+      setSelectedTimer(10);
+    }
+  }, [selectedSkills.length]);
 
-        // Fetch interview details
-        const resp = await authenticatedFetch(
-          `${backendUrl}/api/v1/interviews/${id}`
-        );
-        if (!resp.ok) throw new Error("Failed to fetch interview details");
-        const data: InterviewData = await resp.json();
-        console.log(data);
-
-        setJob(data.job);
-        setInterviewStatus(data.interview.status || "draft");
-
-        // Set candidates from the new API response structure
-        setInvitedCandidates(data.candidates.invited || []);
-        setAvailableCandidates(data.candidates.available || []);
-
-        // Set up React Flow
-        if (data.flow && data.flow.react_flow_json) {
-          setNodes(data.flow.react_flow_json.nodes || []);
-          setEdges(data.flow.react_flow_json.edges || []);
-          improveLayout();
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills((prev) => {
+      if (prev.includes(skill)) {
+        return prev.filter((s) => s !== skill);
+      } else {
+        // Limit to 15 skills maximum
+        if (prev.length >= 15) {
+          toast({
+            title: "Maximum skills reached",
+            description: "You can select up to 15 skills maximum.",
+            variant: "destructive",
+          });
+          return prev;
         }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch interview details";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
+        return [...prev, skill];
       }
-    };
-    if (id) fetchData();
-  }, [id]);
+    });
+  };
 
-  // Layout utility
-  const improveLayout = useCallback(() => {
-    improveLayoutUtil(setNodes, reactFlowInstanceRef);
-  }, [setNodes]);
+  const addCustomSkill = () => {
+    setFirstChange(true);
+    if (newSkill.trim() && !selectedSkills.includes(newSkill.trim())) {
+      // Limit to 15 skills maximum
+      if (selectedSkills.length >= 15) {
+        toast({
+          title: "Maximum skills reached",
+          description: "You can select up to 15 skills maximum.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedSkills((prev) => [...prev, newSkill.trim()]);
+      setExtractedSkills((prev) => [...prev, newSkill.trim()]);
+      setNewSkill("");
+    }
+  };
+
+  const removeSkill = (skill: string) => {
+    setSelectedSkills((prev) => prev.filter((s) => s !== skill));
+  };
+
+  const toggleProcessStage = (stage: keyof typeof processStages) => {
+    setProcessStages((prev) => ({
+      ...prev,
+      [stage]: !prev[stage],
+    }));
+    setFirstChange(true);
+  };
+
+  // Phone screen question management functions
+  const addPhoneScreenQuestion = () => {
+    if (newQuestion.trim() && phoneScreenQuestions.length < 5) {
+      if (!phoneScreenQuestions.includes(newQuestion.trim())) {
+        setPhoneScreenQuestions((prev) => [...prev, newQuestion.trim()]);
+        setNewQuestion("");
+        setFirstChange(true);
+      }
+    }
+  };
+
+  const removePhoneScreenQuestion = (index: number) => {
+    setPhoneScreenQuestions((prev) => prev.filter((_, i) => i !== index));
+    setFirstChange(true);
+  };
+
+  const handleQuestionKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addPhoneScreenQuestion();
+    }
+  };
+
+  // Update local state when store data changes
+  useEffect(() => {
+    if (details) {
+      setJob(details.job);
+      setInterviewStatus(details.interview.status || "draft");
+      setInvitedCandidates(details.candidates.invited || []);
+      // Don't set availableCandidates from backend - we fetch them manually
+
+      // Set skills and duration from the flow data
+      if (details.skills && details.skills.length > 0) {
+        setSelectedSkills(details.skills);
+        setExtractedSkills(details.skills);
+      }
+
+      // Set timer duration from flow data
+      if (details.duration) {
+        setSelectedTimer(details.duration);
+      }
+
+      // Set process stages from the job data (stored in jobs table as jsonb)
+      if (details.job && (details.job as any).process_stages) {
+        setProcessStages((details.job as any).process_stages);
+      } else {
+        // If no process stages are stored, set reasonable defaults
+        setProcessStages({
+          phoneInterview: true,
+          assessments: true,
+          aiInterviewer: true,
+        });
+      }
+
+      // Set phone screen questions from the job data (stored in jobs table as jsonb)
+      if (details.job && (details.job as any).phone_screen_questions) {
+        setPhoneScreenQuestions((details.job as any).phone_screen_questions);
+      } else {
+        setPhoneScreenQuestions([]);
+      }
+    }
+  }, [details]);
+
+  const handleSaveChanges = async () => {
+    const user_id = getCookie("user_id");
+    const organization_id = getCookie("organization_id");
+
+    if (!user_id || !organization_id) {
+      toast({
+        title: "Authentication Error",
+        description: "Missing user or organization information",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      // Generate new flow data with updated skills and duration
+      const flowData = await fetch(
+        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            job_role: job?.title || "",
+            job_description: job?.description || "",
+            skills: selectedSkills,
+            duration: selectedTimer,
+          }),
+        }
+      );
+
+      if (!flowData.ok) {
+        throw new Error(`Flow generation failed: ${flowData.status}`);
+      }
+
+      const flowDataJson = await flowData.json();
+
+      // Update the interview flow with new skills, duration and flow_json
+      const flowUpdateData = {
+        skills: selectedSkills,
+        duration: selectedTimer,
+        flow_json: flowDataJson,
+      };
+
+      // Find the flow_id from the job details
+      const flowId = (details?.job as any)?.flow_id;
+      if (!flowId) {
+        throw new Error("Could not find interview flow ID");
+      }
+
+      const flowResponse = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/interviews/interview-flows/${flowId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(flowUpdateData),
+        }
+      );
+
+      if (!flowResponse.ok) {
+        const errorText = await flowResponse.text();
+        throw new Error(
+          `Flow update failed: ${flowResponse.status} - ${errorText}`
+        );
+      }
+
+      // Update the job with process stages and phone screen questions (stored as JSONB in jobs table)
+      const jobUpdateData = {
+        process_stages: processStages,
+        phone_screen_questions: phoneScreenQuestions,
+      };
+
+      const jobResponse = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/interviews/jobs/${job?.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(jobUpdateData),
+        }
+      );
+
+      if (!jobResponse.ok) {
+        const errorText = await jobResponse.text();
+        throw new Error(
+          `Job update failed: ${jobResponse.status} - ${errorText}`
+        );
+      }
+
+      toast({
+        title: "Success!",
+        description: "Interview settings updated successfully",
+      });
+
+      // Refresh the data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating interview:", error);
+      toast({
+        title: "Error updating interview",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleInvitesSent = () => {
     // Refresh the data after invites are sent
     window.location.reload();
+  };
+
+  // Fetch available candidates for bulk invite
+  const fetchAvailableCandidates = async () => {
+    if (!job?.id) {
+      toast({
+        title: "Error",
+        description: "No job_id found for this interview",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingCandidates(true);
+    try {
+      // Directly fetch candidates by job_id - much simpler approach
+      const candidatesResp = await authenticatedFetch(
+        `${BACKEND_URL}/api/v1/candidates/by-job/${job.id}`
+      );
+
+      if (!candidatesResp.ok) {
+        if (candidatesResp.status === 404) {
+          // No candidates found for this job
+          setAvailableCandidates([]);
+          setBulkInviteOpen(true);
+          return;
+        }
+        throw new Error(`Failed to fetch candidates: ${candidatesResp.status}`);
+      }
+
+      const allCandidates = await candidatesResp.json();
+
+      // Show all candidates - the dialog can handle filtering if needed
+      setAvailableCandidates(allCandidates || []);
+      setBulkInviteOpen(true);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch candidates";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCandidates(false);
+    }
   };
 
   // Get candidates available for bulk invite (not already invited)
@@ -184,7 +468,12 @@ export default function InterviewDetailsPage() {
         </div>
       </div>
       {loading ? (
-        <div className="p-6 text-center text-gray-500 dark:text-gray-300">
+        <div
+          className="p-6 text-center text-gray-500 dark:text-gray-300 text-xs"
+          style={{
+            fontFamily: "KyivType Sans",
+          }}
+        >
           Loading interview...
         </div>
       ) : error ? (
@@ -197,12 +486,479 @@ export default function InterviewDetailsPage() {
             className="flex flex-col gap-6 px-4"
             style={{ minHeight: "calc(100vh - 100px)" }}
           >
+            {/* Skills and Timer Configuration */}
+            <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
+              <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+                <div className="flex flex-row items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                      Interview Configuration
+                    </h2>
+                    <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                      Configure your interview settings and skills assessment.
+                    </p>
+                  </div>
+                  {firstChange && (
+                    <Button
+                      onClick={handleSaveChanges}
+                      disabled={saving}
+                      variant="outline"
+                      className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                    >
+                      {saving && (
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      )}
+                      {!saving && <Save className="mr-2 h-4 w-4" />}
+                      Save Changes
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <CardContent className="pt-6 space-y-6">
+                {/* Process Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Route className="h-4 w-4" />
+                    <label className="text-sm font-medium dark:text-gray-200">
+                      Interview Process
+                    </label>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <Carousel className="w-full max-w-md">
+                      <CarouselContent>
+                        {/* Phone Interview */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.phoneInterview
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                toggleProcessStage("phoneInterview")
+                              }
+                              title={`${
+                                processStages.phoneInterview
+                                  ? "Disable"
+                                  : "Enable"
+                              } Phone Interview`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Phone
+                                    className={`h-6 w-6 ${
+                                      processStages.phoneInterview
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.phoneInterview
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      Phone
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.phoneInterview
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Interview
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+
+                        {/* Assessments */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.assessments
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() => toggleProcessStage("assessments")}
+                              title={`${
+                                processStages.assessments ? "Disable" : "Enable"
+                              } Technical Assessment`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <FileText
+                                    className={`h-6 w-6 ${
+                                      processStages.assessments
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.assessments
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      Technical
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.assessments
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Assessment
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+
+                        {/* AI Interviewer */}
+                        <CarouselItem className="basis-1/3">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.aiInterviewer
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                toggleProcessStage("aiInterviewer")
+                              }
+                              title={`${
+                                processStages.aiInterviewer
+                                  ? "Disable"
+                                  : "Enable"
+                              } AI Interviewer`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Bot
+                                    className={`h-6 w-6 ${
+                                      processStages.aiInterviewer
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.aiInterviewer
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      AI
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.aiInterviewer
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Interviewer
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+                      </CarouselContent>
+                    </Carousel>
+                  </div>
+
+                  {/* Process Flow Indicator */}
+                  <div className="flex justify-center">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium dark:text-gray-200">
+                          Toggle the process stages you want.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Screen Questions Section */}
+                {processStages.phoneInterview && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
+                        <label className="text-sm font-medium dark:text-gray-200">
+                          Phone Screen Questions
+                        </label>
+                      </div>
+                      {phoneScreenQuestions.length >= 5 && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
+                          Maximum questions reached (5)
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Questions Container */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
+                      {/* Current Questions Display */}
+                      {phoneScreenQuestions.length > 0 && (
+                        <div className="space-y-3">
+                          {phoneScreenQuestions.map((question, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <span className="text-xs font-semibold text-app-blue-600 dark:text-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/30 rounded-full min-w-[24px] h-6 flex items-center justify-center mt-0.5">
+                                {index + 1}
+                              </span>
+                              <span className="flex-1 text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+                                {question}
+                              </span>
+                              <Button
+                                onClick={() => removePhoneScreenQuestion(index)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-full shrink-0"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Empty State */}
+                      {phoneScreenQuestions.length === 0 && (
+                        <div className="text-center py-8">
+                          <Phone className="mx-auto h-8 w-8 mb-3 text-gray-300 dark:text-gray-600" />
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                            No questions added yet
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Add up to 5 questions for phone screening
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Add New Question */}
+                      <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <Input
+                          placeholder="Enter a phone screen question..."
+                          value={newQuestion}
+                          onChange={(e) => setNewQuestion(e.target.value)}
+                          onKeyPress={handleQuestionKeyPress}
+                          className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
+                          disabled={phoneScreenQuestions.length >= 5}
+                        />
+                        <Button
+                          onClick={addPhoneScreenQuestion}
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !newQuestion.trim() ||
+                            phoneScreenQuestions.length >= 5
+                          }
+                          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
+                      <label className="text-sm font-medium dark:text-gray-200">
+                        Skills
+                      </label>
+                    </div>
+                    {selectedSkills.length >= 15 && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
+                        Maximum skills reached
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skills Container */}
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
+                    {/* Selected Skills Display */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2 min-h-[40px] items-center justify-center p-3">
+                        {selectedSkills.map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="outline"
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-app-blue-50 text-app-blue-700 dark:bg-app-blue-900/40 dark:text-app-blue-300 border-app-blue-200 dark:border-app-blue-700 text-xs font-medium hover:bg-app-blue-100 dark:hover:bg-app-blue-900/60 transition-colors"
+                          >
+                            {skill}
+                            <button
+                              onClick={() => removeSkill(skill)}
+                              className="ml-0.5 hover:bg-app-blue-200 dark:hover:bg-app-blue-800 rounded-full p-0.5 cursor-pointer transition-colors"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {selectedSkills.length === 0 && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center w-full py-2 font-medium">
+                            No skills selected
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                    </div>
+
+                    {/* Available Skills */}
+                    {extractedSkills.length > 0 && (
+                      <div className="space-y-3">
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          Available Skills (click to add)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {extractedSkills
+                            .filter((skill) => !selectedSkills.includes(skill))
+                            .map((skill) => (
+                              <Badge
+                                key={skill}
+                                variant="outline"
+                                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-700 ${
+                                  selectedSkills.length >= 15
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }`}
+                                onClick={() => toggleSkill(skill)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                {skill}
+                              </Badge>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Custom Skill */}
+                    <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <Input
+                        placeholder="Add custom skill..."
+                        value={newSkill}
+                        onChange={(e) => setNewSkill(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && addCustomSkill()
+                        }
+                        className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
+                        disabled={selectedSkills.length >= 15}
+                      />
+                      <Button
+                        onClick={addCustomSkill}
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          !newSkill.trim() || selectedSkills.length >= 15
+                        }
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timer Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Interview duration
+                    </label>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <Carousel className="w-full max-w-xs">
+                      <CarouselContent>
+                        {timerOptions.map((time) => {
+                          const status = getTimerStatus(time);
+                          return (
+                            <CarouselItem key={time} className="basis-1/3">
+                              <div className="p-1">
+                                <Card
+                                  className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                    selectedTimer === time
+                                      ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                      : status.disabled
+                                      ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
+                                      : "hover:border-gray-400"
+                                  }`}
+                                  onClick={() => {
+                                    if (!status.disabled) {
+                                      setSelectedTimer(time);
+                                      setFirstChange(true);
+                                    }
+                                  }}
+                                  title={
+                                    status.disabled
+                                      ? status.reason
+                                      : `Select ${time} minutes`
+                                  }
+                                >
+                                  <CardContent className="flex aspect-square items-center justify-center p-6">
+                                    <span
+                                      className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                        selectedTimer === time
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : status.disabled
+                                          ? "text-gray-400 dark:text-gray-600"
+                                          : "text-gray-700 dark:text-gray-300"
+                                      }`}
+                                    >
+                                      <div className="text-2xl font-semibold">
+                                        {time}
+                                      </div>
+                                      <div className="text-xs">minutes</div>
+                                    </span>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </CarouselItem>
+                          );
+                        })}
+                      </CarouselContent>
+                    </Carousel>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Candidates Section */}
             <div className="w-full">
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                <CardContent className="py-4">
+                <CardContent className="py-4 px-3">
                   <div className="m-5 mt-0 flex items-center justify-between">
                     <h3 className="font-semibold mb-2 dark:text-white">
-                      Candidates ({invitedCandidates.length})
+                      Candidates
                     </h3>
                     <div className="flex items-center gap-2">
                       <Select
@@ -241,16 +997,24 @@ export default function InterviewDetailsPage() {
                       </Select>
 
                       {/* Bulk Invite Button */}
-                      {getAvailableCandidates().length > 0 && (
-                        <Button
-                          onClick={() => setBulkInviteOpen(true)}
-                          className="cursor-pointer border border-green-500/80 dark:border-green-400/80 hover:bg-green-500/10 dark:hover:bg-green-900/20 text-green-600 dark:text-green-300 hover:text-green-700 dark:hover:text-green-200 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                          variant="outline"
-                        >
-                          <Mail className="mr-2 h-4 w-4" />
-                          Bulk Invite ({getAvailableCandidates().length})
-                        </Button>
-                      )}
+                      <Button
+                        onClick={fetchAvailableCandidates}
+                        disabled={loadingCandidates}
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="outline"
+                      >
+                        {loadingCandidates ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Invite Candidates
+                          </>
+                        )}
+                      </Button>
 
                       <Button
                         onClick={() =>
@@ -348,41 +1112,6 @@ export default function InterviewDetailsPage() {
                 </CardContent>
               </Card>
             </div>
-            <div className="w-full rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mt-0 bg-white dark:bg-gray-900">
-              <ReactFlowProvider>
-                <div
-                  style={{ height: "600px", width: "100%" }}
-                  className="bg-white dark:bg-gray-900"
-                >
-                  <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    nodeTypes={nodeTypes}
-                    defaultEdgeOptions={{
-                      type: "default",
-                      animated: true,
-                    }}
-                    fitView
-                    fitViewOptions={{
-                      padding: 0.3,
-                      includeHiddenNodes: true,
-                    }}
-                    minZoom={0.1}
-                    maxZoom={2}
-                    proOptions={{ hideAttribution: true }}
-                    onInit={(instance) => {
-                      reactFlowInstanceRef.current = instance;
-                    }}
-                    connectionLineType={ConnectionLineType.Bezier}
-                  >
-                    <Background color="#aaa" gap={16} size={1} />
-                    <Controls />
-                  </ReactFlow>
-                </div>
-              </ReactFlowProvider>
-            </div>
           </div>
 
           {/* Bulk Invite Dialog */}
@@ -393,6 +1122,7 @@ export default function InterviewDetailsPage() {
             jobTitle={job?.title || "Interview"}
             availableCandidates={getAvailableCandidates()}
             onInvitesSent={handleInvitesSent}
+            organizationId={getUserContext()?.organization_id || ""}
           />
         </>
       )}

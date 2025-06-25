@@ -27,8 +27,6 @@ export default function SimpleLoginPage() {
     setError(null);
 
     try {
-      console.log("Sending magic link...");
-
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {

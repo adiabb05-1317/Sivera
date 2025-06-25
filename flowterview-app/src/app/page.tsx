@@ -34,7 +34,14 @@ export default function Home() {
         >
           SIVERA
         </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-300">Loading...</p>
+        <p
+          className="mt-2 text-gray-600 dark:text-gray-300 text-xs"
+          style={{
+            fontFamily: "KyivType Sans",
+          }}
+        >
+          Loading...
+        </p>
       </div>
     </div>
   );

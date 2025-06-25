@@ -48,29 +48,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const lastUpdateTimeRef = useRef<number>(0);
-  const updateThrottleMs = 50; // Throttle updates to every 50ms
 
   // Track the current messages being built
   const currentBotMessageRef = useRef<string>("");
   const latestUserTranscriptRef = useRef<string>("");
-
-  // Track complete messages from start to finish
-  const completeUserMessageRef = useRef<string>("");
-  const completeBotMessageRef = useRef<string>("");
-  const botJustStoppedRef = useRef<boolean>(false);
-
-  // Throttled transcript update function
-  const throttledTranscriptUpdate = useCallback(
-    (updateFn: () => void, forceUpdate = false) => {
-      const now = Date.now();
-      if (forceUpdate || now - lastUpdateTimeRef.current > updateThrottleMs) {
-        updateFn();
-        lastUpdateTimeRef.current = now;
-      }
-    },
-    []
-  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -96,7 +77,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         audioRef.current
           .play()
           .then(() => {
-            console.log("Audio playback started");
+            // Audio playback started
           })
           .catch((err) => {
             if (err.name !== "NotAllowedError") {
@@ -186,25 +167,21 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const setupEventListeners = (client: RTVIClient) => {
     client.on(RTVIEvent.TrackStarted, (track, participant) => {
       if (track.kind === "audio" && !participant?.local) {
-        console.log("Bot audio track detected:", track);
         setupAudioTrack(track);
       }
     });
 
     client.on(RTVIEvent.UserStartedSpeaking, () => {
-      console.log("User started speaking - triggering UI update");
       setIsUserSpeaking(true);
     });
 
     client.on(RTVIEvent.UserTranscript, (data) => {
-      console.log("User:", data.text);
       // Just update our ref with the latest transcript
       if (data.final) {
       }
     });
 
     client.on(RTVIEvent.UserStoppedSpeaking, () => {
-      console.log("User stopped speaking - triggering UI update");
       setIsUserSpeaking(false);
       setBotState("thinking");
 
@@ -220,12 +197,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       }
 
       // Clear everything
-      // setCurrentUserTranscript("");
+      setCurrentUserTranscript("");
       latestUserTranscriptRef.current = "";
     });
 
     client.on(RTVIEvent.BotStartedSpeaking, () => {
-      console.log("Bot started speaking - triggering UI update");
       setIsBotSpeaking(true);
       setShowStarterQuestions(false);
       setBotState("speaking");
@@ -235,12 +211,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
     client.on(RTVIEvent.BotTranscript, (data) => {
       // We ignore transcript events - only using TTS
-      console.log("Bot transcript (ignored):", data.text);
     });
 
     client.on(RTVIEvent.BotTtsText, (data) => {
-      console.log("Bot TTS:", data.text);
-
       // Append the TTS text to our message
       currentBotMessageRef.current +=
         (currentBotMessageRef.current ? " " : "") + data.text;
@@ -250,13 +223,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     });
 
     client.on(RTVIEvent.BotStoppedSpeaking, () => {
-      console.log("Bot stopped speaking - clearing transcripts");
       setIsBotSpeaking(false);
       setBotState("done");
 
       // Add the complete message to chat history
       const completeMessage = currentBotMessageRef.current.trim();
-      console.log("Final bot message to add to history:", completeMessage);
 
       if (completeMessage) {
         const currentHistory = usePathStore.getState().currentChatHistory;
@@ -274,7 +245,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     });
 
     client.on(RTVIEvent.TransportStateChanged, (state) => {
-      console.log("Transport state changed:", state);
       setTransportState(state);
     });
   };
@@ -283,7 +253,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     try {
       showToast("Initializing audio connection...");
       setConnectionStatus("initializing");
-      console.log("Starting connection to Interview Copilot backend...");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -304,20 +273,12 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         return;
       }
 
-      const microphoneTrack = micStreamRef.current.getAudioTracks()[0];
+      const microphoneTrack = stream.getAudioTracks()[0];
       if (!microphoneTrack) {
-        console.error("No microphone track available in the stream");
-        showToast("Microphone track not available", "error");
+        showToast("No microphone found", "error");
         setConnectionStatus("disconnected");
         return;
       }
-
-      console.log(
-        "Using microphone track:",
-        microphoneTrack.label,
-        "Enabled:",
-        microphoneTrack.enabled
-      );
 
       setConnectionStatus("audio_connected");
 
@@ -331,6 +292,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
           videoTrack: videoTrack,
+          requestData: {
+            job_id: usePathStore.getState().jobId,
+            candidate_id: usePathStore.getState().candidateId,
+          },
         },
         transport: new DailyTransport({
           dailyFactoryOptions: {
@@ -351,17 +316,14 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         enableCam: true,
         callbacks: {
           onConnected: () => {
-            console.log("Connected to the server!");
             showToast("Connected to AI service");
             setConnectionStatus("service_connected");
           },
           onDisconnected: () => {
-            console.log("Disconnected from the server!");
             showToast("Disconnected from AI service");
             setConnectionStatus("disconnected");
           },
           onBotConnected: () => {
-            console.log("Bot connected!");
             showToast("AI assistant connected");
             setConnectionStatus("bot_connected");
           },
@@ -373,8 +335,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
             );
           },
           onGenericMessage: (data: any) => {
-            console.log("Generic message received:", data);
-
             try {
               const message =
                 typeof data === "string" ? JSON.parse(data) : data;
@@ -398,7 +358,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                   typeof messageData === "object" &&
                   messageData.type === "coding-problem"
                 ) {
-                  console.log("Coding problem received:", messageData.payload);
                   const {
                     problem_description,
                     problem_constraints,
@@ -430,7 +389,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
             }
           },
           onTransportStateChanged: (state) => {
-            console.log("Transport state changed:", state);
             setTransportState(state);
           },
         },
@@ -490,7 +448,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       const audioTrack = micStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !isMicMuted;
-        console.log(`Microphone track ${!isMicMuted ? "enabled" : "disabled"}`);
       }
     }
   }, [isMicMuted, callStatus, permissionGranted]);

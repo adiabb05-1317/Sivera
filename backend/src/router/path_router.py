@@ -8,11 +8,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 
 from src.core.config import Config
 from src.llm_handler.analytics import InterviewAnalytics
-from src.llm_handler.flow_generator import (
-    convert_flow_to_react_flow,
-    generate_interview_flow_from_jd,
-    generate_react_flow_json,
-)
+from src.llm_handler.flow_generator import generate_interview_flow_from_jd
 from src.utils.logger import logger
 
 UPLOAD_DIR = Config.UPLOAD_DIR
@@ -29,10 +25,15 @@ async def rtvi_connect(request: Request):
     manager = request.app.state.manager
     room_url, bot_token = await manager.create_room_and_token()
     session_id = str(uuid.uuid4())
+    body = await request.json()
+    job_id = body.get("job_id")
+    candidate_id = body.get("candidate_id")
 
     try:
         proc = subprocess.Popen(
-            [f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id}"],
+            [
+                f"python3 -m src.services.bot_defaults -u {room_url} -t {bot_token} -s {session_id} -j {job_id} -c {candidate_id}"
+            ],
             shell=True,
             bufsize=1,
             cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -116,32 +117,178 @@ async def rtvi_disconnect(token: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Disconnect failed: {str(e)}")
 
 
-@router.post("/generate_interview_flow")
-async def generate_interview_flow(
-    request: Request,
-    data: dict = Body(...),
-):
-    """
-    Generate an interview flow JSON using Gemini LLM, given org ID and job description.
-    Also generates a React Flow compatible version for visualization.
-    """
-    if not data["job_description"] or len(data["job_description"]) < 30:
-        raise HTTPException(
-            status_code=400,
-            detail="organization_id and a valid job_description are required.",
-        )
+@router.get("/hellos")
+async def hellos(request: Request):
+    return {"message": "Hello, world!"}
 
-    flow_json = await generate_interview_flow_from_jd(data["job_description"])
-    print(flow_json)
+
+@router.post("/generate_interview_flow_from_description")
+async def generate_interview_flow_from_description(request: Request, data: dict = Body(...)):
+    """
+    Generate an interview flow JSON from a job description using Gemini LLM.
+    """
+
+    job_role = data["job_role"]
+    job_description = data["job_description"]
+    skills = data["skills"]
+    duration = data["duration"]
+
+    flow_json = await generate_interview_flow_from_jd(job_role, job_description, skills, duration)
+
+    return flow_json
+
+@router.post("/phone_screening/connect")
+async def handle_daily_dialout_webhook(request: Request):
+    """
+    Handle Daily.co dialout webhook request.
+    This endpoint receives dialout_settings with sip_uri and starts the phone screening bot.
+    """
+    manager = request.app.state.manager
+    db_manager = request.app.state.db_manager
 
     try:
-        react_flow_json = await generate_react_flow_json(flow_json)
-        print(react_flow_json)
-    except Exception as e:
-        logger.warning(f"Failed to generate React Flow JSON directly: {e}")
-        react_flow_json = convert_flow_to_react_flow(flow_json)
+        # Get the request data
+        data = await request.json()
+        logger.info(f"Received Daily dialout webhook: {data}")
 
-    return {
-        "flow": flow_json,
-        "react_flow": react_flow_json,
-    }
+        # Handle test webhook
+        if "test" in data:
+            return {"test": True}
+
+        # Validate dialout_settings
+        if not data.get("dialout_settings"):
+            raise HTTPException(
+                status_code=400, detail="Missing 'dialout_settings' in the request body"
+            )
+
+        dialout_settings = data["dialout_settings"]
+        # if not dialout_settings.get("sip_uri"):
+        #     raise HTTPException(
+        #         status_code=400, detail="Missing 'sip_uri' in dialout_settings"
+        #     )
+
+        sip_uri = dialout_settings.get("sip_uri", "")
+        phone_number = dialout_settings.get("phone_number")
+        logger.info(f"Processing dialout to SIP URI: {sip_uri}")
+
+        # If phone_number is not provided directly, try to extract from SIP URI
+        if not phone_number:
+            phone_number = "unknown"
+            try:
+                if sip_uri.startswith("sip:"):
+                    phone_part = sip_uri[4:].split("@")[0]
+                    phone_number = phone_part
+            except Exception as e:
+                logger.warning(f"Could not extract phone number from SIP URI: {e}")
+
+        try:
+            # Use the SIP-enabled room creation method for dialout capability
+            room_data = await manager.create_room_sid_phonescreen(phone_number)
+            room_url = room_data["room_url"]
+            bot_token = room_data["token"]
+            sip_endpoint = room_data["sip_endpoint"]
+            logger.info(f"Created Daily SIP-enabled room: {room_url}")
+            logger.info(f"SIP endpoint: {sip_endpoint}")
+        except Exception as e:
+            logger.error(f"Error creating Daily SIP room: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to create Daily SIP room: {str(e)}"
+            )
+
+        # Generate session and call IDs
+        session_id = str(uuid.uuid4())
+        call_id = f"daily_dialout_{int(datetime.now().timestamp())}"
+
+        logger.info(f"Starting Daily dialout phone screen")
+        logger.info(f"Session ID: {session_id}")
+        logger.info(f"Call ID: {call_id}")
+        logger.info(f"SIP URI: {sip_uri}")
+        logger.info(f"Phone: {phone_number}")
+
+        # Prepare dialout settings for the bot
+        bot_dialout_settings = {
+            "sip_uri": sip_uri,
+            "phone_number": phone_number,
+        }
+
+        # Add caller_id if provided
+        if dialout_settings.get("caller_id"):
+            bot_dialout_settings["caller_id"] = dialout_settings["caller_id"]
+
+        # Extract candidate information from request
+        candidate_name = data.get("candidate_name", "")
+        job_position = data.get("job_position", "Software Engineer")
+        company_name = data.get("company_name", "Sivera")
+        screening_questions = data.get("screening_questions", [])
+
+        try:
+
+            provider = "daily"
+            # Build command with all parameters
+            command = [
+                "python3",
+                "-m",
+                f"src.services.phone_screening.phone_bot_runner",
+                "-u",
+                room_url,
+                "-t",
+                bot_token,
+                "-s",
+                session_id,
+                "-i",
+                call_id,
+                "-d",
+                "api.daily.co",
+                "--provider",
+                provider,
+                "--phone_number",
+                phone_number,
+            ]
+
+            # Add optional parameters if provided
+            if candidate_name:
+                command.extend(["-n", candidate_name])
+            if job_position:
+                command.extend(["-j", job_position])
+            if company_name:
+                command.extend(["--company_name", company_name])
+            if screening_questions:
+                command.extend(
+                    ["--screening_questions", json.dumps(screening_questions)]
+                )
+            if dialout_settings.get("caller_id"):
+                command.extend(["-c", dialout_settings["caller_id"]])
+
+            # Start the phone screening bot process
+            proc = subprocess.Popen(
+                command,
+                cwd=os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                ),
+            )
+            manager.add_process(proc.pid, proc)
+            logger.info(f"Started Daily dialout bot process with PID: {proc.pid}")
+
+        except Exception as e:
+            logger.error(f"Error starting Daily dialout bot: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to start bot: {str(e)}"
+            )
+
+        return {
+            "success": True,
+            "message": f"Daily dialout initiated to {sip_uri}",
+            "session_id": session_id,
+            "call_id": call_id,
+            "room_url": room_url,
+            "token": bot_token,
+            "sip_uri": sip_uri,
+            "sip_endpoint": sip_endpoint,
+            "process_id": proc.pid,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in Daily dialout webhook: {e}")
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")

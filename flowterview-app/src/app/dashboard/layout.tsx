@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, ReactNode, useEffect } from "react";
+import { useState, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { initializeUserContext, logout } from "@/lib/auth-client";
 import {
   LayoutDashboard,
   FileText,
@@ -12,11 +10,14 @@ import {
   BarChart,
   LogOut,
   X,
+  Loader,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster } from "react-hot-toast";
 import { ModeToggle } from "@/components/dark-mode-toggle";
+import { useAuth, useAppLoadingState } from "@/hooks/useStores";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,36 +27,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [isContextInitialized, setIsContextInitialized] = useState(false);
 
-  // Check for authentication on component mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
+  // Use auth for authentication state and user data
+  const { user, logout } = useAuth();
 
-      if (!data.session) {
-        // Not authenticated, redirect to login
-        router.push("/auth/login");
-        return;
-      }
-
-      // Initialize user context with cookies
-      try {
-        await initializeUserContext();
-      } catch (error) {
-        console.error("Error initializing user context:", error);
-        // Optionally, handle this error, e.g., redirect to login or show error message
-      } finally {
-        setIsContextInitialized(true);
-      }
-
-      // Set user name/email
-      setUserName(data.session.user?.email || "User");
-    };
-
-    checkAuth();
-  }, [router]);
+  // Use comprehensive app loading state that accounts for all stores
+  const { isLoading, stage } = useAppLoadingState();
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -65,8 +42,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   const handleSignOut = async () => {
-    await logout();
-    router.push("/auth/login");
+    try {
+      // 1. Supabase logout
+      const { logout: supabaseLogout } = await import("@/lib/auth-client");
+      await supabaseLogout();
+
+      // 2. Clear our auth store
+      logout();
+
+      // 3. Redirect
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force redirect even on error
+      router.push("/auth/login");
+    }
   };
 
   return (
@@ -141,7 +131,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <div>
                   <p className="text-sm font-light text-gray-800 dark:text-gray-200">
-                    {userName}
+                    {user?.email || (
+                      <span
+                        className="text-xs"
+                        style={{
+                          fontFamily: "KyivType Sans",
+                        }}
+                      >
+                        Loading...
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -168,30 +167,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-          {isContextInitialized ? (
-            children
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <style jsx>{`
-                .loader {
-                  border: 4px solid rgba(0, 0, 0, 0.1);
-                  border-left-color: #4f46e5; /* Indigo color */
-                  border-radius: 50%;
-                  width: 40px;
-                  height: 40px;
-                  animation: spin 1s linear infinite;
-                }
-                @keyframes spin {
-                  to {
-                    transform: rotate(360deg);
-                  }
-                }
-                .dark .loader {
-                  border-left-color: #818cf8; /* Lighter Indigo for dark mode */
-                }
-              `}</style>
-              <div className="loader"></div>
+          {isLoading ? (
+            <div
+              className="flex flex-col items-center justify-center h-full min-h-[60vh] space-y-4 gap-2"
+              style={{
+                fontFamily: "KyivType Sans",
+              }}
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-app-blue-300 opacity-70" />
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {stage === "auth"
+                  ? "Authenticating..."
+                  : "Loading dashboard data..."}
+              </p>
             </div>
+          ) : (
+            children
           )}
         </main>
       </div>
