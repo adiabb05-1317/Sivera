@@ -9,6 +9,7 @@ from pipecat.transports.services.helpers.daily_rest import (
     DailyRESTHelper,
     DailyRoomParams,
     DailyRoomProperties,
+    DailyRoomSipParams,
 )
 
 from src.core.config import Config
@@ -167,3 +168,119 @@ class ConnectionManager:
         except Exception as e:
             logger.error(f"Error retrieving active room: {e}")
             return None
+
+    async def create_room_sid_phonescreen(self, caller_phone: str = "unknown-caller"):
+        """Create a Daily room with SIP capabilities for phone screening.
+
+        Args:
+            caller_phone: The phone number of the caller to use in display name
+
+        Returns:
+            Dictionary with room URL, token, and SIP endpoint
+        """
+        logger.info(f"Creating phone screening room for caller: {caller_phone}")
+
+        # Retry logic for SIP-enabled room creation
+        max_retries = 3
+        retry_delay = 1.0  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                # Always create a fresh session for SIP room creation
+                async with aiohttp.ClientSession() as session:
+                    daily_helper = DailyRESTHelper(
+                        daily_api_key=Config.DAILY_API_KEY,
+                        daily_api_url="https://api.daily.co/v1",
+                        aiohttp_session=session,
+                    )
+
+                    # Configure SIP parameters
+                    sip_params = DailyRoomSipParams(
+                        display_name=caller_phone,
+                        video=False,
+                        sip_mode="dial-in",
+                        num_endpoints=1,
+                    )
+
+                    # Create room properties with SIP enabled
+                    properties = DailyRoomProperties(
+                        sip=sip_params,
+                        enable_dialout=True,  # Needed for outbound calls
+                        enable_chat=False,  # No need for chat in a voice bot
+                        start_video_off=True,  # Voice only
+                        start_audio_off=False,  # Audio enabled for phone calls
+                        exp=int(time.time() + Config.DAILY_ROOM_EXPIRY_MINUTES * 60),
+                    )
+
+                    # Create room parameters
+                    unique_name = f"phonescreen-sip-{time.strftime('%Y%m%d%H%M%S')}-{caller_phone.replace('+', '').replace('-', '')}"
+                    params = DailyRoomParams(
+                        name=unique_name,
+                        privacy=Config.DAILY_ROOM_SETTINGS["privacy"],
+                        properties=properties,
+                    )
+
+                    # Create the room
+                    room = await daily_helper.create_room(params=params)
+
+                    if not room or not room.url:
+                        raise HTTPException(
+                            status_code=503, detail="Failed to create SIP-enabled room"
+                        )
+
+                    # Get token for the bot to join
+                    bot_token = await daily_helper.get_token(
+                        room_url=room.url,
+                        expiry_time=24 * 60 * 60,  # 24 hours validity
+                        owner=True,
+                    )
+
+                    if not bot_token:
+                        raise HTTPException(
+                            status_code=503,
+                            detail="Failed to get bot token for SIP room",
+                        )
+
+                    # Extract SIP endpoint from room config
+                    sip_endpoint = None
+                    if hasattr(room, "config") and hasattr(room.config, "sip_endpoint"):
+                        sip_endpoint = room.config.sip_endpoint
+
+                    logger.info(f"Successfully created SIP room: {room.url}")
+                    logger.info(f"SIP endpoint: {sip_endpoint}")
+
+                    return {
+                        "room_url": room.url,
+                        "token": bot_token,
+                        "sip_endpoint": sip_endpoint,
+                    }
+
+            except Exception as e:
+                logger.error(
+                    f"Error creating SIP room (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+
+                if attempt < max_retries - 1:
+                    # Check if we need to clean up rooms before retrying
+                    if "limit of 50 rooms reached" in str(e):
+                        try:
+                            logger.warning(
+                                "Daily rooms limit reached, cleaning up before retry"
+                            )
+                            await self.cleanup_daily_rooms()
+                        except Exception as cleanup_error:
+                            logger.error(
+                                f"Error during emergency cleanup: {cleanup_error}"
+                            )
+
+                    # Exponential backoff
+                    await asyncio.sleep(retry_delay * (2**attempt))
+                else:
+                    # Last attempt failed
+                    if isinstance(e, HTTPException):
+                        raise e
+                    else:
+                        raise HTTPException(
+                            status_code=503,
+                            detail=f"Failed to create SIP room after {max_retries} attempts: {str(e)}",
+                        )
