@@ -82,7 +82,17 @@ class Config:
     LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
 
     # CORS Configuration
-    CORS_ORIGINS = ["*"]  # Allow all origins in development
+    CORS_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8010",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8010",
+        "http://127.0.0.1:3001",
+        "https://recruiter.sivera.io",
+        "https://api.sivera.io",
+        "https://app.sivera.io",
+    ]  # Allow all origins in development
 
     # Chat and Document Processing
     CHUNK_SIZE = 512

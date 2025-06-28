@@ -30,8 +30,10 @@ export default function SimpleLoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // Simple redirect to home page
-          emailRedirectTo: window.location.origin,
+          // Using the environment variable for production
+          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL
+            ? process.env.NEXT_PUBLIC_SITE_URL
+            : window.location.origin,
         },
       });
 

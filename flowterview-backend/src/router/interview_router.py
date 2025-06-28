@@ -155,7 +155,7 @@ async def send_verification_email(email: str, name: str, job: str, token: str) -
         import urllib.parse
 
         encoded_token = urllib.parse.quote_plus(token)
-        verify_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview?token={encoded_token}"
+        verify_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
         logger.info(f"Generated verification URL with token: {encoded_token[:10]}...")
 
         # Prepare variables for Loops template
@@ -250,7 +250,7 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
 
             # Generate interview link
             interview_url = (
-                f"{os.getenv('FRONTEND_URL', 'http://localhost:3001')}/interview/{candidate_interview_id}/start"
+                f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io:3001')}/interview/{candidate_interview_id}/start"
             )
 
             # Send interview email
@@ -883,7 +883,7 @@ async def complete_registration(
                 # We can still proceed without it, but analytics will be affected.
 
         # Generate interview URL
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+        frontend_url = os.getenv("FRONTEND_URL", "https://app.sivera.io")
         interview_url = f"{frontend_url}/interview/{candidate_interview_id}/start" if candidate_interview_id else None
 
         # Delete the used token

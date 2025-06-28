@@ -9,6 +9,7 @@ export type TSource = {
     category?: string;
   };
   content: string;
+  score?: number;
 };
 
 export type Message = {

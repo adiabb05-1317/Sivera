@@ -23,7 +23,7 @@ class Config:
     LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
 
     # Frontend URL for generating links
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3001")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.sivera.io")
 
     @classmethod
     def validate_smtp_config(cls):
@@ -54,6 +54,9 @@ class Config:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:3001",
+        "https://recruiter.sivera.io",
+        "https://app.sivera.io",
+        "https://core.sivera.io",
     ]
 
     # Supabase settings

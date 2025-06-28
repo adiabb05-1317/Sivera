@@ -137,10 +137,10 @@ export default function InterviewDetailsPage() {
 
   const { toast } = useToast();
 
-  const BACKEND_URL =
-    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-  const CORE_BACKEND_URL =
-    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const coreBackendUrl =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "https://core.sivera.io";
 
   // Timer options and logic
   const timerOptions = [10, 20, 30];
@@ -297,7 +297,7 @@ export default function InterviewDetailsPage() {
     try {
       // Generate new flow data with updated skills and duration
       const flowData = await fetch(
-        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        `${coreBackendUrl}/api/v1/generate_interview_flow_from_description`,
         {
           method: "POST",
           headers: {
@@ -332,7 +332,7 @@ export default function InterviewDetailsPage() {
       }
 
       const flowResponse = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/interviews/interview-flows/${flowId}`,
+        `${siveraBackendUrl}/api/v1/interviews/interview-flows/${flowId}`,
         {
           method: "PATCH",
           headers: {
@@ -356,7 +356,7 @@ export default function InterviewDetailsPage() {
       };
 
       const jobResponse = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/interviews/jobs/${job?.id}`,
+        `${siveraBackendUrl}/api/v1/interviews/jobs/${job?.id}`,
         {
           method: "PATCH",
           headers: {
@@ -412,7 +412,7 @@ export default function InterviewDetailsPage() {
     try {
       // Directly fetch candidates by job_id - much simpler approach
       const candidatesResp = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/candidates/by-job/${job.id}`
+        `${siveraBackendUrl}/api/v1/candidates/by-job/${job.id}`
       );
 
       if (!candidatesResp.ok) {

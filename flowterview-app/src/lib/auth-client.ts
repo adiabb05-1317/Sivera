@@ -181,12 +181,28 @@ export const login = async (email: string, password: string) => {
   return { data, error };
 };
 
+// Helper function to get the correct site URL for production environments
+const getSiteURL = () => {
+  // In production, use the environment variable
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+
+  // Fallback to window.location.origin for development
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  // Default fallback
+  return "https://recruiter.sivera.io";
+};
+
 // Magic link login
 export const sendMagicLink = async (email: string) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${getSiteURL()}/auth/callback`,
     },
   });
 

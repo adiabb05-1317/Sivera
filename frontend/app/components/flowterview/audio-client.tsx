@@ -284,11 +284,12 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       const videoTrack = stream.getVideoTracks()[0];
 
+      const pipecat_base_url =
+        process.env.NEXT_PUBLIC_PIPECAT_BASE_URL || "https://core.sivera.io";
+
       const rtviClient = new RTVIClient({
         params: {
-          baseUrl:
-            process.env.NEXT_PUBLIC_PIPECAT_BASE_URL ||
-            "http://localhost:8000/api/v1",
+          baseUrl: `${pipecat_base_url}/api/v1`,
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
           videoTrack: videoTrack,

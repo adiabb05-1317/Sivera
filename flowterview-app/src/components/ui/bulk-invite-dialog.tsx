@@ -108,7 +108,7 @@ export function BulkInviteDialog({
 
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
 
       const requestData = {
         interview_id: interviewId,
@@ -161,7 +161,7 @@ export function BulkInviteDialog({
   const pollInviteStatus = async () => {
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
       const response = await authenticatedFetch(
         `${backendUrl}/api/v1/invites/bulk-invite-status/${interviewId}`
       );

@@ -70,10 +70,10 @@ export default function GenerateFromDescriptionPage() {
     formState: { errors },
   } = useForm<FormData>();
 
-  const BACKEND_URL =
-    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-  const CORE_BACKEND_URL =
-    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const coreBackendUrl =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "https://core.sivera.io";
 
   // Auto-adjust timer based on skill count
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function GenerateFromDescriptionPage() {
     try {
       // Generate flow data
       const flowData = await fetch(
-        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        `${coreBackendUrl}/api/v1/generate_interview_flow_from_description`,
         {
           method: "POST",
           headers: {
@@ -230,7 +230,7 @@ export default function GenerateFromDescriptionPage() {
       };
 
       const response = await fetch(
-        `${BACKEND_URL}/api/v1/interviews/from-description`,
+        `${siveraBackendUrl}/api/v1/interviews/from-description`,
         {
           method: "POST",
           headers: {

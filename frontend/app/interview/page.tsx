@@ -91,7 +91,9 @@ function InterviewContent() {
     try {
       setIsLoading(true);
       const response = await fetch(
-        "http://localhost:8010/api/v1/interviews/verify-token",
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+          ? `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/verify-token`
+          : "https://api.sivera.io/api/v1/interviews/verify-token",
         {
           method: "POST",
           headers: {
@@ -161,7 +163,9 @@ function InterviewContent() {
       // formDataToSend.append("candidate_id", usePathStore.getState().candidateId);
 
       const response = await fetch(
-        "http://localhost:8010/api/v1/interviews/complete-registration",
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+          ? `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/complete-registration`
+          : "https://api.sivera.io/api/v1/interviews/complete-registration",
         {
           method: "POST",
           body: formDataToSend,
