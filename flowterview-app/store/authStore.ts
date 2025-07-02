@@ -6,16 +6,19 @@ import {
   getSession,
   clearUserContext,
 } from "@/lib/auth-client";
+import { Session } from "@supabase/supabase-js";
 
 interface AuthState {
   user: User | null;
   organization: Organization | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
   setOrganization: (organization: Organization | null) => void;
+  setSession: (session: Session | null) => void;
   fetchUserProfile: () => Promise<void>;
   fetchOrganization: () => Promise<void>;
   logout: () => void;
@@ -26,6 +29,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   // Initial state - always start fresh
   user: null,
   organization: null,
+  session: null,
   isAuthenticated: false,
   isLoading: false,
 
@@ -37,6 +41,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }),
 
   setOrganization: (organization) => set({ organization }),
+
+  setSession: (session) => set({ session }),
 
   fetchUserProfile: async () => {
     try {
@@ -115,6 +121,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({
       user: null,
       organization: null,
+      session: null,
       isAuthenticated: false,
       isLoading: false,
     });
@@ -128,6 +135,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   initialize: async () => {
     try {
       const { session } = await getSession();
+
+      // Store the session in Zustand
+      set({ session });
+
       if (session?.user) {
         // Always fetch fresh user data
         await get().fetchUserProfile();
@@ -136,7 +147,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       }
     } catch (error) {
       console.error("❌ Error initializing auth:", error);
-      set({ isAuthenticated: false, isLoading: false });
+      set({ isAuthenticated: false, isLoading: false, session: null });
     }
   },
 }));

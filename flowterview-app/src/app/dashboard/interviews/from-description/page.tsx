@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
-import { getCookie } from "@/lib/auth-client";
+import { authenticatedFetch, getCookie } from "@/lib/auth-client";
 import {
   Carousel,
   CarouselContent,
@@ -229,7 +229,7 @@ export default function GenerateFromDescriptionPage() {
         phone_screen_questions: phoneScreenQuestions,
       };
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${siveraBackendUrl}/api/v1/interviews/from-description`,
         {
           method: "POST",

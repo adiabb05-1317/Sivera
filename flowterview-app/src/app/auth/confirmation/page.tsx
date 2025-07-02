@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
   CardContent,
@@ -15,7 +14,6 @@ import { Button } from "@/components/ui/button";
 export default function ConfirmationPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">

@@ -19,6 +19,7 @@ from loguru import (
 from pydantic import BaseModel, EmailStr, Field
 
 from src.core.config import Config
+from src.lib.manager import ConnectionManager
 from src.utils.auth_middleware import (
     require_organization,
 )
@@ -95,7 +96,7 @@ class CreateInterviewFromDescriptionRequest(BaseModel):
     organization_id: str
     created_by: str
     process_stages: dict
-    phone_screen_questions: List[str]
+    phone_screen_questions: Optional[List[str]] = []
 
 
 class AddCandidateRequest(BaseModel):
@@ -185,91 +186,144 @@ async def send_interview_email(email: str, name: str, job: str, interview_url: s
         raise
 
 
-@router.post("/send-invite")
-async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+async def process_invite_request(
+    email: str, 
+    name: str, 
+    job: str, 
+    organization_id: str, 
+    sender_id: str = None,
+    manager = None
+) -> None:
     """
-    Send an interview invitation email to the candidate
-    If candidate exists, send direct interview link
-    If candidate is new, send verification link
+    Background task to process the entire invite request including database operations and email sending
     """
     try:
-        logger.info(f"[send-invite] Received invite request: {request.dict()}")
+        logger.info(f"[process-invite-bg] Processing invite for {email}")
+        
         # First check if candidate exists as a registered user
-        user = db.fetch_one("users", {"email": request.email})
-        logger.info(f"[send-invite] User lookup for {request.email}: {user}")
+        user = db.fetch_one("users", {"email": email})
+        logger.info(f"[process-invite-bg] User lookup for {email}: {user}")
 
         # Also check if candidate exists in candidates table
-        candidate = db.fetch_one("candidates", {"email": request.email})
-        logger.info(f"[send-invite] Candidate lookup for {request.email}: {candidate}")
+        candidate = db.fetch_one("candidates", {"email": email})
+        logger.info(f"[process-invite-bg] Candidate lookup for {email}: {candidate}")
 
         # Try to find a matching interview for this job title
-        matching_job = db.fetch_one("jobs", {"title": request.job, "organization_id": request.organization_id})
-        logger.info(f"[send-invite] Matching job for {request.job}: {matching_job}")
+        matching_job = db.fetch_one("jobs", {"title": job, "organization_id": organization_id})
+        logger.info(f"[process-invite-bg] Matching job for {job}: {matching_job}")
 
         interview_id = None
         if matching_job:
             # Find an interview for this job with status 'active' or 'draft'
             all_interviews = db.fetch_all("interviews", {"job_id": matching_job["id"]})
-            logger.info(f"[send-invite] Found {len(all_interviews)} interviews for job {matching_job['id']}")
+            logger.info(f"[process-invite-bg] Found {len(all_interviews)} interviews for job {matching_job['id']}")
             matching_interview = next((i for i in all_interviews if i["status"] in ("active", "draft")), None)
-            logger.info(f"[send-invite] Matching interview: {matching_interview}")
+            logger.info(f"[process-invite-bg] Matching interview: {matching_interview}")
             if matching_interview:
                 interview_id = matching_interview["id"]
 
         if user:
-            logger.info(f"[send-invite] Existing user path for {request.email}")
+            logger.info(f"[process-invite-bg] Existing user path for {email}")
             # Candidate exists, send direct interview link
-            logger.info(f"Candidate {request.email} exists, sending direct interview link")
+            logger.info(f"Candidate {email} exists, sending direct interview link")
 
             # Update candidate's organization_id if it's different
-            if candidate and candidate.get("organization_id") != request.organization_id:
+            if candidate and candidate.get("organization_id") != organization_id:
                 db.update(
                     "candidates",
-                    {"organization_id": request.organization_id},
+                    {"organization_id": organization_id},
                     {"id": candidate["id"]},
                 )
 
             # If we have a matching interview, create a candidate_interview record
             if interview_id:
                 try:
-                    ci_record = db.execute_query(
-                        "candidate_interviews",
-                        {
-                            "interview_id": interview_id,
-                            "candidate_id": candidate["id"],
-                        },
+                    # Check if candidate_interview already exists
+                    existing_ci = db.fetch_one(
+                        "candidate_interviews", 
+                        {"interview_id": interview_id, "candidate_id": candidate["id"]}
                     )
-                    candidate_interview_id = ci_record["id"]
+                    
+                    if existing_ci:
+                        # Check if existing record has valid room_url and bot_token
+                        existing_room_url = existing_ci.get("room_url")
+                        existing_bot_token = existing_ci.get("bot_token")
+                        
+                        if (existing_room_url and existing_bot_token and 
+                            existing_room_url not in ["fghij", "abcde"] and 
+                            existing_bot_token not in ["abcde", "fghij"]):
+                            # Use existing record with valid values
+                            candidate_interview_id = existing_ci["id"]
+                            logger.info(f"[process-invite-bg] Using existing candidate_interview {candidate_interview_id} with valid room/token")
+                        else:
+                            # Update existing record with new room and token
+                            if manager:
+                                try:
+                                    room_url, bot_token = await manager.create_room_and_token()
+                                    db.update(
+                                        "candidate_interviews",
+                                        {
+                                            "room_url": room_url,
+                                            "bot_token": bot_token,
+                                            "updated_at": datetime.now().isoformat(),
+                                        },
+                                        {"id": existing_ci["id"]},
+                                    )
+                                    candidate_interview_id = existing_ci["id"]
+                                    logger.info(f"[process-invite-bg] Updated existing candidate_interview {candidate_interview_id} with new room/token")
+                                except Exception as e:
+                                    logger.error(f"Failed to create room for existing candidate_interview: {e}")
+                                    return
+                            else:
+                                logger.error("No manager available to create room for existing candidate_interview")
+                                return
+                    else:
+                        # Create new record with real room and token
+                        if manager:
+                            try:
+                                room_url, bot_token = await manager.create_room_and_token()
+                                ci_record = db.execute_query(
+                                    "candidate_interviews",
+                                    {
+                                        "interview_id": interview_id,
+                                        "candidate_id": candidate["id"],
+                                        "status": "scheduled",
+                                        "created_at": datetime.now().isoformat(),
+                                        "updated_at": datetime.now().isoformat(),
+                                        "bot_token": bot_token,
+                                        "room_url": room_url,
+                                    },
+                                )
+                                candidate_interview_id = ci_record["id"]
+                                logger.info(f"[process-invite-bg] Created new candidate_interview {candidate_interview_id} with room: {room_url}")
+                            except Exception as e:
+                                logger.error(f"Failed to create room for new candidate_interview: {e}")
+                                return
+                        else:
+                            logger.error("No manager available to create room for new candidate_interview")
+                            return
+                    
+                    # Generate interview link
+                    interview_url = (
+                        f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview/{candidate_interview_id}/start"
+                    )
+
+                    # Send interview email
+                    await send_interview_email(email, name, job, interview_url)
+                    logger.info(f"[process-invite-bg] Interview invitation sent to existing candidate {email}")
+                    
                 except Exception as e:
                     logger.error(f"Failed to create candidate_interview record for existing user: {e}")
-                    raise HTTPException(status_code=500, detail="Could not schedule interview.")
+                    return
             else:
-                # No interview found, return error
-                logger.error(f"No active interview found for job {request.job} in org {request.organization_id}")
-                raise HTTPException(status_code=404, detail="No active interview found for this job.")
+                # No interview found, log error but don't fail completely
+                logger.error(f"No active interview found for job {job} in org {organization_id}")
+                return
 
-            # Generate interview link
-            interview_url = (
-                f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io:3001')}/interview/{candidate_interview_id}/start"
-            )
-
-            # Send interview email
-            background_tasks.add_task(
-                send_interview_email,
-                request.email,
-                request.name,
-                request.job,
-                interview_url,
-            )
-
-            return {
-                "success": True,
-                "message": "Interview invitation sent to existing candidate",
-            }
         else:
-            logger.info(f"[send-invite] New candidate path for {request.email}")
+            logger.info(f"[process-invite-bg] New candidate path for {email}")
             # Not a registered user, create verification token (even if they exist in candidates table)
-            logger.info(f"New candidate {request.email}, sending verification email")
+            logger.info(f"New candidate {email}, sending verification email")
 
             # Generate secure token
             token = secrets.token_urlsafe(32)
@@ -277,7 +331,7 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
 
             # Store token in database
             # Get any valid organization if one isn't provided
-            org_id = request.organization_id
+            org_id = organization_id
 
             # If organization doesn't exist or is invalid UUID, find a default
             try:
@@ -325,15 +379,15 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
             # Create token
             try:
                 # Log the token we're about to save
-                logger.info(f"Creating verification token: {token[:10]}... for {request.email} with org_id: {org_id}")
+                logger.info(f"Creating verification token: {token[:10]}... for {email} with org_id: {org_id}")
 
                 # Make sure the token is stored as a string
                 token_data = {
                     "token": str(token),
-                    "email": request.email,
-                    "name": request.name,
+                    "email": email,
+                    "name": name,
                     "organization_id": str(org_id),  # Ensure org_id is a string
-                    "job_title": request.job,
+                    "job_title": job,
                     "interview_id": interview_id,
                     "expires_at": expires_at.isoformat(),
                 }
@@ -345,65 +399,72 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
                 # Verify the token was saved by retrieving it
                 saved_token = db.fetch_one("verification_tokens", {"token": token})
                 if saved_token:
-                    logger.info(f"Successfully verified token was saved for {request.email}")
+                    logger.info(f"Successfully verified token was saved for {email}")
                 else:
-                    logger.error(f"Failed to verify token was saved for {request.email}")
-                logger.info(f"Successfully created verification token for {request.email}")
+                    logger.error(f"Failed to verify token was saved for {email}")
+                    return
+                    
+                logger.info(f"Successfully created verification token for {email}")
             except Exception as token_error:
                 logger.error(f"Error creating verification token: {str(token_error)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to create verification token: {str(token_error)}",
-                )
+                return
 
             # Send verification email
             try:
-                logger.info(f"Scheduling verification email task for {request.email}")
-                background_tasks.add_task(
-                    send_verification_email,
-                    request.email,
-                    request.name,
-                    request.job,
-                    token,
-                )
-                logger.info(f"Email task scheduled successfully for {request.email}")
+                logger.info(f"Sending verification email for {email}")
+                await send_verification_email(email, name, job, token)
+                logger.info(f"[process-invite-bg] Verification email sent to new candidate {email}")
             except Exception as email_error:
-                logger.error(f"Error scheduling email task: {str(email_error)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to schedule email task: {str(email_error)}",
-                )
+                logger.error(f"Error sending verification email: {str(email_error)}")
+                return
 
-            return {
-                "success": True,
-                "message": "Verification email sent to new candidate",
-                "token": token,
-            }
+    except Exception as e:
+        logger.error(f"[process-invite-bg] Error processing invite for {email}: {str(e)}")
+
+
+@router.post("/send-invite")
+async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTasks, app_request: Request) -> Dict[str, Any]:
+    """
+    Send an interview invitation email to the candidate
+    Returns immediately and processes the invite in the background
+    """
+    try:
+        logger.info(f"[send-invite] Received invite request: {request.dict()}")
+        
+        # Do minimal validation - just check that the organization exists
+        try:
+            uuid.UUID(str(request.organization_id))  # Validate UUID format
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid organization ID format")
+        
+        # Get the manager from app state
+        manager = app_request.app.state.manager
+        
+        # Queue the processing as a background task
+        background_tasks.add_task(
+            process_invite_request,
+            request.email,
+            request.name,
+            request.job,
+            request.organization_id,
+            request.sender_id,
+            manager,
+        )
+        
+        logger.info(f"[send-invite] Invite processing queued for {request.email}")
+        
+        # Return immediately
+        return {
+            "success": True,
+            "message": "Invitation is being processed and will be sent shortly",
+        }
+        
     except HTTPException as he:
         # Pass through HTTP exceptions as-is
         raise he
-
     except Exception as e:
-        logger.error(f"Error sending invite: {str(e)}")
-        # Get more detailed error information
-        import traceback
-
-        error_trace = traceback.format_exc()
-        logger.error(f"Detailed error trace: {error_trace}")
-
-        # Return a more specific error message to the frontend
-        if "foreign key constraint" in str(e).lower():
-            raise HTTPException(
-                status_code=500,
-                detail="Database foreign key error. Organization may not exist.",
-            )
-        elif "smtp" in str(e).lower() or "email" in str(e).lower() or "aiosmtplib" in str(e).lower():
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to send email. Please check SMTP configuration.",
-            )
-        else:
-            raise HTTPException(status_code=500, detail=f"Failed to send invitation: {str(e)}")
+        logger.error(f"[send-invite] Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/job-id")
@@ -642,15 +703,35 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                         "success": False,
                         "message": "CANDIDATE_ALREADY_STARTED_OR_FINISHED",
                     }
-                db.execute_query(
-                    "candidate_interviews",
-                    {
-                        "interview_id": interview_id,
-                        "candidate_id": candidate["id"],
-                        "room_url": "abcde",
-                        "bot_token": "fghij",
-                    },
-                )
+                
+                # Create room and token for new candidate_interview
+                try:
+                    manager = ConnectionManager()
+                    room_url, bot_token = await manager.create_room_and_token()
+                    db.execute_query(
+                        "candidate_interviews",
+                        {
+                            "interview_id": interview_id,
+                            "candidate_id": candidate["id"],
+                            "room_url": room_url,
+                            "bot_token": bot_token,
+                        },
+                    )
+                    logger.info(f"Created candidate_interview with room: {room_url}")
+                except Exception as e:
+                    logger.error(f"Failed to create room for candidate_interview in verify_token: {e}")
+                    # Fall back to placeholder values
+                    room_url = "placeholder"
+                    bot_token = "placeholder"
+                    db.execute_query(
+                        "candidate_interviews",
+                        {
+                            "interview_id": interview_id,
+                            "candidate_id": candidate["id"],
+                            "room_url": room_url,
+                            "bot_token": bot_token,
+                        },
+                    )
             except Exception as e:
                 logger.error(f"Failed to create candidate_interview: {e}")
                 return {"success": False, "message": "Failed to set up interview session."}
@@ -681,8 +762,8 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                     "duration": flow_data.get("duration") if flow_data else 30,
                     "skills": flow_data.get("skills") if flow_data else [],
                     "interview_id": interview_id,
-                    "bot_token": "abcde",
-                    "room_url": "fghij",
+                    "bot_token": bot_token,
+                    "room_url": room_url,
                     "candidate_id": candidate["id"],
                 },
             }
@@ -725,8 +806,8 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
                     "duration": flow_data.get("duration") if flow_data else 30,
                     "skills": flow_data.get("skills") if flow_data else [],
                     "interview_id": interview_id,
-                    "bot_token": "abcde",
-                    "room_url": "fghij",
+                    "bot_token": "registration_pending",
+                    "room_url": "registration_pending",
                     "candidate_id": candidate["id"],
                 },
             }
@@ -864,20 +945,77 @@ async def complete_registration(
         # If we have an interview_id, add candidate to it by creating a candidate_interview
         if interview_id:
             try:
-                candidate_interview = db.execute_query(
-                    "candidate_interviews",
-                    {
-                        "interview_id": interview_id,
-                        "candidate_id": candidate_id,
-                        "room_url": "abcde",
-                        "bot_token": "fghij",
-                        "started_at": datetime.now().isoformat(),
-                    },
+                # Check if candidate_interview already exists
+                existing_ci = db.fetch_one(
+                    "candidate_interviews", 
+                    {"interview_id": interview_id, "candidate_id": candidate_id}
                 )
-                candidate_interview_id = candidate_interview["id"]
-                logger.info(
-                    f"Created candidate_interview {candidate_interview_id} for candidate {candidate_id} and interview {interview_id}"
-                )
+                
+                if existing_ci:
+                    # Check if existing record has valid room_url and bot_token
+                    existing_room_url = existing_ci.get("room_url")
+                    existing_bot_token = existing_ci.get("bot_token")
+                    
+                    if (existing_room_url and existing_bot_token and 
+                        existing_room_url not in ["fghij", "abcde"] and 
+                        existing_bot_token not in ["abcde", "fghij"]):
+                        # Use existing record with valid values
+                        candidate_interview_id = existing_ci["id"]
+                        logger.info(f"Using existing candidate_interview {candidate_interview_id} with valid room/token")
+                    else:
+                        # Update existing record with new room and token
+                        try:
+                            from src.lib.manager import ConnectionManager
+                            manager = ConnectionManager()
+                            room_url, bot_token = await manager.create_room_and_token()
+                            db.update(
+                                "candidate_interviews",
+                                {
+                                    "room_url": room_url,
+                                    "bot_token": bot_token,
+                                    "updated_at": datetime.now().isoformat(),
+                                },
+                                {"id": existing_ci["id"]},
+                            )
+                            candidate_interview_id = existing_ci["id"]
+                            logger.info(f"Updated existing candidate_interview {candidate_interview_id} with new room/token")
+                        except Exception as e:
+                            logger.error(f"Failed to create room for existing candidate_interview: {e}")
+                            # We can still proceed without it, but analytics will be affected.
+                            candidate_interview_id = existing_ci["id"]
+                else:
+                    # Create new record with real room and token
+                    try:
+                        from src.lib.manager import ConnectionManager
+                        manager = ConnectionManager()
+                        room_url, bot_token = await manager.create_room_and_token()
+                        candidate_interview = db.execute_query(
+                            "candidate_interviews",
+                            {
+                                "interview_id": interview_id,
+                                "candidate_id": candidate_id,
+                                "room_url": room_url,
+                                "bot_token": bot_token,
+                                "started_at": datetime.now().isoformat(),
+                            },
+                        )
+                        candidate_interview_id = candidate_interview["id"]
+                        logger.info(f"Created candidate_interview {candidate_interview_id} with room: {room_url}")
+                    except Exception as e:
+                        logger.error(f"Failed to create room for new candidate_interview: {e}")
+                        # Create with placeholder values as fallback
+                        candidate_interview = db.execute_query(
+                            "candidate_interviews",
+                            {
+                                "interview_id": interview_id,
+                                "candidate_id": candidate_id,
+                                "room_url": "placeholder",
+                                "bot_token": "placeholder",
+                                "started_at": datetime.now().isoformat(),
+                            },
+                        )
+                        candidate_interview_id = candidate_interview["id"]
+                        logger.info(f"Created candidate_interview {candidate_interview_id} with placeholder values")
             except Exception as e:
                 logger.error(f"Failed to create candidate_interview: {e}")
                 # We can still proceed without it, but analytics will be affected.

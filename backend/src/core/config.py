@@ -9,10 +9,16 @@ class Environment(str, Enum):
     PRODUCTION = "production"
 
 
-# Load environment-specific .env file
 env = os.getenv("ENV", "development")
-env_file = ".env.prod" if env == "production" else ".env"
-load_dotenv(env_file, override=True)
+if env == "production":
+    env_file = ".env.production"
+else:
+    env_file = ".env.development"
+
+if os.path.exists(env_file):
+    load_dotenv(env_file, override=True)
+else:
+    load_dotenv(".env", override=True)
 
 
 class Config:
@@ -47,6 +53,8 @@ class Config:
     ZEROX_API_KEY = os.getenv("ZEROX_API_KEY", "")
     FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY", "")
     COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
+    
+    # Environment-specific Supabase configuration
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 

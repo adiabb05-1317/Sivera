@@ -1,17 +1,21 @@
 import os
-
+from typing import List
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+
+env = os.getenv("ENV", "development")
+if env == "production":
+    env_file = ".env.production"
+else:
+    env_file = ".env.development"
+
+if os.path.exists(env_file):
+    load_dotenv(env_file, override=True)
+else:
+    load_dotenv(".env", override=True)
 
 
 class Config:
-    # Load environment variables at import time
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
     # Loops Email Configuration
     SMTP_HOST = os.getenv("SMTP_HOST", "smtp.loops.so")
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -57,6 +61,7 @@ class Config:
         "https://recruiter.sivera.io",
         "https://app.sivera.io",
         "https://core.sivera.io",
+        "https://api.sivera.io",
     ]
 
     # Supabase settings

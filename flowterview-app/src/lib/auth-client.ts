@@ -2,13 +2,103 @@
 
 import { supabase } from "./supabase";
 
+// Store imports for cache invalidation
+let useCandidatesStore: any = null;
+let useInterviewsStore: any = null;
+let useJobsStore: any = null;
+let useAuthStore: any = null;
+
+// Lazy loading function for stores to avoid circular dependencies
+const getStores = async () => {
+  if (
+    !useCandidatesStore ||
+    !useInterviewsStore ||
+    !useJobsStore ||
+    !useAuthStore
+  ) {
+    const [candidatesModule, interviewsModule, jobsModule, authModule] =
+      await Promise.all([
+        import("../../store/candidatesStore"),
+        import("../../store/interviewsStore"),
+        import("../../store/jobsStore"),
+        import("../../store/authStore"),
+      ]);
+
+    useCandidatesStore = candidatesModule.useCandidatesStore;
+    useInterviewsStore = interviewsModule.useInterviewsStore;
+    useJobsStore = jobsModule.useJobsStore;
+    useAuthStore = authModule.useAuthStore;
+  }
+
+  return { useCandidatesStore, useInterviewsStore, useJobsStore, useAuthStore };
+};
+
+// Cache invalidation helper
+const invalidateRelevantCaches = async (url: string, method: string) => {
+  try {
+    const {
+      useCandidatesStore,
+      useInterviewsStore,
+      useJobsStore,
+      useAuthStore,
+    } = await getStores();
+
+    // Get store instances
+    const candidatesStore = useCandidatesStore.getState();
+    const interviewsStore = useInterviewsStore.getState();
+    const jobsStore = useJobsStore.getState();
+    const authStore = useAuthStore.getState();
+
+    // Invalidate based on URL patterns
+    if (url.includes("/candidates")) {
+      candidatesStore.invalidateCache();
+    }
+
+    if (url.includes("/interviews")) {
+      interviewsStore.invalidateCache();
+      const interviewIdMatch = url.match(/\/interviews\/([^\/\?]+)/);
+      if (interviewIdMatch) {
+        interviewsStore.invalidateInterviewDetails(interviewIdMatch[1]);
+      }
+    }
+
+    if (url.includes("/jobs")) {
+      jobsStore.invalidateCache();
+    }
+
+    if (url.includes("/users") || url.includes("/organizations")) {
+      // Refetch user profile and organization data
+      authStore.fetchUserProfile();
+    }
+
+    console.log("🔄 Cache invalidated for:", url);
+  } catch (error) {
+    console.warn("⚠️ Failed to invalidate caches:", error);
+  }
+};
+
 // Cookie utility functions
 export const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax;Secure=${
-    window.location.protocol === "https:"
-  }`;
+
+  // For production, use .sivera.io domain for cross-subdomain compatibility
+  const isProduction = window.location.hostname.includes("sivera.io");
+  const domain = isProduction ? ".sivera.io" : "";
+  const sameSite = isProduction ? "None" : "Lax"; // None required for cross-origin
+  const secure = isProduction || window.location.protocol === "https:";
+
+  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=${sameSite}`;
+
+  if (secure) {
+    cookieString += ";Secure";
+  }
+
+  if (domain) {
+    cookieString += `;Domain=${domain}`;
+  }
+
+  document.cookie = cookieString;
 };
 
 export const getCookie = (name: string): string | null => {
@@ -23,10 +113,25 @@ export const getCookie = (name: string): string | null => {
 };
 
 export const deleteCookie = (name: string) => {
-  // Multiple attempts to ensure cookie is deleted
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/`;
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=${window.location.hostname}`;
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;domain=.${window.location.hostname}`;
+  const isProduction = window.location.hostname.includes("sivera.io");
+  const domain = isProduction ? ".sivera.io" : "";
+
+  // Multiple attempts to ensure cookie is deleted across different configurations
+  const expiredDate = "Thu, 01 Jan 1970 00:00:01 GMT";
+
+  // Delete without domain
+  document.cookie = `${name}=;expires=${expiredDate};path=/`;
+
+  // Delete with current hostname
+  document.cookie = `${name}=;expires=${expiredDate};path=/;domain=${window.location.hostname}`;
+
+  // Delete with dot-prefixed hostname
+  document.cookie = `${name}=;expires=${expiredDate};path=/;domain=.${window.location.hostname}`;
+
+  // Delete with production domain if applicable
+  if (domain) {
+    document.cookie = `${name}=;expires=${expiredDate};path=/;domain=${domain}`;
+  }
 };
 
 // User context interface
@@ -41,18 +146,29 @@ export const setUserContext = async (
   user_id: string,
   email: string
 ): Promise<UserContext> => {
-  // Fetch organization_id from backend
+  // Fetch organization_id from backend using regular fetch (no auth needed for org lookup)
   let organization_id: string | null = null;
 
   try {
-    const response = await authenticatedFetch(
+    const response = await fetch(
       `${
         process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
-      }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`
+      }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      }
     );
     if (response.ok) {
       const data = await response.json();
       organization_id = data.id;
+    } else {
+      console.warn(
+        `Failed to fetch organization for ${email}: ${response.status} ${response.statusText}`
+      );
     }
   } catch (error) {
     console.warn("Failed to fetch organization_id:", error);
@@ -133,17 +249,20 @@ export const authenticatedFetch = async (
     }
   }
 
+  // Get session from Zustand store instead of calling getSession()
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // Dynamically import to avoid circular dependency
+    const { useAuthStore } = await import("../../store/authStore");
+    const session = useAuthStore.getState().session;
+
     if (session?.access_token) {
       headers.set("Authorization", `Bearer ${session.access_token}`);
     } else if (!userContext) {
       console.warn("⚠️ No session token or user context available");
     }
   } catch (error) {
-    console.warn("❌ Failed to get session token:", error);
+    console.warn("❌ Failed to get session from store:", error);
+    // Continue without session token - user context headers should be sufficient
   }
 
   const response = await fetch(url, {
@@ -164,6 +283,18 @@ export const authenticatedFetch = async (
     });
   }
 
+  // Invalidate relevant caches after successful POST, PUT, or PATCH requests
+  const method = (options.method || "GET").toUpperCase();
+  if (
+    response.ok &&
+    (method === "POST" || method === "PUT" || method === "PATCH")
+  ) {
+    // Run cache invalidation asynchronously to avoid blocking the response
+    invalidateRelevantCaches(url, method).catch((error) => {
+      console.warn("Cache invalidation failed:", error);
+    });
+  }
+
   return response;
 };
 
@@ -174,8 +305,16 @@ export const login = async (email: string, password: string) => {
     password,
   });
 
-  if (data?.user && !error) {
+  if (data?.user && data?.session && !error) {
     await setUserContext(data.user.id, data.user.email!);
+
+    // Store session in Zustand store
+    try {
+      const { useAuthStore } = await import("../../store/authStore");
+      useAuthStore.getState().setSession(data.session);
+    } catch (storeError) {
+      console.warn("Failed to store session in Zustand:", storeError);
+    }
   }
 
   return { data, error };
@@ -216,8 +355,16 @@ export const signup = async (email: string, password: string) => {
     password,
   });
 
-  if (data?.user && !error) {
+  if (data?.user && data?.session && !error) {
     await setUserContext(data.user.id, data.user.email!);
+
+    // Store session in Zustand store
+    try {
+      const { useAuthStore } = await import("../../store/authStore");
+      useAuthStore.getState().setSession(data.session);
+    } catch (storeError) {
+      console.warn("Failed to store session in Zustand:", storeError);
+    }
   }
 
   return { data, error };
@@ -229,6 +376,14 @@ export const logout = async () => {
 
   // 2. Clear our custom cookies
   clearUserContext();
+
+  // 3. Clear session from Zustand store
+  try {
+    const { useAuthStore } = await import("../../store/authStore");
+    useAuthStore.getState().setSession(null);
+  } catch (storeError) {
+    console.warn("Failed to clear session from Zustand:", storeError);
+  }
 
   if (error) {
     console.warn("Supabase logout error:", error);
@@ -258,8 +413,16 @@ export const setSessionFromTokens = async (
     refresh_token: refreshToken || "",
   });
 
-  if (result.data?.user && !result.error) {
+  if (result.data?.user && result.data?.session && !result.error) {
     await setUserContext(result.data.user.id, result.data.user.email!);
+
+    // Store session in Zustand store
+    try {
+      const { useAuthStore } = await import("../../store/authStore");
+      useAuthStore.getState().setSession(result.data.session);
+    } catch (storeError) {
+      console.warn("Failed to store session in Zustand:", storeError);
+    }
   }
 
   return result;
@@ -272,6 +435,15 @@ export const initializeUserContext = async () => {
     } = await supabase.auth.getSession();
     if (session?.user) {
       await setUserContext(session.user.id, session.user.email!);
+
+      // Store session in Zustand store
+      try {
+        const { useAuthStore } = await import("../../store/authStore");
+        useAuthStore.getState().setSession(session);
+      } catch (storeError) {
+        console.warn("Failed to store session in Zustand:", storeError);
+      }
+
       return getUserContext();
     }
   } catch (error) {
