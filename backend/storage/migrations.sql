@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS candidate_interviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     interview_id UUID NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
     candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
-    status VARCHAR NOT NULL DEFAULT 'scheduled',  -- scheduled, started, completed, no_show
+    status VARCHAR NOT NULL DEFAULT 'Scheduled',  -- Scheduled, Started, Completed, No_show
     scheduled_at TIMESTAMPTZ,
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     candidate_interview_id UUID REFERENCES candidate_interviews(id) ON DELETE CASCADE,
     session_history JSONB,
     analytics JSONB,
-    status VARCHAR NOT NULL DEFAULT 'scheduled',
+    status VARCHAR NOT NULL DEFAULT 'Scheduled',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

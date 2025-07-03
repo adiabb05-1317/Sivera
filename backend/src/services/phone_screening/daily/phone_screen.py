@@ -88,7 +88,7 @@ class PhoneScreen:
         candidate_name,
         company_name,
         position_title,
-        screening_questions=None,
+        phone_screen_questions,
         bot_name="Sia",
         dialout_settings=None,
     ):
@@ -102,13 +102,7 @@ class PhoneScreen:
         self.company_name = company_name
         self.position_title = position_title
         self.job_description = ""
-        self.screening_questions = screening_questions or [
-            "Can you tell me about your current role and what you're looking for in your next position?",
-            "What experience do you have with software development and which programming languages are you most comfortable with?",
-            "Are you currently interviewing with other companies, and what's your timeline for making a decision?",
-            "What interests you most about this role and our company?",
-            "Do you have any questions about the position or the next steps in our process?",
-        ]
+        self.phone_screen_questions = phone_screen_questions
         self.dialout_settings = dialout_settings or {}
         self.task: Optional[PipelineTask] = None
         self.runner: Optional[PipelineRunner] = None
@@ -131,12 +125,14 @@ class PhoneScreen:
         )
 
         # Format screening questions as numbered list
+        logger.info(f"Screening questions: {self.phone_screen_questions}")
         questions_formatted = "\n".join(
             [
                 f"{i+1}. {question}"
-                for i, question in enumerate(self.screening_questions)
+                for i, question in enumerate(self.phone_screen_questions)
             ]
         )
+        logger.info(f"Questions formatted: {questions_formatted}")
 
         system_prompt = PHONE_SCREENING_PROMPT_TEMPLATE.format(
             candidate_name=self.candidate_name,

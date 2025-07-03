@@ -1077,8 +1077,7 @@ export default function InterviewDetailsPage() {
                               <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
                                 <span className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 rounded-full px-2 py-1 text-xs font-semibold truncate inline-block max-w-[100px] overflow-hidden">
                                   {candidate.interview_status ||
-                                    candidate.status ||
-                                    "scheduled"}
+                                    candidate.status}
                                 </span>
                               </td>
                             </tr>

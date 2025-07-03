@@ -255,6 +255,7 @@ export async function addBulkCandidates({
   candidates: Array<{
     name: string;
     email: string;
+    phone: string;
     resumeFile?: File;
     resume_url?: string;
     status?: CandidateStatus;
@@ -290,6 +291,7 @@ export async function addBulkCandidates({
     return {
       name: candidate.name,
       email: candidate.email,
+      phone: candidate.phone,
       organization_id,
       job_id: jobId,
       resume_url: resumeResult?.resume_url || null,

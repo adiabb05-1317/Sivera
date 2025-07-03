@@ -151,10 +151,6 @@ async def handle_daily_dialout_webhook(request: Request):
         data = await request.json()
         logger.info(f"Received Daily dialout webhook: {data}")
 
-        # Handle test webhook
-        if "test" in data:
-            return {"test": True}
-
         # Validate dialout_settings
         if not data.get("dialout_settings"):
             raise HTTPException(
@@ -162,13 +158,19 @@ async def handle_daily_dialout_webhook(request: Request):
             )
 
         dialout_settings = data["dialout_settings"]
-        # if not dialout_settings.get("sip_uri"):
-        #     raise HTTPException(
-        #         status_code=400, detail="Missing 'sip_uri' in dialout_settings"
-        #     )
+        job_id = dialout_settings.get("job_id", "")
+        candidate_id = dialout_settings.get("candidate_id", "")
+        if not job_id or job_id == "":
+            raise HTTPException(status_code=400, detail="Job ID is required")
+        if not candidate_id or candidate_id == "":
+            raise HTTPException(status_code=400, detail="Candidate ID is required")
+
+        candidate_record = db_manager.fetch_one("candidates", {"id": candidate_id})
+        if not candidate_record:
+            raise HTTPException(status_code=400, detail="Candidate not found")
 
         sip_uri = dialout_settings.get("sip_uri", "")
-        phone_number = dialout_settings.get("phone_number")
+        phone_number = candidate_record.get("phone", "")
         logger.info(f"Processing dialout to SIP URI: {sip_uri}")
 
         # If phone_number is not provided directly, try to extract from SIP URI
@@ -215,14 +217,21 @@ async def handle_daily_dialout_webhook(request: Request):
         if dialout_settings.get("caller_id"):
             bot_dialout_settings["caller_id"] = dialout_settings["caller_id"]
 
-        # Extract candidate information from request
-        candidate_name = data.get("candidate_name", "")
-        job_position = data.get("job_position", "Software Engineer")
-        company_name = data.get("company_name", "Sivera")
-        screening_questions = data.get("screening_questions", [])
+        candidate_name = candidate_record.get("name", "")
+        job_record = db_manager.fetch_one("jobs", {"id": job_id})
+        job_position = job_record.get("title", "")
+        organization_id = job_record.get("organization_id", "")
+        organization_record = db_manager.fetch_one("organizations", {"id": organization_id})
+        company_name = organization_record.get("name", "")
+        phone_screen_id = job_record.get("phone_screen_id", "")
+        if not phone_screen_id:
+            raise HTTPException(status_code=400, detail="Phone screen not enabled for this job")
+        phone_screen_record = db_manager.fetch_one("phone_screen", {"id": phone_screen_id})
+        phone_screen_questions = phone_screen_record.get("questions", [])
+        if not phone_screen_questions or phone_screen_questions == []:
+            raise HTTPException(status_code=400, detail="Phone screen questions are required")
 
         try:
-
             provider = "daily"
             # Build command with all parameters
             command = [
@@ -243,19 +252,17 @@ async def handle_daily_dialout_webhook(request: Request):
                 provider,
                 "--phone_number",
                 phone_number,
+                "--phone_screen_questions",
+                json.dumps(phone_screen_questions),
+                "--candidate_name",
+                candidate_name,
+                "--job_position",
+                job_position,
+                "--company_name",
+                company_name,
             ]
 
             # Add optional parameters if provided
-            if candidate_name:
-                command.extend(["-n", candidate_name])
-            if job_position:
-                command.extend(["-j", job_position])
-            if company_name:
-                command.extend(["--company_name", company_name])
-            if screening_questions:
-                command.extend(
-                    ["--screening_questions", json.dumps(screening_questions)]
-                )
             if dialout_settings.get("caller_id"):
                 command.extend(["-c", dialout_settings["caller_id"]])
 

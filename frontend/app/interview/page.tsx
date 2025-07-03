@@ -70,8 +70,12 @@ function InterviewContent() {
   });
   const [formData, setFormData] = useState({
     name: "",
-    phone: "",
+    linkedin_profile: "",
   });
+  const [additionalLinks, setAdditionalLinks] = useState<
+    { name: string; url: string }[]
+  >([]);
+  const [newLink, setNewLink] = useState({ name: "", url: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [cameraGranted, setCameraGranted] = useState(false);
@@ -108,6 +112,10 @@ function InterviewContent() {
 
       if (data.success) {
         // Update interview data from backend response
+        setFormData({
+          name: data.name || "",
+          linkedin_profile: "",
+        });
         if (data.interview_data) {
           usePathStore.setState({ jobId: data.interview_data.job_id });
           usePathStore.setState({
@@ -158,8 +166,13 @@ function InterviewContent() {
       const formDataToSend = new FormData();
       formDataToSend.append("token", token || "");
       formDataToSend.append("name", formData.name);
+      formDataToSend.append("linkedin_profile", formData.linkedin_profile);
       formDataToSend.append("bot_token", interviewData.botToken);
       formDataToSend.append("room_url", interviewData.roomUrl);
+      formDataToSend.append(
+        "additional_links",
+        JSON.stringify(additionalLinks)
+      );
       // formDataToSend.append("candidate_id", usePathStore.getState().candidateId);
 
       const response = await fetch(
@@ -178,12 +191,24 @@ function InterviewContent() {
         setCurrentStep("interview-details");
       } else {
         setError(data.message);
+        setCurrentStep("error");
       }
     } catch (err) {
       setError("Failed to complete registration");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const addLink = () => {
+    if (newLink.name.trim() && newLink.url.trim()) {
+      setAdditionalLinks([...additionalLinks, { ...newLink }]);
+      setNewLink({ name: "", url: "" });
+    }
+  };
+
+  const removeLink = (index: number) => {
+    setAdditionalLinks(additionalLinks.filter((_, i) => i !== index));
   };
 
   const requestPermissions = async () => {
@@ -279,16 +304,16 @@ function InterviewContent() {
   if (currentStep === "registration") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
             <CardTitle>Complete Your Registration</CardTitle>
             <CardDescription>
               Please provide your details to continue with the interview
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
@@ -298,27 +323,119 @@ function InterviewContent() {
                   setFormData((prev) => ({ ...prev, name: e.target.value }))
                 }
                 required
+                autoComplete="off"
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number (Optional)</Label>
+              <Label htmlFor="linkedin">LinkedIn Profile</Label>
               <Input
-                id="phone"
-                type="tel"
-                placeholder="Enter your phone number"
-                value={formData.phone}
+                id="linkedin"
+                type="url"
+                placeholder="https://linkedin.com/in/your-profile"
+                value={formData.linkedin_profile}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    linkedin_profile: e.target.value,
+                  }))
                 }
+                autoComplete="off"
               />
             </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-semibold">
+                  Showcase Your Work
+                </Label>
+                <p className="text-sm text-gray-600 mt-1">
+                  Add any portfolios, projects, professional profiles, or other
+                  relevant links you'd like to share with the recruiter to
+                  showcase your skills and experience.
+                </p>
+              </div>
+
+              {additionalLinks.length > 0 && (
+                <div className="space-y-2">
+                  {additionalLinks.map((link, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-gray-50"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{link.name}</p>
+                        <p className="text-xs text-gray-600 break-all">
+                          {link.url}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeLink(index)}
+                        className="text-red-600 hover:text-red-700 ml-2"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="linkName">Link Name</Label>
+                    <Input
+                      id="linkName"
+                      type="text"
+                      placeholder="e.g., Portfolio, Website, Project"
+                      value={newLink.name}
+                      onChange={(e) =>
+                        setNewLink((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linkUrl">URL</Label>
+                    <Input
+                      id="linkUrl"
+                      type="url"
+                      placeholder="https://..."
+                      value={newLink.url}
+                      onChange={(e) =>
+                        setNewLink((prev) => ({ ...prev, url: e.target.value }))
+                      }
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addLink}
+                  disabled={!newLink.name.trim() || !newLink.url.trim()}
+                  className="w-full"
+                >
+                  Add Link
+                </Button>
+              </div>
+            </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button
               onClick={completeRegistration}
               className="w-full"
               disabled={isLoading || !formData.name.trim()}
             >
-              {isLoading ? "Completing Registration..." : "Next"}
+              {isLoading
+                ? "Completing Registration..."
+                : "Continue to Interview"}
             </Button>
           </CardContent>
         </Card>
