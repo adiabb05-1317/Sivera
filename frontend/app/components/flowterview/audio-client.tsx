@@ -173,33 +173,37 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
     client.on(RTVIEvent.UserStartedSpeaking, () => {
       setIsUserSpeaking(true);
-    });
-
-    client.on(RTVIEvent.UserTranscript, (data) => {
-      // Just update our ref with the latest transcript
-      if (data.final) {
-      }
-    });
-
-    client.on(RTVIEvent.UserStoppedSpeaking, () => {
-      setIsUserSpeaking(false);
-      setBotState("thinking");
-
-      // Now append the final transcript to chat history
-      const finalTranscript = latestUserTranscriptRef.current.trim();
-      if (finalTranscript) {
-        const currentHistory = usePathStore.getState().currentChatHistory;
-        const newMessage: Message = {
-          role: "user",
-          content: finalTranscript,
-        };
-        setCurrentChatHistory([...currentHistory, newMessage]);
-      }
-
-      // Clear everything
+      // Clear any previous transcript when user starts speaking
       setCurrentUserTranscript("");
       latestUserTranscriptRef.current = "";
     });
+
+    client.on(RTVIEvent.UserTranscript, (data) => {
+      // Only process final transcripts
+      if (data.final) {
+        latestUserTranscriptRef.current = data.text;
+        setCurrentUserTranscript(data.text);
+        setIsUserSpeaking(false);
+        setBotState("thinking");
+
+        // Now append the final transcript to chat history
+        const finalTranscript = latestUserTranscriptRef.current.trim();
+        if (finalTranscript) {
+          const currentHistory = usePathStore.getState().currentChatHistory;
+          const newMessage: Message = {
+            role: "user",
+            content: finalTranscript,
+          };
+          setCurrentChatHistory([...currentHistory, newMessage]);
+        }
+
+        // Clear everything after adding to history
+        setCurrentUserTranscript("");
+        latestUserTranscriptRef.current = "";
+      }
+    });
+
+    client.on(RTVIEvent.UserStoppedSpeaking, () => {});
 
     client.on(RTVIEvent.BotStartedSpeaking, () => {
       setIsBotSpeaking(true);

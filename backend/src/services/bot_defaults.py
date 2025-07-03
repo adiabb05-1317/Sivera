@@ -37,8 +37,8 @@ async def main():
     parser.add_argument("-u", "--url", type=str, help="Room URL", required=True)
     parser.add_argument("-t", "--token", type=str, help="Room token", required=True)
     parser.add_argument("-s", "--session_id", type=str, help="Session ID", required=True)
-    parser.add_argument("-j", "--job_id", type=str, help="Job ID", required=True)
-    parser.add_argument("-c", "--candidate_id", type=str, help="Candidate ID", required=True)
+    parser.add_argument("-j", "--job_id", type=str, help="Job ID", required=False)
+    parser.add_argument("-c", "--candidate_id", type=str, help="Candidate ID", required=False)
 
     args = parser.parse_args()
     db_manager = DatabaseManager()

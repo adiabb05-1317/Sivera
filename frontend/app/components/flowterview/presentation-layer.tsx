@@ -133,7 +133,7 @@ const TranscriptionsBox = memo(() => {
         liveTranscription={liveTranscription}
         isTranscribing={isTranscribing}
         currentSpeaker={currentSpeaker}
-        className="h-full"
+        className="flex-1 min-h-0"
       />
     </div>
   );

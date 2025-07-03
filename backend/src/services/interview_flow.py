@@ -106,8 +106,8 @@ class InterviewFlow:
         bot_token,
         session_id,
         db_manager,
-        job_id,
-        candidate_id,
+        job_id=None,
+        candidate_id=None,
         bot_name="Sia",
     ):
         self.url = url
@@ -119,14 +119,24 @@ class InterviewFlow:
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
-        self.job = self.db.fetch_one("jobs", {"id": job_id})
-        self.flow_config = self.db.fetch_one("interview_flows", {"id": self.job.get("flow_id")})[
-            "flow_json"
-        ]
-        self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
-        self.candidate_name = self.candidate.get("name")
+
+        if os.getenv("ENV") != "development":
+            self.job = self.db.fetch_one("jobs", {"id": job_id})
+            self.flow_config = self.db.fetch_one("interview_flows", {"id": self.job.get("flow_id")})[
+                "flow_json"
+            ]
+            self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
+            self.candidate_name = self.candidate.get("name")
+            self.job_title = self.job.get("title")
+        else:
+            with open("src/services/flows/default.json", "r") as f:
+                self.flow_config = json.load(f)
+            self.candidate_name = "John Doe"
+            self.job_title = "Software Engineer"
+
         # TODO: Add resume url
         # self.resume_url = self.candidate.get("resume_url")
+
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
@@ -139,7 +149,7 @@ class InterviewFlow:
                 {
                     "role": "system",
                     "content": f"""
-                    Your name is {self.bot_name}. You are an interviewer taking interview for {self.job.get("title")} role. 
+                    Your name is {self.bot_name}. You are an interviewer taking interview for {self.job_title} role. 
                     You will be talking with {self.candidate_name}.
                     Your responses should be clear, concise, and professional.
                     Keep your responses under 150 words. Your responses will be read aloud, so keep them concise and conversational. Avoid special characters or

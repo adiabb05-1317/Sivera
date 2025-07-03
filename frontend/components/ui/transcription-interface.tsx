@@ -34,11 +34,11 @@ const MessageBubble = memo<{
   }, []);
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 mb-1">
+    <div className="mb-4 mt-2">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <h4
           className={cn(
-            "text-sm font-semibold",
+            "text-[0.8rem] -mb-1 font-semibold font-kyiv",
             message.sender === "Sia"
               ? "text-[--meet-primary]"
               : "text-[--meet-text-primary]"
@@ -46,24 +46,9 @@ const MessageBubble = memo<{
         >
           {message.sender}
         </h4>
-        {!isLive && (
-          <span className="text-xs text-[--meet-text-secondary]">
-            {formatTime(message.timestamp)}
-          </span>
-        )}
-        {isLive && isTranscribing && (
-          <div className="flex items-center gap-1">
-            <div className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"></div>
-            <div
-              className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"
-              style={{ animationDelay: "0.1s" }}
-            ></div>
-            <div
-              className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"
-              style={{ animationDelay: "0.2s" }}
-            ></div>
-          </div>
-        )}
+        <span className="text-[0.6rem] text-[--meet-text-secondary] -mb-2 mr-1">
+          {formatTime(message.timestamp)}
+        </span>
       </div>
       <div
         className={cn(
@@ -76,7 +61,7 @@ const MessageBubble = memo<{
         <p className="text-[--meet-text-primary] leading-relaxed">
           {message.content}
           {isLive && isTranscribing && (
-            <span className="inline-block w-2 h-4 bg-[--meet-primary] ml-1 animate-pulse rounded-sm"></span>
+            <span className="inline-block w-2.5 h-2.5 bg-[--meet-primary] ml-1 animate-pulse rounded-full"></span>
           )}
         </p>
       </div>
@@ -184,15 +169,35 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     smartScrollToBottom();
   }, [messages.length, smartScrollToBottom]);
 
-  // For live transcription, be less aggressive with scrolling
+  // For live transcription, scroll more frequently as content is being populated
   useEffect(() => {
     if (liveTranscription && liveTranscription.length > 0) {
-      // Only scroll if user is already at bottom and transcription is getting long
-      if (!isUserScrolledUp && liveTranscription.length % 100 === 0) {
+      // Scroll more frequently - every 20 characters or every word (whichever comes first)
+      if (
+        !isUserScrolledUp &&
+        (liveTranscription.length % 20 === 0 || liveTranscription.endsWith(" "))
+      ) {
         smartScrollToBottom(true); // Immediate scroll for live transcription when at bottom
       }
     }
   }, [liveTranscription, smartScrollToBottom, isUserScrolledUp]);
+
+  // Additional effect to ensure continuous scrolling during live transcription
+  useEffect(() => {
+    if (liveTranscription && isTranscribing && !isUserScrolledUp) {
+      // Debounced scroll for continuous content updates
+      const scrollTimeout = setTimeout(() => {
+        smartScrollToBottom(true);
+      }, 100);
+
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [
+    liveTranscription,
+    isTranscribing,
+    isUserScrolledUp,
+    smartScrollToBottom,
+  ]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -222,11 +227,11 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     <div className={cn("flex flex-col h-full", className)}>
       <ScrollArea
         ref={scrollAreaRef}
-        className="h-full px-4 pb-3 dark:bg-black dark:border-none"
+        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none"
       >
         {messages.length === 0 && !liveTranscription ? (
           <div className="flex items-center justify-center h-full text-[--meet-text-secondary]">
-            <p className="text-xs text-center">
+            <p className="text-xs text-center m-3">
               Conversation will appear here...
             </p>
           </div>
