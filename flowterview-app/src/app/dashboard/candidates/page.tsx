@@ -178,7 +178,6 @@ export default function CandidatesPage() {
           title: "Organization not found",
           description:
             "Your organization information is missing. Please log in again.",
-          variant: "destructive",
         });
         return;
       }

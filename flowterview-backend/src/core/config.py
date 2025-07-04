@@ -1,7 +1,6 @@
 import os
-from typing import List
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 env = os.getenv("ENV", "development")
 if env == "production":
@@ -28,6 +27,7 @@ class Config:
 
     # Frontend URL for generating links
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.sivera.io")
+    RECRUITER_FRONTEND_URL = os.getenv("RECRUITER_FRONTEND_URL", "https://recruiter.sivera.io")
 
     @classmethod
     def validate_smtp_config(cls):
@@ -67,6 +67,11 @@ class Config:
     # Supabase settings
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+    # LinkedIn OAuth Configuration
+    LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
+    LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+    LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI", "http://localhost:8010/api/v1/linkedin/callback")
 
     # Daily.co Configuration
     DAILY_API_KEY = os.getenv("DAILY_API_KEY", "")

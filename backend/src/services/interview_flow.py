@@ -117,6 +117,7 @@ class InterviewFlow:
         self.url = url
         self.token = bot_token
         self.session_id = session_id
+        self.job_id = job_id
         self.candidate_id = candidate_id
         self.bot_name = bot_name
         self.task: Optional[PipelineTask] = None
@@ -128,9 +129,9 @@ class InterviewFlow:
         # TODO: here call linkedin api to get the profile
         # also get the additional links and their important information
 
-        if job_id:
-            self.job = self.db.fetch_one("jobs", {"id": job_id})
-            self.interview = self.db.fetch_one("interviews", {"job_id": job_id})
+        if self.job_id:
+            self.job = self.db.fetch_one("jobs", {"id": self.job_id})
+            self.interview = self.db.fetch_one("interviews", {"job_id": self.job_id})
             self.flow_config = self.db.fetch_one(
                 "interview_flows", {"id": self.job.get("flow_id")}
             )["flow_json"]
@@ -277,44 +278,45 @@ class InterviewFlow:
             ]
 
             try:
-                ix = str(uuid.uuid4())
-                session_data = {
-                    "id": ix,
-                    "chat_history": json.dumps(filtered_messages),
-                    "call_type": "web_interview",
-                    "call_id": self.session_id,
-                }
-                self.db.execute_query("session_history", session_data)
-                logger.info(
-                    f"Chat history saved to session_history table for session {self.session_id}"
-                )
+                if self.job_id:
+                    ix = str(uuid.uuid4())
+                    session_data = {
+                        "id": ix,
+                        "chat_history": json.dumps(filtered_messages),
+                        "call_type": "web_interview",
+                        "call_id": self.session_id,
+                    }
+                    self.db.execute_query("session_history", session_data)
+                    logger.info(
+                        f"Chat history saved to session_history table for session {self.session_id}"
+                    )
 
-                candidate_interview_id = self.db.fetch_one(
-                    "candidate_interviews",
-                    {
-                        "candidate_id": self.candidate_id,
-                        "interview_id": self.interview.get("id", "123"),
-                    },
-                )
+                    candidate_interview_id = self.db.fetch_one(
+                        "candidate_interviews",
+                        {
+                            "candidate_id": self.candidate_id,
+                            "interview_id": self.interview.get("id", "123"),
+                        },
+                    )
 
-                # Prepare analytics with interview duration
-                analytics = {}
-                if interview_duration_seconds is not None:
-                    analytics["interview_duration_seconds"] = interview_duration_seconds
-                    analytics["interview_start_time"] = self.interview_start_time.isoformat()
-                    analytics["interview_end_time"] = interview_end_time.isoformat()
+                    # Prepare analytics with interview duration
+                    analytics = {}
+                    if interview_duration_seconds is not None:
+                        analytics["interview_duration_seconds"] = interview_duration_seconds
+                        analytics["interview_start_time"] = self.interview_start_time.isoformat()
+                        analytics["interview_end_time"] = interview_end_time.isoformat()
 
-                self.db.execute_query(
-                    "interview_sessions",
-                    {
-                        "candidate_interview_id": candidate_interview_id.get("id"),
-                        "session_hisory": ix,
-                        "created_at": datetime.now().isoformat(),
-                        "updated_at": datetime.now().isoformat(),
-                        "analytics": analytics,
-                        "status": "Completed",
-                    },
-                )
+                    self.db.execute_query(
+                        "interview_sessions",
+                        {
+                            "candidate_interview_id": candidate_interview_id.get("id"),
+                            "session_hisory": ix,
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat(),
+                            "analytics": analytics,
+                            "status": "Completed",
+                        },
+                    )
             except Exception as e:
                 logger.error(f"Failed to save chat history: {e}")
 

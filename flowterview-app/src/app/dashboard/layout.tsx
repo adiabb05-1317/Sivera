@@ -8,6 +8,7 @@ import {
   FileText,
   Users,
   BarChart,
+  Settings,
   LogOut,
   X,
   Loader,
@@ -16,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster } from "react-hot-toast";
-import { ModeToggle } from "@/components/dark-mode-toggle";
+
 import { useAuth, useAppLoadingState } from "@/hooks/useStores";
 
 interface DashboardLayoutProps {
@@ -39,6 +40,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Interviews", href: "/dashboard/interviews", icon: FileText },
     { name: "Candidates", href: "/dashboard/candidates", icon: Users },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   const handleSignOut = async () => {
@@ -148,16 +150,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex w-full">
               <Button
                 onClick={handleSignOut}
-                className="flex-1 h-13 items-center px-2 py-2 text-sm font-medium cursor-pointer border-l-none border-r-none border-b-none border-t rounded-none p-3 hover:bg-red-50 dark:hover:bg-red-900 dark:text-gray-200"
+                className="w-full h-13 items-center px-2 py-2 text-sm font-medium cursor-pointer border-l-none border-r-none border-b-none border-t rounded-none p-3 hover:bg-red-50 dark:hover:bg-red-900 dark:text-gray-200"
                 variant="outline"
               >
                 <LogOut />
                 <span className="ml-2">Sign out</span>
               </Button>
-              <div className="flex-shrink-0">
-                {/* Theme toggle button */}
-                <ModeToggle />
-              </div>
             </div>
           </div>
         </div>

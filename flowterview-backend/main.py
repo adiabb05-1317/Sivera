@@ -1,21 +1,21 @@
-import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any, Dict
 
-import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from supabase import create_client, Client
+from supabase import Client, create_client
+import uvicorn
 
 from src.core.config import Config
-from src.utils.logger import intercept_standard_logging
 from src.lib.manager import ConnectionManager
+from src.router.candidate_router import router as candidate_router
 from src.router.interview_router import router as interview_router
+from src.router.invites_router import router as invites_router
+from src.router.linkedin_oauth_router import router as linkedin_oauth_router
 from src.router.organization_router import router as organization_router
 from src.router.user_router import router as user_router
-from src.router.candidate_router import router as candidate_router
-from src.router.invites_router import router as invites_router
+from src.utils.logger import intercept_standard_logging
 
 intercept_standard_logging()
 
@@ -86,6 +86,7 @@ app.include_router(organization_router)
 app.include_router(user_router)
 app.include_router(candidate_router)
 app.include_router(invites_router)
+app.include_router(linkedin_oauth_router)
 
 
 @app.get("/health")
@@ -95,9 +96,7 @@ async def health_check() -> Dict[str, Any]:
         "status": "healthy",
         "version": "1.0.0",
         "supabase_connected": supabase is not None,
-        "manager_initialized": (
-            hasattr(app.state, "manager") if hasattr(app, "state") else False
-        ),
+        "manager_initialized": (hasattr(app.state, "manager") if hasattr(app, "state") else False),
     }
 
 

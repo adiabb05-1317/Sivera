@@ -177,7 +177,6 @@ export default function InterviewDetailsPage() {
           toast({
             title: "Maximum skills reached",
             description: "You can select up to 15 skills maximum.",
-            variant: "destructive",
           });
           return prev;
         }
@@ -194,7 +193,6 @@ export default function InterviewDetailsPage() {
         toast({
           title: "Maximum skills reached",
           description: "You can select up to 15 skills maximum.",
-          variant: "destructive",
         });
         return;
       }
@@ -287,7 +285,6 @@ export default function InterviewDetailsPage() {
       toast({
         title: "Authentication Error",
         description: "Missing user or organization information",
-        variant: "destructive",
       });
       return;
     }
@@ -403,7 +400,6 @@ export default function InterviewDetailsPage() {
       toast({
         title: "Error",
         description: "No job_id found for this interview",
-        variant: "destructive",
       });
       return;
     }
@@ -981,7 +977,6 @@ export default function InterviewDetailsPage() {
                             toast({
                               title: "Failed to update status",
                               description: errorMessage,
-                              variant: "destructive",
                             });
                           }
                         }}

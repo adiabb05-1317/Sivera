@@ -36,11 +36,7 @@ const UserTile = ({
   }, [localVideoStream, isCameraOn, videoRef]);
 
   return (
-    <div
-      className={`h-full w-full bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in
-        ${isUserSpeaking ? "ring-2 ring-app-blue-400 scale-[1.02]" : ""}
-      `}
-    >
+    <div className="h-full w-full bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
       <div className="absolute inset-0 flex items-center justify-center">
         {isCameraOn && localVideoStream && videoRef ? (
           <video
