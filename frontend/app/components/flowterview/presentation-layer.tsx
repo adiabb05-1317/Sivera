@@ -63,9 +63,6 @@ const UserTile = ({
           <Icons.Video className="w-4 h-4 text-app-blue-500 dark:text-app-blue-400" />
           <span>Video Feed</span>
         </h3>
-        <div
-          className={`w-2 h-2 rounded-full ${isCameraOn ? "bg-green-500" : "bg-red-500"}`}
-        />
       </div>
     </div>
   );

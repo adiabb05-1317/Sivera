@@ -300,6 +300,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           requestData: {
             job_id: usePathStore.getState().jobId,
             candidate_id: usePathStore.getState().candidateId,
+            linkedin_profile: usePathStore.getState().linkedin_profile,
+            additional_links: usePathStore.getState().additional_links,
           },
         },
         transport: new DailyTransport({

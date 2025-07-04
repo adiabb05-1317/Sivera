@@ -1,7 +1,9 @@
 import asyncio
+from datetime import datetime
 import json
 import os
 from typing import Any, Dict, Optional
+import uuid
 
 import aiohttp
 from dotenv import load_dotenv
@@ -30,14 +32,14 @@ from pipecat.processors.frameworks.rtvi import (
     TransportMessageUrgentFrame,
 )
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
 from pipecat_flows import FlowManager
 from pydantic import BaseModel
 
-from src.constants.ai_models import LLMModels
+from src.services.llm_factory import LLMFactory
 from src.services.tts_factory import TTSFactory
 from src.utils.logger import logger
+from src.utils.resume_extractor import fetch_and_process_resume
 
 load_dotenv(override=True)
 
@@ -109,6 +111,8 @@ class InterviewFlow:
         job_id=None,
         candidate_id=None,
         bot_name="Sia",
+        linkedin_profile=None,
+        additional_links=None,
     ):
         self.url = url
         self.token = bot_token
@@ -119,42 +123,54 @@ class InterviewFlow:
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
+        self.interview_start_time = None  # Track when interview starts
 
-        if os.getenv("ENV") != "development":
+        # TODO: here call linkedin api to get the profile
+        # also get the additional links and their important information
+
+        if job_id:
             self.job = self.db.fetch_one("jobs", {"id": job_id})
-            self.flow_config = self.db.fetch_one("interview_flows", {"id": self.job.get("flow_id")})[
-                "flow_json"
-            ]
+            self.interview = self.db.fetch_one("interviews", {"job_id": job_id})
+            self.flow_config = self.db.fetch_one(
+                "interview_flows", {"id": self.job.get("flow_id")}
+            )["flow_json"]
             self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
             self.candidate_name = self.candidate.get("name")
             self.job_title = self.job.get("title")
+            self.resume_url = self.candidate.get("resume_url")
         else:
             with open("src/services/flows/default.json", "r") as f:
                 self.flow_config = json.load(f)
-            self.candidate_name = "John Doe"
-            self.job_title = "Software Engineer"
+            self.candidate_name = "John"
+            self.job_title = "Google AI Platform, Cloud Engineer"
+            self.resume_url = "https://glttawcpverjawfrbohm.supabase.co/storage/v1/object/sign/resumes/g.s.n._mithra_1751545158064.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8wMTYzZjAwNS0xZDVlLTQ3NDEtYjJhYi0yNjQ0MWYwYTg4MzYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyZXN1bWVzL2cucy5uLl9taXRocmFfMTc1MTU0NTE1ODA2NC5wZGYiLCJpYXQiOjE3NTE1NDUxNjAsImV4cCI6MTc4MzA4MTE2MH0.w5xiFNUrTm6mkkiSCJhOiv9A0FfmiOuVTtYmh-V9nSg"
 
-        # TODO: Add resume url
-        # self.resume_url = self.candidate.get("resume_url")
-
+        # Fetch resume content during initialization
+        self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
-        self.llm = OpenAILLMService(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            model=LLMModels.GPT_4_1,
-        )
+        self.llm = LLMFactory.create_llm_service()
+
+        system_prompt = f"""
+        Your name is {self.bot_name}. You are an interviewer taking interview for {self.job_title} role.
+        You will be talking with {self.candidate_name}.
+        Your responses should be clear, concise, and professional.
+        Keep your responses under 150 words. Your responses will be read aloud, so keep them concise and conversational. Avoid special characters or
+        formatting. You are allowed to ask follow up questions to the candidate.
+
+        Candidate's name: {self.candidate_name}
+        Job title: {self.job_title}
+        Resume: {self.resume}
+        """
+
+        self._inject_dynamic_content_into_flow(system_prompt)
+
         context = OpenAILLMContext(
             messages=[
                 {
                     "role": "system",
-                    "content": f"""
-                    Your name is {self.bot_name}. You are an interviewer taking interview for {self.job_title} role. 
-                    You will be talking with {self.candidate_name}.
-                    Your responses should be clear, concise, and professional.
-                    Keep your responses under 150 words. Your responses will be read aloud, so keep them concise and conversational. Avoid special characters or
-                    formatting. You are allowed to ask follow up questions to the candidate.
-                    """,
+                    "content": system_prompt.strip(),
                 },
             ]
         )
@@ -233,28 +249,71 @@ class InterviewFlow:
                 return
 
             logger.info(f"First participant joined: {participant}")
+            # Start the interview timer
+            self.interview_start_time = datetime.now()
+            logger.info(f"Interview timer started at: {self.interview_start_time}")
             await self.flow_manager.initialize()
             pass
 
         @self.transport.event_handler("on_participant_left")
         async def on_participant_left(_transport, participant, reason):
             logger.info(f"Participant left: {participant}, reason: {reason}")
+
+            # Calculate interview duration
+            interview_duration_seconds = None
+            if self.interview_start_time:
+                interview_end_time = datetime.now()
+                duration = interview_end_time - self.interview_start_time
+                interview_duration_seconds = duration.total_seconds()
+                logger.info(
+                    f"Interview duration: {interview_duration_seconds} seconds ({duration})"
+                )
+
             message_history = self.flow_manager.get_current_context()
             filtered_messages = [
                 msg
                 for msg in message_history
                 if (msg["role"] == "user" or msg["role"] == "assistant")
             ]
-            logger.debug(filtered_messages)
 
             try:
+                ix = str(uuid.uuid4())
                 session_data = {
-                    "session_id": self.session_id,
+                    "id": ix,
                     "chat_history": json.dumps(filtered_messages),
+                    "call_type": "web_interview",
+                    "call_id": self.session_id,
                 }
                 self.db.execute_query("session_history", session_data)
                 logger.info(
                     f"Chat history saved to session_history table for session {self.session_id}"
+                )
+
+                candidate_interview_id = self.db.fetch_one(
+                    "candidate_interviews",
+                    {
+                        "candidate_id": self.candidate_id,
+                        "interview_id": self.interview.get("id", "123"),
+                    },
+                )
+
+                # Prepare analytics with interview duration
+                analytics = {}
+                if interview_duration_seconds is not None:
+                    analytics["interview_duration_seconds"] = interview_duration_seconds
+                    analytics["interview_start_time"] = self.interview_start_time.isoformat()
+                    analytics["interview_end_time"] = interview_end_time.isoformat()
+
+                self.db.execute_query(
+                    "interview_sessions",
+                    {
+                        "candidate_interview_id": candidate_interview_id.get("id"),
+                        "session_hisory": ix,
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat(),
+                        "analytics": analytics,
+                        "status": "Completed",
+                    },
                 )
             except Exception as e:
                 logger.error(f"Failed to save chat history: {e}")
@@ -394,6 +453,17 @@ class InterviewFlow:
 
     async def stop(self):
         try:
+            # Calculate interview duration if not already done
+            interview_duration_seconds = None
+            interview_end_time = None
+            if self.interview_start_time:
+                interview_end_time = datetime.now()
+                duration = interview_end_time - self.interview_start_time
+                interview_duration_seconds = duration.total_seconds()
+                logger.info(
+                    f"Interview duration on stop: {interview_duration_seconds} seconds ({duration})"
+                )
+
             # Save chat history when pipeline is canceled
             if hasattr(self, "flow_manager") and self.flow_manager:
                 try:
@@ -405,13 +475,51 @@ class InterviewFlow:
                     ]
 
                     session_data = {
-                        "session_id": self.session_id,
+                        "id": str(uuid.uuid4()),
+                        "call_id": self.session_id,
                         "chat_history": json.dumps(filtered_messages),
                     }
                     self.db.execute_query("session_history", session_data)
                     logger.info(
                         f"Chat history saved to session_history table for session {self.session_id}"
                     )
+
+                    # Also save analytics if we have candidate and interview data
+                    if (
+                        hasattr(self, "candidate_id")
+                        and hasattr(self, "interview")
+                        and interview_duration_seconds is not None
+                    ):
+                        try:
+                            candidate_interview_id = self.db.fetch_one(
+                                "candidate_interviews",
+                                {
+                                    "candidate_id": self.candidate_id,
+                                    "interview_id": self.interview.get("id", "123"),
+                                },
+                            )
+                            if candidate_interview_id:
+                                analytics = {
+                                    "interview_duration_seconds": interview_duration_seconds,
+                                    "interview_start_time": self.interview_start_time.isoformat(),
+                                    "interview_end_time": interview_end_time.isoformat(),
+                                }
+
+                                self.db.execute_query(
+                                    "interview_sessions",
+                                    {
+                                        "candidate_interview_id": candidate_interview_id.get("id"),
+                                        "session_hisory": session_data.get("id"),
+                                        "created_at": datetime.now().isoformat(),
+                                        "updated_at": datetime.now().isoformat(),
+                                        "analytics": analytics,
+                                        "status": "Completed",
+                                    },
+                                )
+                                logger.info("Analytics with duration saved during stop()")
+                        except Exception as e:
+                            logger.error(f"Failed to save analytics during stop(): {e}")
+
                 except Exception as e:
                     logger.error(f"Failed to save chat history during pipeline cancellation: {e}")
 
@@ -433,3 +541,23 @@ class InterviewFlow:
 
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
+
+    def _inject_dynamic_content_into_flow(self, context):
+        """
+        Inject dynamic content (candidate name, job title, resume) into flow config role_messages.
+        """
+        if not self.flow_config or not isinstance(self.flow_config, dict):
+            return
+
+        # Iterate through all nodes in the flow config
+        nodes = self.flow_config.get("nodes", {})
+        for node_name, node_config in nodes.items():
+            role_messages = node_config.get("role_messages", [])
+
+            for message in role_messages:
+                if message.get("role") == "system":
+                    # Append candidate context to existing system message
+                    original_content = message.get("content", "")
+                    message["content"] = original_content + context
+
+        logger.info("Dynamic content injected into flow config")

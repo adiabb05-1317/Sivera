@@ -33,27 +33,29 @@ const MessageBubble = memo<{
     });
   }, []);
 
+  const isSia = message.sender === "Sia";
+
   return (
     <div className="mb-4 mt-2">
-      <div className="flex items-center justify-between gap-2 mb-1">
+      {/* Sender name positioned based on who is speaking */}
+      <div className={cn("mb-1", isSia ? "text-left" : "text-right")}>
         <h4
           className={cn(
-            "text-[0.8rem] -mb-1 font-semibold font-kyiv",
-            message.sender === "Sia"
-              ? "text-[--meet-primary]"
-              : "text-[--meet-text-primary]"
+            "text-[0.8rem] -mb-0.5 font-semibold font-kyiv",
+            isSia
+              ? "text-[--meet-primary] ml-1"
+              : "text-[--meet-text-primary] mr-1"
           )}
         >
           {message.sender}
         </h4>
-        <span className="text-[0.6rem] text-[--meet-text-secondary] -mb-2 mr-1">
-          {formatTime(message.timestamp)}
-        </span>
       </div>
+
+      {/* Message bubble */}
       <div
         className={cn(
           "p-3 rounded-lg text-sm",
-          message.sender === "Sia"
+          isSia
             ? "bg-gradient-to-r from-app-blue-50 to-app-blue-100 dark:from-app-blue-900/20 dark:to-app-blue-800/20 border border-app-blue-200 dark:border-app-blue-700/50"
             : "bg-[--meet-surface-light] border border-[--meet-border]"
         )}
@@ -227,11 +229,11 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     <div className={cn("flex flex-col h-full", className)}>
       <ScrollArea
         ref={scrollAreaRef}
-        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none"
+        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none hide-scrollbar"
       >
         {messages.length === 0 && !liveTranscription ? (
-          <div className="flex items-center justify-center h-full text-[--meet-text-secondary]">
-            <p className="text-xs text-center m-3">
+          <div className="flex items-center justify-center h-full text-[--meet-text-secondary] m-3">
+            <p className="text-xs text-center">
               Conversation will appear here...
             </p>
           </div>

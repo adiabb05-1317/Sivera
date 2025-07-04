@@ -155,6 +155,16 @@ type TPathStore = {
   // Editor settings
   editorFontSize: number;
   setEditorFontSize: (size: number) => void;
+
+  // Linkedin profile
+  linkedin_profile: string;
+  setLinkedinProfile: (linkedin_profile: string) => void;
+
+  // Additional links
+  additional_links: { name: string; url: string }[];
+  setAdditionalLinks: (
+    additional_links: { name: string; url: string }[]
+  ) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -280,6 +290,15 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   editorFontSize: 18,
   setEditorFontSize: (size: number) => set({ editorFontSize: size }),
 
+  // Linkedin profile
+  linkedin_profile: "",
+  setLinkedinProfile: (linkedin_profile: string) => set({ linkedin_profile }),
+
+  // Additional links
+  additional_links: [],
+  setAdditionalLinks: (additional_links: { name: string; url: string }[]) =>
+    set({ additional_links }),
+
   resetStore: () => {
     set({
       participants: [
@@ -321,6 +340,8 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       rtviClient: null,
       localVideoStream: null,
       editorFontSize: 18,
+      linkedin_profile: "",
+      additional_links: [],
     });
   },
 

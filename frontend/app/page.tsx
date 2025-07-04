@@ -5,8 +5,7 @@ import { usePathStore } from "./store/PathStore";
 
 export default function Home() {
   const { jobId } = usePathStore();
-  // TODO: remove this
-  if (jobId) {
+  if (!jobId) {
     return (
       <main className="flex h-screen w-full flex-col items-center justify-center">
         <div className="flex flex-col items-center justify-center">
