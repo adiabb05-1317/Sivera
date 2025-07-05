@@ -77,17 +77,17 @@ async def create_user(user: UserIn, request: Request):
             raise HTTPException(status_code=400, detail="User with this email already exists.")
         # Check if organization exists by name
 
-        org = db.fetch_one("organizations", {"name": org_name})
+        org = db.fetch_one("organizations", {"domain": org_name})
         if org:
             organization_id = org["id"]
         else:
             # Create organization (idempotent: if org with name exists, fetch it)
             try:
-                org = db.execute_query("organizations", {"name": org_name, "email": user.email})
+                org = db.execute_query("organizations", {"domain": org_name, "email": user.email})
                 organization_id = org["id"]
             except DatabaseError as org_err:
                 # If org already exists, fetch it
-                org = db.fetch_one("organizations", {"name": org_name})
+                org = db.fetch_one("organizations", {"domain": org_name})
                 if not org:
                     raise HTTPException(
                         status_code=400, detail=f"Failed to create or fetch organization: {org_err}"

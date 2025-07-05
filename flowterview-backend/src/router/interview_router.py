@@ -173,7 +173,7 @@ async def send_interview_invite_email(email: str, name: str, job: str, token: st
         variables = {"name": name, "job": job, "company": "Sivera", "verify_url": interview_url}
 
         # Use appropriate template based on user status
-        template_id = Config.LOOPS_INTERVIEW_TEMPLATE if is_existing_user else Config.LOOPS_VERIFICATION_TEMPLATE
+        template_id = Config.LOOPS_INTERVIEW_TEMPLATE
         
         await send_loops_email(email, template_id, variables)
         logger.info(f"Interview invite email sent successfully to {email}")
@@ -364,6 +364,7 @@ async def process_invite_request(
             saved_token = db.fetch_one("verification_tokens", {"token": token})
             if saved_token:
                 logger.info(f"Successfully verified token was saved for {email}")
+                db.update("candidates", {"status": "Invited"}, {"email": email, "job_id": matching_job["id"]})
             else:
                 logger.error(f"Failed to verify token was saved for {email}")
                 return

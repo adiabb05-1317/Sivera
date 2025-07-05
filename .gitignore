@@ -3,3 +3,8 @@
 *.DS_Store
 credentials.json
 *.env*
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

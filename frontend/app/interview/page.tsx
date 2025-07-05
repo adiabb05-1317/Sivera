@@ -268,13 +268,13 @@ function InterviewContent() {
 
   if (currentStep === "verifying") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-gray-900 dark:text-white">
               Verifying Your Invitation
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardDescription className="text-gray-600 dark:text-gray-300 text-xs">
               Please wait while we verify your interview invitation...
             </CardDescription>
           </CardHeader>
@@ -288,15 +288,15 @@ function InterviewContent() {
 
   if (currentStep === "error") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-red-600 dark:text-red-400">
               {error === "CANDIDATE_ALREADY_STARTED_OR_FINISHED"
                 ? "Interview expired."
                 : "Verification Failed"}
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardDescription className="text-gray-600 dark:text-gray-300 text-xs">
               {error === "CANDIDATE_ALREADY_STARTED_OR_FINISHED"
                 ? "Please contact the recruiter."
                 : error}
@@ -315,13 +315,13 @@ function InterviewContent() {
 
   if (currentStep === "registration") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-gray-900 dark:text-white">
               Complete Your Registration
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardDescription className="text-gray-600 dark:text-gray-300 text-xs">
               Please provide your details to continue with the interview
             </CardDescription>
           </CardHeader>
@@ -463,8 +463,8 @@ function InterviewContent() {
 
   if (currentStep === "interview-details") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-gray-900 dark:text-white">
               Welcome, {formData.name}!
@@ -547,8 +547,8 @@ function InterviewContent() {
 
   if (currentStep === "permissions") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-gray-900 dark:text-white">
               Camera & Microphone Access
@@ -638,8 +638,8 @@ export default function InterviewPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+        <div className="min-h-screen bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a] flex items-center justify-center p-4">
+          <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 dark:bg-[#232d44] backdrop-blur-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-gray-900 dark:text-white">
                 Loading...

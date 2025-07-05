@@ -61,7 +61,7 @@ async def get_organization(org_id: str, request: Request):
 @router.post("/", response_model=OrganizationOut)
 async def create_organization(org: OrganizationIn, request: Request):
     try:
-        created_org = db.execute_query("organizations", {"name": org.name})
+        created_org = db.execute_query("organizations", {"domain": org.name})
         return created_org
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))

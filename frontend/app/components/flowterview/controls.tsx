@@ -232,7 +232,10 @@ const Controls = ({
         </Popover>
       </div>
 
-      <Separator orientation="vertical" className="h-8" />
+      <Separator
+        orientation="vertical"
+        className="h-8 bg-app-blue-200 dark:bg-app-blue-700"
+      />
 
       {/* Right group: Call controls */}
       <div className="flex items-center gap-4">

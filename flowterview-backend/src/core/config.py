@@ -22,8 +22,9 @@ class Config:
     SMTP_PASS = os.getenv("SMTP_PASS", "")  # Loops API Key
 
     # Loops Template IDs
-    LOOPS_VERIFICATION_TEMPLATE = os.getenv("LOOPS_VERIFICATION_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
     LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
+    LOOPS_REJECTION_TEMPLATE = os.getenv("LOOPS_REJECTION_TEMPLATE", "cmcqp3id80bgazd0ihgb1jh98")
+    LOOPS_CUSTOM_TEMPLATE = os.getenv("LOOPS_CUSTOM_TEMPLATE", "cmcqph48u02skz00i40rwwxzk")
 
     # Frontend URL for generating links
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.sivera.io")
@@ -42,7 +43,7 @@ class Config:
 
     """Application configuration"""
     # Environment
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT = os.getenv("ENV", "development")
     DEBUG = ENVIRONMENT == "development"
 
     # Server settings
@@ -103,8 +104,9 @@ class Config:
             "SMTP_USER",
             "SMTP_PASS",
             "DAILY_API_KEY",
-            "LOOPS_VERIFICATION_TEMPLATE",
             "LOOPS_INTERVIEW_TEMPLATE",
+            "LOOPS_REJECTION_TEMPLATE",
+            "LOOPS_CUSTOM_TEMPLATE",
         ]
         missing = [var for var in required_vars if not getattr(cls, var)]
         if missing:

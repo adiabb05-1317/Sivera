@@ -410,16 +410,15 @@ export default function CandidatesPage() {
                       {candidate.jobs?.title || "-"}
                     </td>
                     <td className="px-6 py-6 whitespace-nowrap text-sm">
-                      <span
-                        className={
-                          statusColors[candidate.status] ||
-                          "bg-gray-100 text-gray-800"
-                        }
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",
+                          statusColors[candidate.status]
+                        )}
                       >
-                        <Badge variant="outline">
-                          {statusLabels[candidate.status] || candidate.status}
-                        </Badge>
-                      </span>
+                        {statusLabels[candidate.status] || candidate.status}
+                      </Badge>
                     </td>
                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {candidate.created_at

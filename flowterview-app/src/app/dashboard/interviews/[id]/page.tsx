@@ -18,10 +18,20 @@ import {
   FileText,
   Bot,
   Route,
+  Eye,
+  Send,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
@@ -37,12 +47,262 @@ import {
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
-import { useInterviewDetails } from "@/hooks/useStores";
+import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 import {
   authenticatedFetch,
   getCookie,
   getUserContext,
 } from "@/lib/auth-client";
+
+// Candidate View Dialog Component
+const CandidateViewDialog = ({
+  candidate,
+  onClose,
+  handleSendInvite,
+}: {
+  candidate: any;
+  onClose: () => void;
+  handleSendInvite: (candidate: any) => void;
+}) => {
+  const { toast } = useToast();
+
+  const candidateStatus = candidate.status?.toLowerCase();
+  const interviewStatus =
+    candidateStatus === "invited"
+      ? candidate.interview_status?.toLowerCase() || "invited"
+      : candidateStatus;
+
+  // Debug log
+  console.log("Debug - candidate.status:", candidate.status);
+  console.log("Debug - candidateStatus:", candidateStatus);
+  console.log("Debug - interviewStatus:", interviewStatus);
+
+  const handleShowAnalytics = () => {
+    toast({
+      title: "Analytics",
+      description: "Opening interview analytics... (Mock implementation)",
+    });
+  };
+
+  return (
+    <Dialog open={!!candidate} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="tracking-tight">
+            Candidate Details
+          </DialogTitle>
+          <DialogDescription>{candidate.name}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label className="text-right text-sm font-medium">Email:</label>
+            <div className="col-span-3 text-sm text-gray-600">
+              {candidate.email}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label className="text-right text-sm font-medium">Status:</label>
+            <div className="col-span-3">
+              <Badge variant="outline" className="text-xs">
+                {candidate.interview_status || candidate.status}
+              </Badge>
+            </div>
+          </div>
+          {interviewStatus?.toLowerCase() === "started" &&
+            candidate.room_url && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label className="text-right text-sm font-medium">
+                  Interview:
+                </label>
+                <div className="col-span-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(candidate.room_url, "_blank")}
+                    className="cursor-pointer"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Join Interview
+                  </Button>
+                </div>
+              </div>
+            )}
+        </div>
+        <DialogFooter>
+          <div className="flex flex-col gap-2 w-full">
+            {/* Completed status - Show Analytics and optionally Resume */}
+            {(interviewStatus?.toLowerCase() === "completed" ||
+              candidate.status?.toLowerCase() === "completed" ||
+              candidate.interview_status?.toLowerCase() === "completed") && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleShowAnalytics}
+                  className="cursor-pointer"
+                >
+                  <Brain className="mr-2 h-4 w-4" />
+                  Show Analytics
+                </Button>
+                {candidate.resume_url && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(candidate.resume_url, "_blank")}
+                    className="cursor-pointer"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Resume
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* Scheduled status - Show only View Resume */}
+            {interviewStatus?.toLowerCase() === "scheduled" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url ? (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                </>
+              )}
+
+            {/* Started status - Show only Resume (Join button is above) */}
+            {interviewStatus?.toLowerCase() === "started" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                </>
+              )}
+
+            {/* Invited status - Show only View Resume (NO invite button) */}
+            {interviewStatus?.toLowerCase() === "invited" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url ? (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                </>
+              )}
+
+            {/* Applied and Screening statuses - Show both Resume and Invite */}
+            {(interviewStatus?.toLowerCase() === "applied" ||
+              interviewStatus?.toLowerCase() === "screening") &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                  {!candidate.resume_url && (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                  <Button
+                    onClick={() => handleSendInvite(candidate)}
+                    variant="outline"
+                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Invite for Interview
+                  </Button>
+                </>
+              )}
+
+            {/* Fallback for any other statuses */}
+            {![
+              "completed",
+              "scheduled",
+              "started",
+              "applied",
+              "screening",
+              "invited",
+            ].includes(interviewStatus?.toLowerCase()) &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                  {!candidate.resume_url && (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                  <Button
+                    onClick={() => handleSendInvite(candidate)}
+                    variant="outline"
+                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Invite for Interview
+                  </Button>
+                </>
+              )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Move nodeTypes outside the component to prevent recreation on every render
 interface Candidate {
@@ -59,6 +319,7 @@ interface Candidate {
   started_at?: string;
   completed_at?: string;
   created_at?: string;
+  resume_url?: string;
 }
 
 interface Job {
@@ -102,6 +363,9 @@ export default function InterviewDetailsPage() {
     isLoading: loading,
     error,
   } = useInterviewDetails(id as string);
+
+  // Get all candidates to merge with interview candidates for complete data
+  const { candidates: allCandidates } = useCandidates();
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
@@ -113,6 +377,7 @@ export default function InterviewDetailsPage() {
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -242,7 +507,30 @@ export default function InterviewDetailsPage() {
     if (details) {
       setJob(details.job);
       setInterviewStatus(details.interview.status || "draft");
-      setInvitedCandidates(details.candidates.invited || []);
+
+      // Merge invited candidates from interview details with complete candidate data
+      if (details.candidates.invited && allCandidates) {
+        const mergedInvitedCandidates = details.candidates.invited.map(
+          (invitedCandidate: any) => {
+            // Find the complete candidate data by matching email or id
+            const completeCandidateData = allCandidates.find(
+              (candidate: any) =>
+                candidate.id === invitedCandidate.id ||
+                candidate.email === invitedCandidate.email
+            );
+
+            // Merge interview-specific data with complete candidate data
+            return {
+              ...completeCandidateData, // Complete candidate data (including resume_url)
+              ...invitedCandidate, // Interview-specific data (interview_status, room_url, etc.)
+            };
+          }
+        );
+        setInvitedCandidates(mergedInvitedCandidates);
+      } else {
+        setInvitedCandidates(details.candidates.invited || []);
+      }
+
       // Don't set availableCandidates from backend - we fetch them manually
 
       // Set skills and duration from the flow data
@@ -275,7 +563,7 @@ export default function InterviewDetailsPage() {
         setPhoneScreenQuestions([]);
       }
     }
-  }, [details]);
+  }, [details, allCandidates]);
 
   const handleSaveChanges = async () => {
     const user_id = getCookie("user_id");
@@ -442,6 +730,69 @@ export default function InterviewDetailsPage() {
   // Get candidates available for bulk invite (not already invited)
   const getAvailableCandidates = () => {
     return availableCandidates;
+  };
+
+  // Handle sending interview invite to a candidate
+  const handleSendInvite = async (candidate: any) => {
+    toast({
+      title: "Sending invitation...",
+      description: `Sending interview invitation to ${candidate.email}`,
+    });
+
+    try {
+      // Get current user context from cookies
+      const userContext = getUserContext();
+      const organizationId =
+        candidate.organization_id || userContext?.organization_id;
+      const senderId = userContext?.user_id;
+
+      if (!organizationId) {
+        toast({
+          title: "Organization not found",
+          description:
+            "Your organization information is missing. Please log in again.",
+        });
+        return;
+      }
+
+      const res = await authenticatedFetch(
+        `${siveraBackendUrl}/api/v1/interviews/send-invite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: candidate.email,
+            name: candidate.name,
+            job: job?.title || "",
+            organization_id: organizationId,
+            sender_id: senderId || "system",
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Interview invitation sent",
+          description: `Interview invitation sent to ${candidate.email}`,
+        });
+        // Close the dialog after successful invite
+        setSelectedCandidate(null);
+        // Refresh the data
+        window.location.reload();
+      } else {
+        toast({
+          title: "Failed to send invite",
+          description: data.error || "Unknown error",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Failed to send invite",
+        description: err.message,
+      });
+    }
   };
 
   return (
@@ -1006,7 +1357,7 @@ export default function InterviewDetailsPage() {
                         ) : (
                           <>
                             <Mail className="mr-2 h-4 w-4" />
-                            Invite Candidates
+                            Send Invitations
                           </>
                         )}
                       </Button>
@@ -1021,7 +1372,7 @@ export default function InterviewDetailsPage() {
                         variant="outline"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Candidate
+                        Add New Candidate
                       </Button>
                     </div>
                   </div>
@@ -1062,6 +1413,7 @@ export default function InterviewDetailsPage() {
                             <tr
                               key={candidate.id}
                               className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                              onClick={() => setSelectedCandidate(candidate)}
                             >
                               <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
                                 {candidate.name}
@@ -1118,6 +1470,15 @@ export default function InterviewDetailsPage() {
             onInvitesSent={handleInvitesSent}
             organizationId={getUserContext()?.organization_id || ""}
           />
+
+          {/* Candidate View Dialog */}
+          {selectedCandidate && (
+            <CandidateViewDialog
+              candidate={selectedCandidate}
+              onClose={() => setSelectedCandidate(null)}
+              handleSendInvite={handleSendInvite}
+            />
+          )}
         </>
       )}
     </div>

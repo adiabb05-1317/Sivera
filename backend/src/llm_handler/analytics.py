@@ -30,10 +30,12 @@ class InterviewAnalytics:
             "summary": "Brief summary here",
             "technical_topics": ["topic1", "topic2", ...],
             "strengths": ["strength1", "strength2", ...],
+            "weaknesses": ["weakness1", "weakness2", ...],
             "areas_for_improvement": ["area1", "area2", ...],
             "communication_score": X (1-10 scale),
             "technical_score": X (1-10 scale),
-            "overall_assessment": "Brief overall assessment"
+            "overall_assessment": "Brief overall assessment",
+            "overall_score": X (1-10 scale)
         }
 
         Here is the interview conversation:
