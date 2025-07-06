@@ -148,6 +148,9 @@ ALTER TABLE candidate_interviews ADD COLUMN IF NOT EXISTS bot_token VARCHAR;
 ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}';
 ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 10;
 
+-- Add logo_url column to organizations table if it doesn't exist
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS logo_url VARCHAR;
+
 -- -- FEEDBACK (missing table from your schema)
 -- CREATE TABLE IF NOT EXISTS feedback (
 --     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

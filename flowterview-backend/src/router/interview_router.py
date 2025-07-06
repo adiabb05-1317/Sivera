@@ -19,7 +19,6 @@ from loguru import (
 from pydantic import BaseModel, EmailStr, Field
 
 from src.core.config import Config
-from src.lib.manager import ConnectionManager
 from src.utils.auth_middleware import (
     require_organization,
 )
@@ -148,9 +147,11 @@ async def send_loops_email(to_email: str, template_id: str, variables: Dict[str,
         raise
 
 
-async def send_interview_invite_email(email: str, name: str, job: str, token: str, is_existing_user: bool = False) -> None:
+async def send_interview_invite_email(
+    email: str, name: str, job: str, token: str, is_existing_user: bool = False, company_name: str = "Sivera"
+) -> None:
     """Background task to send interview invitation email via Loops
-    
+
     Args:
         email: Candidate's email address
         name: Candidate's name
@@ -164,17 +165,17 @@ async def send_interview_invite_email(email: str, name: str, job: str, token: st
         import urllib.parse
 
         encoded_token = urllib.parse.quote_plus(token)
-        
+
         interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
-        
+
         logger.info(f"Generated interview URL with token: {encoded_token[:10]}...")
 
         # Prepare variables for Loops template
-        variables = {"name": name, "job": job, "company": "Sivera", "verify_url": interview_url}
+        variables = {"name": name, "job": job, "company": company_name, "verify_url": interview_url}
 
         # Use appropriate template based on user status
         template_id = Config.LOOPS_INTERVIEW_TEMPLATE
-        
+
         await send_loops_email(email, template_id, variables)
         logger.info(f"Interview invite email sent successfully to {email}")
 
@@ -183,13 +184,13 @@ async def send_interview_invite_email(email: str, name: str, job: str, token: st
         raise
 
 
-async def send_interview_email(email: str, name: str, job: str, interview_url: str) -> None:
+async def send_interview_email(email: str, name: str, job: str, interview_url: str, company_name: str) -> None:
     """Background task to send direct interview email for existing candidates via Loops"""
     try:
         logger.info(f"Sending interview email to {email} for job {job}")
 
         # Prepare variables for Loops template
-        variables = {"name": name, "job": job, "company": "Sivera", "verify_url": interview_url}
+        variables = {"name": name, "job": job, "company": company_name, "verify_url": interview_url}
 
         await send_loops_email(email, Config.LOOPS_INTERVIEW_TEMPLATE, variables)
         logger.info(f"Interview email sent successfully to {email}")
@@ -202,14 +203,14 @@ async def send_interview_email(email: str, name: str, job: str, interview_url: s
 # Helper functions for better code organization
 def validate_organization_exists(org_id: str, db: DatabaseManager) -> bool:
     """Validate that an organization exists and has valid UUID format.
-    
+
     Args:
         org_id: Organization ID to validate
         db: Database manager instance
-        
+
     Returns:
         bool: True if organization exists, False otherwise
-        
+
     Raises:
         ValueError: If UUID format is invalid
     """
@@ -221,32 +222,33 @@ def validate_organization_exists(org_id: str, db: DatabaseManager) -> bool:
         raise ValueError(f"Invalid organization ID format: {org_id}")
 
 
-def check_candidate_interview_exists(interview_id: str, candidate_id: str, db: DatabaseManager) -> Optional[Dict[str, Any]]:
+def check_candidate_interview_exists(
+    interview_id: str, candidate_id: str, db: DatabaseManager
+) -> Optional[Dict[str, Any]]:
     """Check if a candidate_interview record already exists.
-    
+
     Args:
         interview_id: Interview ID
         candidate_id: Candidate ID
         db: Database manager instance
-        
+
     Returns:
         Optional[Dict]: Existing candidate_interview record or None
     """
-    return db.fetch_one(
-        "candidate_interviews",
-        {"interview_id": interview_id, "candidate_id": candidate_id}
-    )
+    return db.fetch_one("candidate_interviews", {"interview_id": interview_id, "candidate_id": candidate_id})
 
 
-async def create_candidate_interview_with_room(interview_id: str, candidate_id: str, manager, db: DatabaseManager) -> Optional[str]:
+async def create_candidate_interview_with_room(
+    interview_id: str, candidate_id: str, manager, db: DatabaseManager
+) -> Optional[str]:
     """Create a candidate_interview record with room and token.
-    
+
     Args:
         interview_id: Interview ID
         candidate_id: Candidate ID
         manager: Connection manager for creating rooms
         db: Database manager instance
-        
+
     Returns:
         Optional[str]: Created candidate_interview ID or None if failed
     """
@@ -273,19 +275,20 @@ async def create_candidate_interview_with_room(interview_id: str, candidate_id: 
 
 
 async def process_invite_request(
-    email: str, 
-    name: str, 
-    job: str, 
-    organization_id: str, 
+    email: str,
+    name: str,
+    job: str,
+    company_name: str,
+    organization_id: str,
     sender_id: str = None,
-    manager = None
+    manager=None,
 ) -> None:
     """
     Background task to process the entire invite request including database operations and email sending
     """
     try:
         logger.info(f"[process-invite-bg] Processing invite for {email}")
-        
+
         # First check if candidate exists as a registered user
         user = db.fetch_one("users", {"email": email})
         logger.info(f"[process-invite-bg] User lookup for {email}: {user}")
@@ -368,7 +371,7 @@ async def process_invite_request(
             else:
                 logger.error(f"Failed to verify token was saved for {email}")
                 return
-                
+
             logger.info(f"Successfully created verification token for {email}")
         except Exception as token_error:
             logger.error(f"Error creating verification token: {str(token_error)}")
@@ -378,7 +381,7 @@ async def process_invite_request(
         try:
             user_type = "existing" if user else "new"
             logger.info(f"Sending verification email for {user_type} user {email}")
-            await send_interview_invite_email(email, name, job, token, False)
+            await send_interview_invite_email(email, name, job, token, False, company_name)
             logger.info(f"[process-invite-bg] Verification email sent to {user_type} candidate {email}")
         except Exception as email_error:
             logger.error(f"Error sending verification email: {str(email_error)}")
@@ -389,24 +392,28 @@ async def process_invite_request(
 
 
 @router.post("/send-invite")
-async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTasks, app_request: Request) -> Dict[str, Any]:
+async def send_invite(
+    request: SendInviteRequest, background_tasks: BackgroundTasks, app_request: Request
+) -> Dict[str, Any]:
     """
     Send an interview invitation email to the candidate
     Returns immediately and processes the invite in the background
     """
     try:
         logger.info(f"[send-invite] Received invite request: {request.dict()}")
-        
+
         # Validate organization exists and has valid UUID format
         try:
             if not validate_organization_exists(request.organization_id, db):
                 raise HTTPException(status_code=404, detail="Organization not found")
+            org = db.fetch_one("organizations", {"id": request.organization_id})
+            company_name = org.get("name")
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        
+
         # Get the manager from app state
         manager = app_request.app.state.manager
-        
+
         # Queue the processing as a background task
         background_tasks.add_task(
             process_invite_request,
@@ -416,16 +423,17 @@ async def send_invite(request: SendInviteRequest, background_tasks: BackgroundTa
             request.organization_id,
             request.sender_id,
             manager,
+            company_name,
         )
-        
+
         logger.info(f"[send-invite] Invite processing queued for {request.email}")
-        
+
         # Return immediately
         return {
             "success": True,
             "message": "Invitation is being processed and will be sent shortly",
         }
-        
+
     except HTTPException as he:
         # Pass through HTTP exceptions as-is
         raise he
@@ -676,16 +684,14 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
         # Prepare response with actual data or fallbacks
         # Use candidate name if available (for existing users), otherwise use token name
         display_name = candidate.get("name") if candidate else token_data.get("name")
-        
+
         response_data = {
             "success": True,
             "message": "Please complete registration",
             "name": display_name,
             "interview_data": {
                 "job_id": job_data.get("id") if job_data else None,
-                "job_title": job_data.get("title")
-                if job_data
-                else token_data.get("job_title", "Software Engineer"),
+                "job_title": job_data.get("title") if job_data else token_data.get("job_title", "Software Engineer"),
                 "company": organization_data.get("name") if organization_data else "Company",
                 "duration": flow_data.get("duration") if flow_data else 30,
                 "skills": flow_data.get("skills") if flow_data else [],
@@ -841,12 +847,16 @@ async def complete_registration(
             # and ensure it has proper room/token info
             try:
                 # Check if it already has room_url and bot_token
-                if not existing_candidate_interview.get("room_url") or existing_candidate_interview.get("room_url") == "placeholder":
+                if (
+                    not existing_candidate_interview.get("room_url")
+                    or existing_candidate_interview.get("room_url") == "placeholder"
+                ):
                     # Create new room and token
                     from src.lib.manager import ConnectionManager
+
                     manager = ConnectionManager()
                     room_url, bot_token = await manager.create_room_and_token()
-                    
+
                     db.update(
                         "candidate_interviews",
                         {
@@ -858,7 +868,9 @@ async def complete_registration(
                         },
                         {"id": existing_candidate_interview["id"]},
                     )
-                    logger.info(f"Updated existing candidate_interview for candidate {candidate_id} with new room: {room_url}")
+                    logger.info(
+                        f"Updated existing candidate_interview for candidate {candidate_id} with new room: {room_url}"
+                    )
                 else:
                     # Just update status
                     db.update(
@@ -878,9 +890,10 @@ async def complete_registration(
             # No candidate_interview exists - create new one with room and token
             try:
                 from src.lib.manager import ConnectionManager
+
                 manager = ConnectionManager()
                 room_url, bot_token = await manager.create_room_and_token()
-                
+
                 db.execute_query(
                     "candidate_interviews",
                     {
@@ -974,7 +987,9 @@ async def create_interview_from_description(
         )
         job_id = job["id"]
 
-        interview = db.execute_query("interviews", {"job_id": job_id, "status": "draft", "created_by": request.created_by})
+        interview = db.execute_query(
+            "interviews", {"job_id": job_id, "status": "draft", "created_by": request.created_by}
+        )
 
         return {
             "id": interview["id"],
@@ -1234,14 +1249,14 @@ async def update_job(job_id: str, updates: JobUpdate, request: Request):
 
         # Handle phone screen questions separately
         phone_screen_questions = updates.phone_screen_questions
-        
+
         # Build update dictionary with only non-None values (excluding phone_screen_questions)
         update_dict = {k: v for k, v in updates.dict().items() if v is not None and k != "phone_screen_questions"}
 
         # Update phone screen if questions are provided
         if phone_screen_questions is not None:
             phone_screen_id = current.get("phone_screen_id")
-            
+
             if phone_screen_questions:  # If there are questions
                 if phone_screen_id:
                     # Update existing phone screen
@@ -1266,14 +1281,14 @@ async def update_job(job_id: str, updates: JobUpdate, request: Request):
             table="jobs",
             select="id,title,description,process_stages,phone_screen_id,phone_screen(questions)",
             query_params={"id": job_id},
-            limit=1
+            limit=1,
         )
-        
+
         if not updated_job:
             raise HTTPException(status_code=404, detail="Updated job not found")
-            
+
         job_data = updated_job[0]
-        
+
         # Extract phone screen questions for response
         response_phone_questions = []
         phone_screen_data = job_data.get("phone_screen")

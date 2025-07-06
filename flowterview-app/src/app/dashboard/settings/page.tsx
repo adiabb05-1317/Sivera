@@ -12,6 +12,8 @@ import {
   Settings,
   Trash2,
   AlertTriangle,
+  Building2,
+  Edit3,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
 } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
+import { useAuthStore } from "../../../../store";
 
 // LinkedIn integration types
 interface LinkedInIntegrationStatus {
@@ -54,6 +57,10 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+
+  // Auth store for organization data
+  const { organization, fetchOrganization, setShowCompanySetupModal } =
+    useAuthStore();
 
   // LinkedIn integration state
   const [linkedInStatus, setLinkedInStatus] =
@@ -388,6 +395,58 @@ export default function SettingsPage() {
           Manage your application preferences and integrations.
         </p>
       </div>
+
+      {/* Company Details */}
+      <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
+        <CardHeader>
+          <CardTitle className="dark:text-white">Company Details</CardTitle>
+          <CardDescription className="dark:text-gray-300">
+            Manage your organization profile and company information.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                {organization?.logo_url ? (
+                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                    <img
+                      src={organization.logo_url}
+                      alt="Company logo"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-2 bg-app-blue-100 dark:bg-app-blue-900/30 rounded-lg">
+                    <Building2 className="h-6 w-6 text-app-blue-600 dark:text-app-blue-400" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                  {organization?.name || "Company Name Not Set"}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {organization?.name
+                    ? "Your organization name and branding settings"
+                    : "Complete your company profile to get started"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={() => setShowCompanySetupModal(true)}
+                variant="outline"
+                className="text-app-blue-600 border-app-blue-300 hover:bg-app-blue-50 hover:text-app-blue-700 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300 cursor-pointer"
+              >
+                <Edit3 className="h-3 w-3 mr-1" />
+                {organization?.name ? "Edit" : "Setup"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Theme Settings */}
       <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">

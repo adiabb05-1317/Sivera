@@ -14,11 +14,13 @@ interface AuthState {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  showCompanySetupModal: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
   setOrganization: (organization: Organization | null) => void;
   setSession: (session: Session | null) => void;
+  setShowCompanySetupModal: (show: boolean) => void;
   fetchUserProfile: () => Promise<void>;
   fetchOrganization: () => Promise<void>;
   logout: () => void;
@@ -32,6 +34,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   session: null,
   isAuthenticated: false,
   isLoading: false,
+  showCompanySetupModal: false,
 
   // Actions
   setUser: (user) =>
@@ -43,6 +46,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   setOrganization: (organization) => set({ organization }),
 
   setSession: (session) => set({ session }),
+
+  setShowCompanySetupModal: (show) => set({ showCompanySetupModal: show }),
 
   fetchUserProfile: async () => {
     try {
@@ -107,6 +112,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       if (response.ok) {
         const organization = await response.json();
         set({ organization });
+
+        // Check if organization name is empty and show modal if needed
+        if (!organization?.name || organization.name.trim() === "") {
+          set({ showCompanySetupModal: true });
+        }
       }
     } catch (error) {
       console.error("Error fetching organization:", error);
@@ -124,6 +134,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       session: null,
       isAuthenticated: false,
       isLoading: false,
+      showCompanySetupModal: false,
     });
 
     // Reset store initialization state

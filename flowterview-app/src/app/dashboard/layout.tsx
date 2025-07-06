@@ -13,12 +13,15 @@ import {
   X,
   Loader,
   Loader2,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster } from "react-hot-toast";
+import CompanySetupModal from "@/components/CompanySetupModal";
 
 import { useAuth, useAppLoadingState } from "@/hooks/useStores";
+import { useAuthStore } from "../../../store";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,6 +35,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Use auth for authentication state and user data
   const { user, logout } = useAuth();
 
+  // Get auth store for modal state and organization data
+  const {
+    organization,
+    showCompanySetupModal,
+    setShowCompanySetupModal,
+    fetchOrganization,
+  } = useAuthStore();
+
   // Use comprehensive app loading state that accounts for all stores
   const { isLoading, stage } = useAppLoadingState();
 
@@ -39,7 +50,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Interviews", href: "/dashboard/interviews", icon: FileText },
     { name: "Candidates", href: "/dashboard/candidates", icon: Users },
-    { name: "Analytics", href: "/dashboard/analytics", icon: BarChart },
+    { name: "Analytics", href: "/dashboard/analytics", icon: Brain },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
@@ -61,6 +72,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const handleCompanySetupCompleted = async () => {
+    // Refresh organization data
+    await fetchOrganization();
+    // Hide the modal
+    setShowCompanySetupModal(false);
+  };
+
+  const handleCompanySetupCancel = () => {
+    // Simply hide the modal without refreshing data
+    setShowCompanySetupModal(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Toaster
@@ -75,6 +98,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           },
         }}
       />
+
+      {/* Company Setup Modal */}
+      {showCompanySetupModal && user?.organization_id && (
+        <CompanySetupModal
+          open={showCompanySetupModal}
+          organizationId={user.organization_id}
+          onCompleted={handleCompanySetupCompleted}
+          onCancel={handleCompanySetupCancel}
+          isEditing={!!organization?.name}
+          existingName={organization?.name || ""}
+          existingLogoUrl={organization?.logo_url || ""}
+        />
+      )}
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
