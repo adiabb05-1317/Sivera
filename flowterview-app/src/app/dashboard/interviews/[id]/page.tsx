@@ -806,7 +806,7 @@ export default function InterviewDetailsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex flex-col justify-center gap-1">
-          <h2 className="text-xl font-bold dark:text-white">
+          <h2 className="text-lg font-bold dark:text-white">
             {job?.title || "Loading..."}
           </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
@@ -838,7 +838,7 @@ export default function InterviewDetailsPage() {
               <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
                 <div className="flex flex-row items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                    <h2 className="text-base font-medium tracking-tight dark:text-white">
                       Interview Configuration
                     </h2>
                     <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
@@ -1273,7 +1273,7 @@ export default function InterviewDetailsPage() {
                                 >
                                   <CardContent className="flex aspect-square items-center justify-center p-6">
                                     <span
-                                      className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                      className={`text-lg font-semibold flex flex-col items-center justify-center ${
                                         selectedTimer === time
                                           ? "text-app-blue-600 dark:text-app-blue-400"
                                           : status.disabled
@@ -1281,7 +1281,7 @@ export default function InterviewDetailsPage() {
                                           : "text-gray-700 dark:text-gray-300"
                                       }`}
                                     >
-                                      <div className="text-2xl font-semibold">
+                                      <div className="text-lg font-semibold">
                                         {time}
                                       </div>
                                       <div className="text-xs">minutes</div>
@@ -1379,7 +1379,7 @@ export default function InterviewDetailsPage() {
                   {invitedCandidates.length === 0 ? (
                     <div className="text-center py-8">
                       <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-2">
                         No candidates assigned
                       </h3>
                       <p className="text-gray-500 dark:text-gray-400 mb-4">

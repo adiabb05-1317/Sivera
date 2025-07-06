@@ -339,7 +339,7 @@ export default function InviteCandidatesPage() {
             <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
               <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="mt-4 text-lg font-medium tracking-tight dark:text-white">
+            <h2 className="mt-4 text-base font-medium tracking-tight dark:text-white">
               Candidates Saved Successfully
             </h2>
             <p className="mt-2 mb-6 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
@@ -368,7 +368,7 @@ export default function InviteCandidatesPage() {
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="flex items-center gap-3 justify-between">
-              <h2 className="text-xl font-semibold opacity-70 tracking-tight dark:text-white">
+              <h2 className="text-lg font-semibold opacity-70 tracking-tight dark:text-white">
                 Invite Candidates
               </h2>
               <div className="flex flex-row gap-5">

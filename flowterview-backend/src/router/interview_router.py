@@ -278,8 +278,8 @@ async def process_invite_request(
     email: str,
     name: str,
     job: str,
-    company_name: str,
     organization_id: str,
+    company_name: str,
     sender_id: str = None,
     manager=None,
 ) -> None:
@@ -421,9 +421,9 @@ async def send_invite(
             request.name,
             request.job,
             request.organization_id,
+            company_name,
             request.sender_id,
             manager,
-            company_name,
         )
 
         logger.info(f"[send-invite] Invite processing queued for {request.email}")

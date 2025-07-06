@@ -126,7 +126,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-md w-full space-y-8 p-10 rounded-xl shadow-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-xl font-extrabold text-gray-900">
             Candidate Verification
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
@@ -143,7 +143,7 @@ export default function RegisterPage() {
           ) : completed ? (
             <div className="flex flex-col items-center justify-center py-8">
               <CheckCircle className="h-16 w-16 text-green-500" />
-              <p className="mt-4 text-lg font-medium text-gray-900">
+              <p className="mt-4 text-base font-medium text-gray-900">
                 Registration Complete!
               </p>
               <p className="mt-2 text-gray-600">

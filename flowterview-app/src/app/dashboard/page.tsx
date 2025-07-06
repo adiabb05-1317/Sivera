@@ -76,7 +76,7 @@ export default function DashboardPage() {
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
                     {stat.name}
                   </dt>
-                  <dd className="mt-2 text-4xl font-bold text-gray-700 dark:text-white">
+                  <dd className="mt-2 text-2xl font-bold text-gray-700 dark:text-white">
                     {stat.value}
                   </dd>
                 </div>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
       {/* Recent Interviews */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
         <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white ml-5">
+          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
             Recent Interviews
           </h2>
         </div>
