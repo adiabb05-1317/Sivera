@@ -222,6 +222,7 @@ export const clearUserContext = () => {
   deleteCookie("user_email");
   deleteCookie("organization_id");
   deleteCookie("user_context");
+  localStorage.clear();
 };
 
 // Enhanced API fetch function that includes authentication headers

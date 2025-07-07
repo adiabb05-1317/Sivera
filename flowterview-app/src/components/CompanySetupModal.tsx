@@ -5,7 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { authenticatedFetch } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Building2, X, Loader2 } from "lucide-react";
+import { Upload, Building2, X, Loader2, ShieldCloseIcon } from "lucide-react";
+import { DrawerClose } from "./ui/drawer";
 
 interface CompanySetupModalProps {
   open: boolean;
@@ -204,16 +205,18 @@ export default function CompanySetupModal({
                 ) : existingLogoUrl ? (
                   <div className="flex items-center justify-center">
                     <div className="relative">
+                      <Button
+                        variant="ghost"
+                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-md cursor-pointer bg-app-blue-500 hover:bg-app-blue-600 hover:text-white text-white dark:text-white"
+                        onClick={handleFileRemove}
+                      >
+                        <X className="w-2 h-2" />
+                      </Button>
                       <img
                         src={existingLogoUrl}
                         alt="Current logo"
                         className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                        <p className="text-white text-xs font-medium">
-                          Click to replace
-                        </p>
-                      </div>
                     </div>
                   </div>
                 ) : (

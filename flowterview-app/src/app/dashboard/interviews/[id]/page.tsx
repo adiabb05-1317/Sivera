@@ -20,6 +20,7 @@ import {
   Route,
   Eye,
   Send,
+  Check,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,8 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import {
   Carousel,
@@ -53,6 +56,7 @@ import {
   getCookie,
   getUserContext,
 } from "@/lib/auth-client";
+import { Label } from "recharts";
 
 // Candidate View Dialog Component
 const CandidateViewDialog = ({
@@ -835,7 +839,7 @@ export default function InterviewDetailsPage() {
           >
             {/* Skills and Timer Configuration */}
             <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
-              <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+              <div className="border-b border-gray-200 dark:border-gray-800 px-6 pb-6">
                 <div className="flex flex-row items-center justify-between">
                   <div>
                     <h2 className="text-base font-medium tracking-tight dark:text-white">
@@ -845,20 +849,73 @@ export default function InterviewDetailsPage() {
                       Configure your interview settings and skills assessment.
                     </p>
                   </div>
-                  {firstChange && (
-                    <Button
-                      onClick={handleSaveChanges}
-                      disabled={saving}
-                      variant="outline"
-                      className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  <div className="flex flex-row items-center gap-3">
+                    <Select
+                      value={interviewStatus}
+                      onValueChange={async (
+                        value: "draft" | "active" | "completed"
+                      ) => {
+                        try {
+                          await updateInterviewStatus(id as string, value);
+                          setInterviewStatus(value);
+                          toast({
+                            title: "Interview status updated",
+                            description: `Status set to ${value}`,
+                          });
+                        } catch (err) {
+                          const errorMessage =
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to update status";
+                          toast({
+                            title: "Failed to update status",
+                            description: errorMessage,
+                          });
+                        }
+                      }}
                     >
-                      {saving && (
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                      )}
-                      {!saving && <Save className="mr-2 h-4 w-4" />}
-                      Save Changes
-                    </Button>
-                  )}
+                      <SelectTrigger className="w-[13rem] cursor-pointer">
+                        <SelectValue>Select Interview Status</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Current Status</SelectLabel>
+                          <SelectItem
+                            value="draft"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Draft</span>
+                          </SelectItem>
+                          <SelectItem
+                            value="active"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Active</span>
+                          </SelectItem>
+                          <SelectItem
+                            value="completed"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Completed</span>
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {firstChange && (
+                      <Button
+                        onClick={handleSaveChanges}
+                        disabled={saving}
+                        variant="outline"
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                      >
+                        {saving && (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        )}
+                        {!saving && <Save className="mr-2 h-4 w-4" />}
+                        Save Changes
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <CardContent className="pt-6 space-y-6">
@@ -1185,6 +1242,13 @@ export default function InterviewDetailsPage() {
                           Available Skills (click to add)
                         </label>
                         <div className="flex flex-wrap gap-2">
+                          {extractedSkills.filter(
+                            (skill) => !selectedSkills.includes(skill)
+                          ).length === 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center w-full py-2 font-medium">
+                              No skills to add
+                            </div>
+                          )}
                           {extractedSkills
                             .filter((skill) => !selectedSkills.includes(skill))
                             .map((skill) => (
@@ -1308,40 +1372,6 @@ export default function InterviewDetailsPage() {
                       Candidates
                     </h3>
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={interviewStatus}
-                        onValueChange={async (
-                          value: "draft" | "active" | "completed"
-                        ) => {
-                          try {
-                            await updateInterviewStatus(id as string, value);
-                            setInterviewStatus(value);
-                            toast({
-                              title: "Interview status updated",
-                              description: `Status set to ${value}`,
-                            });
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to update status";
-                            toast({
-                              title: "Failed to update status",
-                              description: errorMessage,
-                            });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-[140px] ml-2">
-                          <SelectValue placeholder="Interview Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-
                       {/* Bulk Invite Button */}
                       <Button
                         onClick={fetchAvailableCandidates}

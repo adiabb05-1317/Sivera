@@ -20,10 +20,16 @@ class InterviewAnalytics:
         4. Areas of improvement for the candidate
         5. Communication style assessment
         6. Technical proficiency assessment
+        7. What would he be good at? (2-3 sentences)
+        8. What would he not be good at? (2-3 sentences)
 
         Format your response as a JSON with the following structure:
         {
             "summary": "Brief summary here",
+            "good_at": "What would he be good at? (2-3 sentences)",
+            "good_at_skills": ["skill1", "skill2", ...],
+            "not_good_at": "What would he not be good at? (2-3 sentences)",
+            "not_good_at_skills": ["skill1", "skill2", ...],
             "technical_topics": ["topic1", "topic2", ...],
             "strengths": ["strength1", "strength2", ...],
             "weaknesses": ["weakness1", "weakness2", ...],

@@ -62,6 +62,8 @@ export default function SettingsPage() {
   const { organization, fetchOrganization, setShowCompanySetupModal } =
     useAuthStore();
 
+  const openCompanyEdit = searchParams.get("openCompanyEdit");
+
   // LinkedIn integration state
   const [linkedInStatus, setLinkedInStatus] =
     useState<LinkedInIntegrationStatus | null>(null);
@@ -95,6 +97,12 @@ export default function SettingsPage() {
   // Get backend URL
   const backendUrl =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+
+  useEffect(() => {
+    if (openCompanyEdit) {
+      setShowCompanySetupModal(true);
+    }
+  }, [openCompanyEdit]);
 
   // Check LinkedIn integration status on component mount
   useEffect(() => {

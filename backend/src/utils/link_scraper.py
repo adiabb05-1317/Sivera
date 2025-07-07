@@ -454,7 +454,22 @@ def scrape_link_sync(url: str) -> Dict[str, Any]:
         Dictionary containing scraped information
     """
     try:
-        return asyncio.run(scrape_link_async(url))
+        # Check if there's already a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, we need to run in a new thread
+            import concurrent.futures
+            import threading
+            
+            def run_in_thread():
+                return asyncio.run(scrape_link_async(url))
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+        except RuntimeError:
+            # No running event loop, safe to use asyncio.run()
+            return asyncio.run(scrape_link_async(url))
     except Exception as e:
         logger.error(f"Error in sync scraping: {e}")
         return {"error": str(e), "url": url}
@@ -471,7 +486,22 @@ def scrape_multiple_links_sync(urls: List[str]) -> List[Dict[str, Any]]:
         List of dictionaries containing scraped information
     """
     try:
-        return asyncio.run(scrape_multiple_links_async(urls))
+        # Check if there's already a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, we need to run in a new thread
+            import concurrent.futures
+            import threading
+            
+            def run_in_thread():
+                return asyncio.run(scrape_multiple_links_async(urls))
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+        except RuntimeError:
+            # No running event loop, safe to use asyncio.run()
+            return asyncio.run(scrape_multiple_links_async(urls))
     except Exception as e:
         logger.error(f"Error in sync scraping multiple links: {e}")
         return [{"error": str(e), "url": url} for url in urls] 
