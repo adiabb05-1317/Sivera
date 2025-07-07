@@ -131,7 +131,15 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
+      <div className="flex flex-row justify-between items-center">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+            Analytics
+          </h1>
+          <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
+            Insights and performance metrics for your interview process.
+          </p>
+        </div>
         <div className="flex space-x-3">
           <Button variant="outline" className="cursor-pointer">
             <Filter className="mr-2 h-4 w-4" />

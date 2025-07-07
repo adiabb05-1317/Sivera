@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import uuid
 
 import aiohttp
+
 from dotenv import load_dotenv
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import BotInterruptionFrame
@@ -38,6 +39,7 @@ from pydantic import BaseModel
 
 from src.services.llm_factory import LLMFactory
 from src.services.tts_factory import TTSFactory
+from src.services.analytics import InterviewAnalytics
 from src.utils.logger import logger
 from src.utils.resume_extractor import fetch_and_process_resume
 
@@ -142,16 +144,20 @@ class InterviewFlow:
             self.flow_config = self.db.fetch_one(
                 "interview_flows", {"id": self.job.get("flow_id")}
             )["flow_json"]
+            self.skills = self.job.get("skills")
+            logger.info(f"Skills: {self.skills}")
             self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
             self.candidate_name = self.candidate.get("name")
             self.job_title = self.job.get("title")
             self.resume_url = self.candidate.get("resume_url")
         else:
+            # this is just for testing
             with open("src/services/flows/default.json", "r") as f:
                 self.flow_config = json.load(f)
             self.candidate_name = "Mithra"
             self.job_title = "Google AI Platform, Cloud Engineer"
-            self.resume_url = "https://glttawcpverjawfrbohm.supabase.co/storage/v1/object/sign/resumes/g.s.n._mithra_1751545158064.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8wMTYzZjAwNS0xZDVlLTQ3NDEtYjJhYi0yNjQ0MWYwYTg4MzYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyZXN1bWVzL2cucy5uLl9taXRocmFfMTc1MTU0NTE1ODA2NC5wZGYiLCJpYXQiOjE3NTE1NDUxNjAsImV4cCI6MTc4MzA4MTE2MH0.w5xiFNUrTm6mkkiSCJhOiv9A0FfmiOuVTtYmh-V9nSg"
+            self.resume_url = "https://glttawcpverjawfrbohm.supabase.co/storage/v1/object/sign/resumes/mithra_1751825465503.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8wMTYzZjAwNS0xZDVlLTQ3NDEtYjJhYi0yNjQ0MWYwYTg4MzYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyZXN1bWVzL21pdGhyYV8xNzUxODI1NDY1NTAzLnBkZiIsImlhdCI6MTc1MTg4NjIzNiwiZXhwIjoxNzgzNDIyMjM2fQ.2v2JMRGbAMVKAecynxbjC3oHsMDcQpYWZjBl6Tw6jig"
+            self.skills = ["Java", "Python", "Langchain", "RabbitMQ", "AWS"]
 
         # Fetch resume content during initialization
         self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
@@ -171,10 +177,13 @@ class InterviewFlow:
 
         IMPORTANT:
         - You do not need to be kind or friendly. You are not the candidate's friend, mentor, or coach. You are an interviewer.
+        - Don't expect the candidate to be extremely detailed in their responses. You can expect them to sometimes skip over some details.
         - Your job is to assess the candidate’s skills and experience. Be strict and critical in your evaluation.
+        - Spend most of the time asking questions based on the skills required for the job.
         - If the candidate absolutely doesn't know something or asks for help, offer only a very subtle hint.
 
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}!" and introduce yourself as {self.bot_name} then proceed with the interview.
+        You will be asking question based on the skills required for the job, which are: {self.skills}
 
         Information about the candidate:
             Candidate Name: {self.candidate_name}
@@ -434,6 +443,31 @@ class InterviewFlow:
                         if (msg["role"] == "user" or msg["role"] == "assistant")
                     ]
 
+                    merged_messages = []
+                    current_user_message = ""
+                    current_role = None
+
+                    for msg in filtered_messages:
+                        if msg["role"] == "user":
+                            if current_role == "user":
+                                current_user_message += msg["content"]
+                            else:
+                                if current_role is not None:
+                                    merged_messages.append({"role": current_role, "content": current_user_message})
+                                current_user_message = msg["content"]
+                            current_role = "user"
+                        else:
+                            if current_role == "user":
+                                merged_messages.append({"role": current_role, "content": current_user_message})
+                                current_user_message = ""
+                            merged_messages.append(msg)
+                            current_role = "assistant"
+
+                    if current_role == "user" and current_user_message:
+                        merged_messages.append({"role": current_role, "content": current_user_message})
+
+                    filtered_messages = merged_messages
+
                     session_data = {
                         "id": str(uuid.uuid4()),
                         "chat_history": json.dumps(filtered_messages),
@@ -460,12 +494,20 @@ class InterviewFlow:
                                 "candidate_id": self.candidate_id,
                                 "interview_id": self.interview.get("id")
                             })
+                            logger.info(
+                                f"Candidate interview updated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                            )
+
                             self.db.update("candidates", {
                                 "status": "Interviewed",
                                 "updated_at": datetime.now().isoformat(),
                             }, {
                                 "id": self.candidate_id
                             })
+                            logger.info(
+                                f"Candidate updated for candidate {self.candidate_id}"
+                            )
+
                             candidate_interview_id = self.db.fetch_one(
                                 "candidate_interviews",
                                 {
@@ -474,11 +516,19 @@ class InterviewFlow:
                                 },
                             )
                             if candidate_interview_id:
-                                analytics = {
+                                analytics_service = InterviewAnalytics()
+                                analytics = await analytics_service.analyze_interview(filtered_messages)
+                                details = {
                                     "interview_duration_seconds": interview_duration_seconds,
                                     "interview_start_time": self.interview_start_time.isoformat(),
                                     "interview_end_time": interview_end_time.isoformat(),
                                 }
+
+                                analytics.update(details)
+
+                                logger.info(
+                                    f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                                )
 
                                 self.db.execute_query(
                                     "interview_sessions",

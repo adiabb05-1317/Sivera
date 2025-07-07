@@ -60,6 +60,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+          Dashboard
+        </h1>
+        <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
+          Overview of your interview activities and key metrics.
+        </p>
+      </div>
       {/* Stats */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (

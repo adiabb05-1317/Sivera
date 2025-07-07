@@ -1,15 +1,11 @@
 import json
 from typing import Any, Dict, List
-
-# from src.llm_handler.generic_llm import GenericLLM
+from src.llm_handler import generic_llm
 from src.utils.logger import logger
 
 
 class InterviewAnalytics:
     def __init__(self):
-        # self.llm = GenericLLM(
-        #     model_name="gemini-2.0-flash", api_key=Config.GEMINI_API_KEY
-        # )
         pass
 
     def _prepare_prompt(self, chat_history: List[Dict[str, str]]) -> str:
@@ -60,7 +56,7 @@ class InterviewAnalytics:
         """
         try:
             prompt = self._prepare_prompt(chat_history)
-            response = self.llm.handle_llm_request(prompt)
+            response = await generic_llm.call_llm(prompt)
 
             try:
                 analytics = json.loads(response)

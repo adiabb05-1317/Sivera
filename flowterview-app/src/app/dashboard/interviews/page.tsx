@@ -53,7 +53,15 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-6 overflow-auto">
-      <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
+      <div className="flex flex-row justify-between items-center">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+            Interviews
+          </h1>
+          <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
+            Manage and track all your interview processes.
+          </p>
+        </div>
         <Button
           onClick={() => router.push("/dashboard/interviews/from-description")}
           className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
