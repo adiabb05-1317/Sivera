@@ -178,7 +178,6 @@ export default function CandidatesPage() {
           title: "Organization not found",
           description:
             "Your organization information is missing. Please log in again.",
-          variant: "destructive",
         });
         return;
       }
@@ -245,7 +244,10 @@ export default function CandidatesPage() {
 
   return (
     <div className="space-y-6 overflow-auto">
-      <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Manage and track candidates in your recruitment pipeline.
+        </p>
         <Button
           onClick={() => router.push("/dashboard/candidates/invite")}
           className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
@@ -368,7 +370,7 @@ export default function CandidatesPage() {
       {/* Candidates Table */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
         <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white ml-5">
+          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
             Candidates
           </h2>
         </div>
@@ -411,16 +413,15 @@ export default function CandidatesPage() {
                       {candidate.jobs?.title || "-"}
                     </td>
                     <td className="px-6 py-6 whitespace-nowrap text-sm">
-                      <span
-                        className={
-                          statusColors[candidate.status] ||
-                          "bg-gray-100 text-gray-800"
-                        }
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",
+                          statusColors[candidate.status]
+                        )}
                       >
-                        <Badge variant="outline">
-                          {statusLabels[candidate.status] || candidate.status}
-                        </Badge>
-                      </span>
+                        {statusLabels[candidate.status] || candidate.status}
+                      </Badge>
                     </td>
                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {candidate.created_at

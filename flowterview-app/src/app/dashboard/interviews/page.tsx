@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useInterviews, useCandidates } from "@/hooks/useStores";
 
@@ -54,7 +53,10 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-6 overflow-auto">
-      <div className="flex flex-col justify-end items-center space-y-4 md:flex-row md:items-center md:space-y-0 gap-3">
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Manage and track all your interview processes.
+        </p>
         <Button
           onClick={() => router.push("/dashboard/interviews/from-description")}
           className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"

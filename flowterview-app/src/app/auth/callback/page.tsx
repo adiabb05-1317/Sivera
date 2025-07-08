@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import { supabase } from "@/lib/supabase";
 import {
   Card,
@@ -49,10 +48,15 @@ export default function AuthCallbackPage() {
           await setUserContext(userData?.user?.id!, email);
 
           // 3. Check if user exists in backend
+          // Fix: Ensure HTTPS is used for API calls
+          const backendUrl =
+            process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL ||
+            "https://api.sivera.io";
+
+          console.log("🔍 Debug - Backend URL in callback:", backendUrl);
+
           const resp = await authenticatedFetch(
-            process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL +
-              "/api/v1/users?email=" +
-              encodeURIComponent(email)
+            backendUrl + "/api/v1/users?email=" + encodeURIComponent(email)
           );
           if (resp.ok) {
             // User exists, redirect directly
@@ -72,7 +76,7 @@ export default function AuthCallbackPage() {
               );
             }
             const createResp = await authenticatedFetch(
-              process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL + "/api/v1/users",
+              backendUrl + "/api/v1/users",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -177,7 +181,6 @@ export default function AuthCallbackPage() {
   if (orgLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
@@ -215,7 +218,6 @@ export default function AuthCallbackPage() {
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">

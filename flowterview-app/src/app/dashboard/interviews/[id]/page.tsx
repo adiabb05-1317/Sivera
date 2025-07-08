@@ -18,16 +18,30 @@ import {
   FileText,
   Bot,
   Route,
+  Eye,
+  Send,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import {
   Carousel,
@@ -37,12 +51,415 @@ import {
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
-import { useInterviewDetails } from "@/hooks/useStores";
+import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 import {
   authenticatedFetch,
   getCookie,
   getUserContext,
 } from "@/lib/auth-client";
+import { Label } from "recharts";
+
+// Candidate View Dialog Component
+const CandidateViewDialog = ({
+  candidate,
+  onClose,
+  handleSendInvite,
+  interviewId,
+  candidateId,
+}: {
+  candidate: any;
+  onClose: () => void;
+  handleSendInvite: (candidate: any) => void;
+  interviewId: string;
+  candidateId: string;
+}) => {
+  const { toast } = useToast();
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  const candidateStatus = candidate.status?.toLowerCase();
+  const interviewStatus =
+    candidateStatus === "invited"
+      ? candidate.interview_status?.toLowerCase() || "invited"
+      : candidateStatus;
+
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+
+  const handleShowAnalytics = async () => {
+    setLoadingAnalytics(true);
+    try {
+      const analytics = await authenticatedFetch(
+        `${siveraBackendUrl}/api/v1/analytics/interview/${interviewId}/candidate/${candidateId}`
+      );
+      const data = await analytics.json();
+      console.log("Debug - data:", data);
+      setAnalyticsData(data.analytics);
+      toast({
+        title: "Analytics",
+        description: "Analytics loaded successfully",
+      });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load analytics",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const handleViewMoreDetails = () => {
+    toast({
+      title: "More Details",
+      description: "Detailed analytics view coming soon!",
+    });
+  };
+
+  return (
+    <Dialog open={!!candidate} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="tracking-tight">
+            Candidate Details
+          </DialogTitle>
+          <DialogDescription>{candidate.name}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label className="text-right text-sm font-medium">Email:</label>
+            <div className="col-span-3 text-sm text-gray-600">
+              {candidate.email}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label className="text-right text-sm font-medium">Status:</label>
+            <div className="col-span-3">
+              <Badge variant="outline" className="text-xs">
+                {candidate.interview_status || candidate.status}
+              </Badge>
+            </div>
+          </div>
+          {interviewStatus?.toLowerCase() === "started" &&
+            candidate.room_url && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label className="text-right text-sm font-medium">
+                  Interview:
+                </label>
+                <div className="col-span-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(candidate.room_url, "_blank")}
+                    className="cursor-pointer"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Join Interview
+                  </Button>
+                </div>
+              </div>
+            )}
+        </div>
+        <DialogFooter>
+          <div className="flex flex-col gap-2 w-full">
+            {/* Completed status - Show Analytics and optionally Resume */}
+            {(interviewStatus?.toLowerCase() === "completed" ||
+              candidate.status?.toLowerCase() === "completed" ||
+              candidate.interview_status?.toLowerCase() === "completed") && (
+              <>
+                {/* Analytics Section */}
+                {!analyticsData ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleShowAnalytics}
+                    disabled={loadingAnalytics}
+                    className="cursor-pointer"
+                  >
+                    {loadingAnalytics ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading Analytics...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="mr-2 h-4 w-4" />
+                        Show Analytics
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                    {/* Professional Header */}
+                    <div className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-slate-900 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <Brain className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
+                            Interview Analysis
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            A brief overview of the interview performance.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="px-6 py-8">
+                      {/* Performance Score Section */}
+                      <div className="mb-8">
+                        <h4 className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+                          Overall Score
+                        </h4>
+                        <div className="flex justify-center">
+                          <div className="relative">
+                            {/* Subtle glow effect */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full scale-110 opacity-60"></div>
+
+                            <div className="relative w-20 h-20">
+                              <svg
+                                className="w-20 h-20 transform -rotate-90"
+                                viewBox="0 0 36 36"
+                              >
+                                {/* Background circle */}
+                                <path
+                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  className="text-slate-200 dark:text-slate-700"
+                                />
+                                {/* Progress circle */}
+                                <path
+                                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeDasharray={`${
+                                    ((analyticsData.data?.overall_score || 0) /
+                                      10) *
+                                    100
+                                  }, 100`}
+                                  strokeLinecap="round"
+                                  className={
+                                    (analyticsData.data?.overall_score || 0) >=
+                                    8
+                                      ? "text-emerald-500"
+                                      : (analyticsData.data?.overall_score ||
+                                          0) >= 6
+                                      ? "text-amber-500"
+                                      : "text-rose-500"
+                                  }
+                                />
+                              </svg>
+                              {/* Score text */}
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span
+                                  className={`text-lg font-bold tracking-tight ${
+                                    (analyticsData.data?.overall_score || 0) >=
+                                    8
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : (analyticsData.data?.overall_score ||
+                                          0) >= 6
+                                      ? "text-amber-600 dark:text-amber-400"
+                                      : "text-rose-600 dark:text-rose-400"
+                                  }`}
+                                >
+                                  {analyticsData.data?.overall_score || "N/A"}
+                                  /10
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interview Summary Section */}
+                      {analyticsData.data?.summary && (
+                        <div>
+                          <h4 className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+                            Summary
+                          </h4>
+                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-center px-2 text-sm font-light">
+                            {analyticsData.data.summary}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Resume Button */}
+                <Button
+                  variant="outline"
+                  onClick={handleViewMoreDetails}
+                  className="cursor-pointer"
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  View Detailed Analysis
+                </Button>
+                {candidate.resume_url && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(candidate.resume_url, "_blank")}
+                    className="cursor-pointer"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Resume
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* Scheduled status - Show only View Resume */}
+            {interviewStatus?.toLowerCase() === "scheduled" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url ? (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                </>
+              )}
+
+            {/* Started status - Show only Resume (Join button is above) */}
+            {interviewStatus?.toLowerCase() === "started" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                </>
+              )}
+
+            {/* Invited status - Show only View Resume (NO invite button) */}
+            {interviewStatus?.toLowerCase() === "invited" &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url ? (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                </>
+              )}
+
+            {/* Applied and Screening statuses - Show both Resume and Invite */}
+            {(interviewStatus?.toLowerCase() === "applied" ||
+              interviewStatus?.toLowerCase() === "screening") &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                  {!candidate.resume_url && (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                  <Button
+                    onClick={() => handleSendInvite(candidate)}
+                    variant="outline"
+                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Invite for Interview
+                  </Button>
+                </>
+              )}
+
+            {/* Fallback for any other statuses */}
+            {![
+              "completed",
+              "scheduled",
+              "started",
+              "applied",
+              "screening",
+              "invited",
+            ].includes(interviewStatus?.toLowerCase()) &&
+              candidate.status?.toLowerCase() !== "completed" &&
+              candidate.interview_status?.toLowerCase() !== "completed" && (
+                <>
+                  {candidate.resume_url && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(candidate.resume_url, "_blank")
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                  {!candidate.resume_url && (
+                    <p className="text-sm text-gray-500">
+                      No resume available.
+                    </p>
+                  )}
+                  <Button
+                    onClick={() => handleSendInvite(candidate)}
+                    variant="outline"
+                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Invite for Interview
+                  </Button>
+                </>
+              )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Move nodeTypes outside the component to prevent recreation on every render
 interface Candidate {
@@ -59,6 +476,7 @@ interface Candidate {
   started_at?: string;
   completed_at?: string;
   created_at?: string;
+  resume_url?: string;
 }
 
 interface Job {
@@ -102,6 +520,9 @@ export default function InterviewDetailsPage() {
     isLoading: loading,
     error,
   } = useInterviewDetails(id as string);
+
+  // Get all candidates to merge with interview candidates for complete data
+  const { candidates: allCandidates } = useCandidates();
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
@@ -113,6 +534,7 @@ export default function InterviewDetailsPage() {
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
   >("draft");
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -137,10 +559,10 @@ export default function InterviewDetailsPage() {
 
   const { toast } = useToast();
 
-  const BACKEND_URL =
-    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-  const CORE_BACKEND_URL =
-    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const coreBackendUrl =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "https://core.sivera.io";
 
   // Timer options and logic
   const timerOptions = [10, 20, 30];
@@ -177,7 +599,6 @@ export default function InterviewDetailsPage() {
           toast({
             title: "Maximum skills reached",
             description: "You can select up to 15 skills maximum.",
-            variant: "destructive",
           });
           return prev;
         }
@@ -194,7 +615,6 @@ export default function InterviewDetailsPage() {
         toast({
           title: "Maximum skills reached",
           description: "You can select up to 15 skills maximum.",
-          variant: "destructive",
         });
         return;
       }
@@ -244,7 +664,30 @@ export default function InterviewDetailsPage() {
     if (details) {
       setJob(details.job);
       setInterviewStatus(details.interview.status || "draft");
-      setInvitedCandidates(details.candidates.invited || []);
+
+      // Merge invited candidates from interview details with complete candidate data
+      if (details.candidates.invited && allCandidates) {
+        const mergedInvitedCandidates = details.candidates.invited.map(
+          (invitedCandidate: any) => {
+            // Find the complete candidate data by matching email or id
+            const completeCandidateData = allCandidates.find(
+              (candidate: any) =>
+                candidate.id === invitedCandidate.id ||
+                candidate.email === invitedCandidate.email
+            );
+
+            // Merge interview-specific data with complete candidate data
+            return {
+              ...completeCandidateData, // Complete candidate data (including resume_url)
+              ...invitedCandidate, // Interview-specific data (interview_status, room_url, etc.)
+            };
+          }
+        );
+        setInvitedCandidates(mergedInvitedCandidates);
+      } else {
+        setInvitedCandidates(details.candidates.invited || []);
+      }
+
       // Don't set availableCandidates from backend - we fetch them manually
 
       // Set skills and duration from the flow data
@@ -277,7 +720,7 @@ export default function InterviewDetailsPage() {
         setPhoneScreenQuestions([]);
       }
     }
-  }, [details]);
+  }, [details, allCandidates]);
 
   const handleSaveChanges = async () => {
     const user_id = getCookie("user_id");
@@ -287,7 +730,6 @@ export default function InterviewDetailsPage() {
       toast({
         title: "Authentication Error",
         description: "Missing user or organization information",
-        variant: "destructive",
       });
       return;
     }
@@ -297,7 +739,7 @@ export default function InterviewDetailsPage() {
     try {
       // Generate new flow data with updated skills and duration
       const flowData = await fetch(
-        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        `${coreBackendUrl}/api/v1/generate_interview_flow_from_description`,
         {
           method: "POST",
           headers: {
@@ -332,7 +774,7 @@ export default function InterviewDetailsPage() {
       }
 
       const flowResponse = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/interviews/interview-flows/${flowId}`,
+        `${siveraBackendUrl}/api/v1/interviews/interview-flows/${flowId}`,
         {
           method: "PATCH",
           headers: {
@@ -356,7 +798,7 @@ export default function InterviewDetailsPage() {
       };
 
       const jobResponse = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/interviews/jobs/${job?.id}`,
+        `${siveraBackendUrl}/api/v1/interviews/jobs/${job?.id}`,
         {
           method: "PATCH",
           headers: {
@@ -403,7 +845,6 @@ export default function InterviewDetailsPage() {
       toast({
         title: "Error",
         description: "No job_id found for this interview",
-        variant: "destructive",
       });
       return;
     }
@@ -412,7 +853,7 @@ export default function InterviewDetailsPage() {
     try {
       // Directly fetch candidates by job_id - much simpler approach
       const candidatesResp = await authenticatedFetch(
-        `${BACKEND_URL}/api/v1/candidates/by-job/${job.id}`
+        `${siveraBackendUrl}/api/v1/candidates/by-job/${job.id}`
       );
 
       if (!candidatesResp.ok) {
@@ -448,6 +889,69 @@ export default function InterviewDetailsPage() {
     return availableCandidates;
   };
 
+  // Handle sending interview invite to a candidate
+  const handleSendInvite = async (candidate: any) => {
+    toast({
+      title: "Sending invitation...",
+      description: `Sending interview invitation to ${candidate.email}`,
+    });
+
+    try {
+      // Get current user context from cookies
+      const userContext = getUserContext();
+      const organizationId =
+        candidate.organization_id || userContext?.organization_id;
+      const senderId = userContext?.user_id;
+
+      if (!organizationId) {
+        toast({
+          title: "Organization not found",
+          description:
+            "Your organization information is missing. Please log in again.",
+        });
+        return;
+      }
+
+      const res = await authenticatedFetch(
+        `${siveraBackendUrl}/api/v1/interviews/send-invite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: candidate.email,
+            name: candidate.name,
+            job: job?.title || "",
+            organization_id: organizationId,
+            sender_id: senderId || "system",
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Interview invitation sent",
+          description: `Interview invitation sent to ${candidate.email}`,
+        });
+        // Close the dialog after successful invite
+        setSelectedCandidate(null);
+        // Refresh the data
+        window.location.reload();
+      } else {
+        toast({
+          title: "Failed to send invite",
+          description: data.error || "Unknown error",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Failed to send invite",
+        description: err.message,
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="flex items-center m-3 ml-0">
@@ -459,7 +963,7 @@ export default function InterviewDetailsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex flex-col justify-center gap-1">
-          <h2 className="text-xl font-bold dark:text-white">
+          <h2 className="text-lg font-bold dark:text-white">
             {job?.title || "Loading..."}
           </h2>
           <h4 className="text-xs font-semibold opacity-50 dark:text-gray-300">
@@ -488,30 +992,83 @@ export default function InterviewDetailsPage() {
           >
             {/* Skills and Timer Configuration */}
             <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
-              <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+              <div className="border-b border-gray-200 dark:border-gray-800 px-6 pb-6">
                 <div className="flex flex-row items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                    <h2 className="text-base font-medium tracking-tight dark:text-white">
                       Interview Configuration
                     </h2>
                     <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
                       Configure your interview settings and skills assessment.
                     </p>
                   </div>
-                  {firstChange && (
-                    <Button
-                      onClick={handleSaveChanges}
-                      disabled={saving}
-                      variant="outline"
-                      className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  <div className="flex flex-row items-center gap-3">
+                    <Select
+                      value={interviewStatus}
+                      onValueChange={async (
+                        value: "draft" | "active" | "completed"
+                      ) => {
+                        try {
+                          await updateInterviewStatus(id as string, value);
+                          setInterviewStatus(value);
+                          toast({
+                            title: "Interview status updated",
+                            description: `Status set to ${value}`,
+                          });
+                        } catch (err) {
+                          const errorMessage =
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to update status";
+                          toast({
+                            title: "Failed to update status",
+                            description: errorMessage,
+                          });
+                        }
+                      }}
                     >
-                      {saving && (
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                      )}
-                      {!saving && <Save className="mr-2 h-4 w-4" />}
-                      Save Changes
-                    </Button>
-                  )}
+                      <SelectTrigger className="w-[13rem] cursor-pointer">
+                        <SelectValue>Select Interview Status</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Current Status</SelectLabel>
+                          <SelectItem
+                            value="draft"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Draft</span>
+                          </SelectItem>
+                          <SelectItem
+                            value="active"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Active</span>
+                          </SelectItem>
+                          <SelectItem
+                            value="completed"
+                            className="cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Completed</span>
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {firstChange && (
+                      <Button
+                        onClick={handleSaveChanges}
+                        disabled={saving}
+                        variant="outline"
+                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                      >
+                        {saving && (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        )}
+                        {!saving && <Save className="mr-2 h-4 w-4" />}
+                        Save Changes
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <CardContent className="pt-6 space-y-6">
@@ -838,6 +1395,13 @@ export default function InterviewDetailsPage() {
                           Available Skills (click to add)
                         </label>
                         <div className="flex flex-wrap gap-2">
+                          {extractedSkills.filter(
+                            (skill) => !selectedSkills.includes(skill)
+                          ).length === 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center w-full py-2 font-medium">
+                              No skills to add
+                            </div>
+                          )}
                           {extractedSkills
                             .filter((skill) => !selectedSkills.includes(skill))
                             .map((skill) => (
@@ -926,7 +1490,7 @@ export default function InterviewDetailsPage() {
                                 >
                                   <CardContent className="flex aspect-square items-center justify-center p-6">
                                     <span
-                                      className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                      className={`text-lg font-semibold flex flex-col items-center justify-center ${
                                         selectedTimer === time
                                           ? "text-app-blue-600 dark:text-app-blue-400"
                                           : status.disabled
@@ -934,7 +1498,7 @@ export default function InterviewDetailsPage() {
                                           : "text-gray-700 dark:text-gray-300"
                                       }`}
                                     >
-                                      <div className="text-2xl font-semibold">
+                                      <div className="text-lg font-semibold">
                                         {time}
                                       </div>
                                       <div className="text-xs">minutes</div>
@@ -961,41 +1525,6 @@ export default function InterviewDetailsPage() {
                       Candidates
                     </h3>
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={interviewStatus}
-                        onValueChange={async (
-                          value: "draft" | "active" | "completed"
-                        ) => {
-                          try {
-                            await updateInterviewStatus(id as string, value);
-                            setInterviewStatus(value);
-                            toast({
-                              title: "Interview status updated",
-                              description: `Status set to ${value}`,
-                            });
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to update status";
-                            toast({
-                              title: "Failed to update status",
-                              description: errorMessage,
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-[140px] ml-2">
-                          <SelectValue placeholder="Interview Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-
                       {/* Bulk Invite Button */}
                       <Button
                         onClick={fetchAvailableCandidates}
@@ -1011,7 +1540,7 @@ export default function InterviewDetailsPage() {
                         ) : (
                           <>
                             <Mail className="mr-2 h-4 w-4" />
-                            Invite Candidates
+                            Send Invitations
                           </>
                         )}
                       </Button>
@@ -1026,14 +1555,14 @@ export default function InterviewDetailsPage() {
                         variant="outline"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Candidate
+                        Add New Candidate
                       </Button>
                     </div>
                   </div>
                   {invitedCandidates.length === 0 ? (
                     <div className="text-center py-8">
                       <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-2">
                         No candidates assigned
                       </h3>
                       <p className="text-gray-500 dark:text-gray-400 mb-4">
@@ -1067,6 +1596,7 @@ export default function InterviewDetailsPage() {
                             <tr
                               key={candidate.id}
                               className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                              onClick={() => setSelectedCandidate(candidate)}
                             >
                               <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
                                 {candidate.name}
@@ -1077,8 +1607,7 @@ export default function InterviewDetailsPage() {
                               <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
                                 <span className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 rounded-full px-2 py-1 text-xs font-semibold truncate inline-block max-w-[100px] overflow-hidden">
                                   {candidate.interview_status ||
-                                    candidate.status ||
-                                    "scheduled"}
+                                    candidate.status}
                                 </span>
                               </td>
                             </tr>
@@ -1124,6 +1653,17 @@ export default function InterviewDetailsPage() {
             onInvitesSent={handleInvitesSent}
             organizationId={getUserContext()?.organization_id || ""}
           />
+
+          {/* Candidate View Dialog */}
+          {selectedCandidate && (
+            <CandidateViewDialog
+              candidate={selectedCandidate}
+              onClose={() => setSelectedCandidate(null)}
+              handleSendInvite={handleSendInvite}
+              interviewId={id as string}
+              candidateId={selectedCandidate.id}
+            />
+          )}
         </>
       )}
     </div>

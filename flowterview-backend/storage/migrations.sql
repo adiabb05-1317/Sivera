@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS candidate_interviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     interview_id UUID NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
     candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
-    status VARCHAR NOT NULL DEFAULT 'scheduled',  -- scheduled, started, completed, no_show
+    status VARCHAR NOT NULL DEFAULT 'Scheduled',  -- Scheduled, Started, Completed, No_show
     room_url VARCHAR,  -- Daily.co room URL for this candidate's interview
     bot_token VARCHAR,  -- Daily.co bot token for this candidate's interview
     scheduled_at TIMESTAMPTZ,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     candidate_interview_id UUID REFERENCES candidate_interviews(id) ON DELETE CASCADE,
     session_history JSONB,
     analytics JSONB,
-    status VARCHAR NOT NULL DEFAULT 'scheduled',
+    status VARCHAR NOT NULL DEFAULT 'Scheduled',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -147,6 +147,9 @@ ALTER TABLE candidate_interviews ADD COLUMN IF NOT EXISTS bot_token VARCHAR;
 -- Add skills and duration columns to interview_flows table if they don't exist
 ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}';
 ALTER TABLE interview_flows ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 10;
+
+-- Add logo_url column to organizations table if it doesn't exist
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS logo_url VARCHAR;
 
 -- -- FEEDBACK (missing table from your schema)
 -- CREATE TABLE IF NOT EXISTS feedback (

@@ -24,7 +24,10 @@ class LLMFactory:
             provider = Config.LLM_PROVIDER
 
         if provider == "openai":
-            return OpenAILLMService(api_key=Config.OPENAI_API_KEY)
+            return OpenAILLMService(
+                api_key=Config.OPENAI_API_KEY,
+                model=Config.LLM_MODEL,
+            )
         elif provider == "google":
             return GoogleLLMService(
                 api_key=Config.GEMINI_API_KEY,
@@ -34,8 +37,8 @@ class LLMFactory:
                 ),
             )
         elif provider == "anthropic":
-            return AnthropicLLMService(api_key=Config.ANTHROPIC_API_KEY)
+            return AnthropicLLMService(api_key=Config.ANTHROPIC_API_KEY, model=Config.LLM_MODEL)
         elif provider == "groq":
-            return GroqLLMService(api_key=Config.GROQ_API_KEY)
+            return GroqLLMService(api_key=Config.GROQ_API_KEY, model=Config.LLM_MODEL)
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")

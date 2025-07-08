@@ -2,16 +2,19 @@ import os
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+env = os.getenv("ENV", "development")
+if env == "production":
+    env_file = ".env.production"
+else:
+    env_file = ".env.development"
+
+if os.path.exists(env_file):
+    load_dotenv(env_file, override=True)
+else:
+    load_dotenv(".env", override=True)
 
 
 class Config:
-    # Load environment variables at import time
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
     # Loops Email Configuration
     SMTP_HOST = os.getenv("SMTP_HOST", "smtp.loops.so")
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -19,11 +22,13 @@ class Config:
     SMTP_PASS = os.getenv("SMTP_PASS", "")  # Loops API Key
 
     # Loops Template IDs
-    LOOPS_VERIFICATION_TEMPLATE = os.getenv("LOOPS_VERIFICATION_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
     LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
+    LOOPS_REJECTION_TEMPLATE = os.getenv("LOOPS_REJECTION_TEMPLATE", "cmcqp3id80bgazd0ihgb1jh98")
+    LOOPS_CUSTOM_TEMPLATE = os.getenv("LOOPS_CUSTOM_TEMPLATE", "cmcqph48u02skz00i40rwwxzk")
 
     # Frontend URL for generating links
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3001")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.sivera.io")
+    RECRUITER_FRONTEND_URL = os.getenv("RECRUITER_FRONTEND_URL", "https://recruiter.sivera.io")
 
     @classmethod
     def validate_smtp_config(cls):
@@ -38,7 +43,7 @@ class Config:
 
     """Application configuration"""
     # Environment
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT = os.getenv("ENV", "development")
     DEBUG = ENVIRONMENT == "development"
 
     # Server settings
@@ -54,11 +59,20 @@ class Config:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:3001",
+        "https://recruiter.sivera.io",
+        "https://app.sivera.io",
+        "https://core.sivera.io",
+        "https://api.sivera.io",
     ]
 
     # Supabase settings
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+    # LinkedIn OAuth Configuration
+    LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
+    LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+    LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI", "http://localhost:8010/api/v1/linkedin/callback")
 
     # Daily.co Configuration
     DAILY_API_KEY = os.getenv("DAILY_API_KEY", "")
@@ -90,8 +104,9 @@ class Config:
             "SMTP_USER",
             "SMTP_PASS",
             "DAILY_API_KEY",
-            "LOOPS_VERIFICATION_TEMPLATE",
             "LOOPS_INTERVIEW_TEMPLATE",
+            "LOOPS_REJECTION_TEMPLATE",
+            "LOOPS_CUSTOM_TEMPLATE",
         ]
         missing = [var for var in required_vars if not getattr(cls, var)]
         if missing:

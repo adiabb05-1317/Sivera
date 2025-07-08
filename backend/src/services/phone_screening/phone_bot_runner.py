@@ -31,19 +31,19 @@ async def main():
         "-c", "--caller_id", type=str, help="Caller ID for dialout", required=False
     )
     parser.add_argument(
-        "-n", "--candidate_name", type=str, help="Candidate name", required=False
+        "-n", "--candidate_name", type=str, help="Candidate name", required=True
     )
     parser.add_argument(
-        "-j", "--job_position", type=str, help="Job position", required=False
+        "-j", "--job_position", type=str, help="Job position", required=True
     )
     parser.add_argument(
-        "--company_name", type=str, help="Company name", default="Sivera"
+        "--company_name", type=str, help="Company name", required=True
     )
     parser.add_argument(
-        "--screening_questions",
-        type=str,
-        help="JSON string of screening questions",
-        required=False,
+        "--phone_screen_questions",
+        type=list,
+        help="Phone screen questions",
+        required=True,
     )
     parser.add_argument(
         "--sip_uri", type=str, help="SIP URI for dialout", required=False
@@ -53,7 +53,7 @@ async def main():
         "--phone_number",
         type=str,
         help="Phone number for dialout",
-        required=False,
+        required=True,
     )
 
     parser.add_argument("--provider", type=str, help="Provider", required=False)
@@ -70,15 +70,6 @@ async def main():
             "caller_id": args.caller_id,
         }
 
-    # Parse screening questions if provided
-    screening_questions = None
-    if args.screening_questions:
-        try:
-            screening_questions = json.loads(args.screening_questions)
-        except json.JSONDecodeError:
-            print("Warning: Invalid JSON for screening questions, using defaults")
-            screening_questions = None
-
     # Create phone bot with all parameters
     phone_bot = PhoneScreen(
         url=args.url,
@@ -87,10 +78,10 @@ async def main():
         db_manager=db_manager,
         call_id=args.call_id,
         call_domain=args.call_domain,
-        candidate_name="Sravani",
-        company_name="Sivera",
-        position_title="Software Engineer",
-        screening_questions=screening_questions,
+        candidate_name=args.candidate_name,
+        company_name=args.company_name,
+        position_title=args.job_position,
+        phone_screen_questions=args.phone_screen_questions,
         dialout_settings=dialout_settings,
     )
 

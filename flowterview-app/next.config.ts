@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker optimization
+  output: "standalone",
   eslint: {
     // Only run ESLint on specific directories during production builds
     dirs: ["src", "components", "lib", "app", "pages"],

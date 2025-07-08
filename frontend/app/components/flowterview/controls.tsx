@@ -32,7 +32,7 @@ const ControlTooltip = ({
   return (
     isHovered && (
       <Badge
-        className="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 text-app-blue-900/70 dark:text-app-blue-100 bg-white/80 dark:bg-app-blue-900/80 border border-app-blue-200 dark:border-app-blue-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-medium transition-colors duration-200"
+        className="absolute w-max top-[-2rem] left-1/2 transform -translate-x-1/2 text-app-blue-900/70 dark:text-app-blue-100 bg-white/80 dark:bg-app-blue-900/80 border border-app-blue-200 dark:border-app-blue-700 shadow-lg backdrop-blur-md px-3 py-1 rounded-xl font-semibold text-xs transition-colors duration-200"
         variant="default"
       >
         {text}
@@ -155,28 +155,6 @@ const Controls = ({
             />
           )}
         </button>
-
-        {/* Captions toggle */}
-        <button
-          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
-            ${
-              isCaptionEnabled
-                ? "bg-app-blue-500 text-white"
-                : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
-            }
-          `}
-          onClick={() => setIsCaptionEnabled(!isCaptionEnabled)}
-          onMouseEnter={() => setIsHovered("captions")}
-          onMouseLeave={() => setIsHovered(null)}
-        >
-          <Icons.ClosedCaptions className="w-5 h-5" />
-          {isHovered === "captions" && (
-            <ControlTooltip
-              text={isCaptionEnabled ? "Turn off captions" : "Turn on captions"}
-              isHovered
-            />
-          )}
-        </button>
       </div>
 
       {/* Middle group: Settings and theme */}
@@ -254,7 +232,10 @@ const Controls = ({
         </Popover>
       </div>
 
-      <Separator orientation="vertical" className="h-8" />
+      <Separator
+        orientation="vertical"
+        className="h-8 bg-app-blue-200 dark:bg-app-blue-700"
+      />
 
       {/* Right group: Call controls */}
       <div className="flex items-center gap-4">
@@ -285,40 +266,7 @@ const Controls = ({
           )}
           {isHovered === "microphone" && (
             <ControlTooltip
-              text={isMicMuted ? "Unmute microphone" : "Mute microphone"}
-              isHovered
-            />
-          )}
-        </button>
-
-        {/* Camera */}
-        <button
-          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
-            ${
-              callStatus === "initial" || callStatus === "left"
-                ? "bg-app-blue-100/50 dark:bg-app-blue-500/10 cursor-not-allowed text-app-blue-300 dark:text-app-blue-500/40"
-                : isCameraOn
-                  ? "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
-                  : "bg-app-blue-500 text-white"
-            }
-          `}
-          onClick={() => {
-            if (callStatus !== "initial" && callStatus !== "left") {
-              setIsCameraOn(!isCameraOn);
-            }
-          }}
-          disabled={callStatus === "initial" || callStatus === "left"}
-          onMouseEnter={() => setIsHovered("camera")}
-          onMouseLeave={() => setIsHovered(null)}
-        >
-          {isCameraOn ? (
-            <Icons.Video className="w-5 h-5" />
-          ) : (
-            <Icons.VideoOff className="w-5 h-5" />
-          )}
-          {isHovered === "camera" && (
-            <ControlTooltip
-              text={isCameraOn ? "Turn off camera" : "Turn on camera"}
+              text={isMicMuted ? "Mute microphone" : "Unmute microphone"}
               isHovered
             />
           )}

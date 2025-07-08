@@ -1,13 +1,14 @@
-"use client"
-import { cn } from "@/app/lib/utils"
-import usePathStore from "@/app/store/PathStore"
-import { Icons } from "@/app/lib/icons"
+"use client";
+
+import { cn } from "@/app/lib/utils";
+import usePathStore from "@/app/store/PathStore";
+import { Icons } from "@/app/lib/icons";
 
 const QueryDisplay = ({ className }: { className?: string }) => {
-  const { currentUserTranscript } = usePathStore()
-  
-  if (!currentUserTranscript) return null
-  
+  const { currentUserTranscript } = usePathStore();
+
+  if (!currentUserTranscript) return null;
+
   return (
     <div
       className={cn(
@@ -24,7 +25,7 @@ const QueryDisplay = ({ className }: { className?: string }) => {
         </p>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default QueryDisplay
+export default QueryDisplay;

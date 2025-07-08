@@ -69,6 +69,8 @@ if __name__ == "__main__":
         host=Config.HOST,
         port=Config.PORT,
         reload=Config.RELOAD,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
         reload_excludes=[
             ".venv",
             ".venv/*",

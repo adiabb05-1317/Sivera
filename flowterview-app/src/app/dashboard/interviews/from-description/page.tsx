@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
-import { getCookie } from "@/lib/auth-client";
+import { authenticatedFetch, getCookie } from "@/lib/auth-client";
 import {
   Carousel,
   CarouselContent,
@@ -70,10 +70,10 @@ export default function GenerateFromDescriptionPage() {
     formState: { errors },
   } = useForm<FormData>();
 
-  const BACKEND_URL =
-    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "http://localhost:8010";
-  const CORE_BACKEND_URL =
-    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "http://localhost:8000";
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const coreBackendUrl =
+    process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "https://core.sivera.io";
 
   // Auto-adjust timer based on skill count
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function GenerateFromDescriptionPage() {
     try {
       // Generate flow data
       const flowData = await fetch(
-        `${CORE_BACKEND_URL}/api/v1/generate_interview_flow_from_description`,
+        `${coreBackendUrl}/api/v1/generate_interview_flow_from_description`,
         {
           method: "POST",
           headers: {
@@ -229,8 +229,8 @@ export default function GenerateFromDescriptionPage() {
         phone_screen_questions: phoneScreenQuestions,
       };
 
-      const response = await fetch(
-        `${BACKEND_URL}/api/v1/interviews/from-description`,
+      const response = await authenticatedFetch(
+        `${siveraBackendUrl}/api/v1/interviews/from-description`,
         {
           method: "POST",
           headers: {
@@ -338,7 +338,7 @@ export default function GenerateFromDescriptionPage() {
             <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
               <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="mt-4 text-lg font-medium tracking-tight dark:text-white">
+            <h2 className="mt-4 text-base font-medium tracking-tight dark:text-white">
               Interview Created Successfully
             </h2>
             <p className="mt-2 mb-6 text-sm tracking-tight opacity-50 dark:text-gray-300 dark:opacity-70">
@@ -356,7 +356,7 @@ export default function GenerateFromDescriptionPage() {
         <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
           <CardHeader className="flex flex-row items-end justify-between">
             <div>
-              <h2 className="text-lg font-medium tracking-tight dark:text-white">
+              <h2 className="text-base font-medium tracking-tight dark:text-white">
                 Interview details
               </h2>
               <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
@@ -439,7 +439,7 @@ export default function GenerateFromDescriptionPage() {
           <CardHeader className="border-b border-gray-200 dark:border-gray-800">
             <div className="flex flex-row items-center justify-between">
               <div>
-                <h2 className="text-lg font-medium tracking-tight dark:text-white">
+                <h2 className="text-base font-medium tracking-tight dark:text-white">
                   Customize Interview
                 </h2>
                 <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
@@ -858,7 +858,7 @@ export default function GenerateFromDescriptionPage() {
                             >
                               <CardContent className="flex aspect-square items-center justify-center p-6">
                                 <span
-                                  className={`text-2xl font-semibold flex flex-col items-center justify-center ${
+                                  className={`text-lg font-semibold flex flex-col items-center justify-center ${
                                     selectedTimer === time
                                       ? "text-app-blue-600 dark:text-app-blue-400"
                                       : status.disabled
@@ -866,7 +866,7 @@ export default function GenerateFromDescriptionPage() {
                                       : "text-gray-700 dark:text-gray-300"
                                   }`}
                                 >
-                                  <div className="text-2xl font-semibold">
+                                  <div className="text-lg font-semibold">
                                     {time}
                                   </div>
                                   <div className="text-xs">minutes</div>

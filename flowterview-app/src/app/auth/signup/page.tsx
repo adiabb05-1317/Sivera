@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { authenticatedFetch, signup } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
   CardContent,
@@ -66,7 +65,8 @@ export default function SignupPage() {
       const name = email.split("@")[0];
       const orgName = extractOrgFromEmail(email);
       const resp = await authenticatedFetch(
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL + "/api/v1/users",
+        (process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL ||
+          "https://api.sivera.io") + "/api/v1/users",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -103,12 +103,11 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
-            <CardTitle className="tracking-widest text-2xl">
+            <CardTitle className="tracking-widest text-lg">
               <div
-                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+                className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
                 style={{
                   fontFamily: "KyivType Sans",
                 }}
@@ -151,12 +150,11 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
-          <CardTitle className="tracking-widest text-2xl">
+          <CardTitle className="tracking-widest text-lg">
             <div
-              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
               style={{
                 fontFamily: "KyivType Sans",
               }}

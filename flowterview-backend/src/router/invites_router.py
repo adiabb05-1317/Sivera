@@ -9,7 +9,7 @@ from loguru import logger
 from pydantic import BaseModel, EmailStr, Field
 
 from src.lib.manager import ConnectionManager
-from src.router.interview_router import send_verification_email
+from src.router.interview_router import send_interview_invite_email
 from storage.db_manager import DatabaseManager
 
 router = APIRouter(
@@ -69,7 +69,7 @@ async def create_single_room_and_token(
             "id": str(uuid.uuid4()),
             "interview_id": interview_id,
             "candidate_id": candidate_id,
-            "status": "scheduled",
+            "status": "Scheduled",
             "room_url": room_url,
             "bot_token": bot_token,
             "created_at": datetime.now().isoformat(),
@@ -120,7 +120,7 @@ async def create_verification_token_and_send_email(
         logger.info(f"Verification token created for {email}")
 
         # Send verification email using the exact same function as single invites
-        await send_verification_email(email, name, job_title, token)
+        await send_interview_invite_email(email, name, job_title, token, False)
 
         logger.info(f"Verification email sent successfully to {email}")
 
@@ -323,7 +323,7 @@ async def get_bulk_invite_status(interview_id: str, request: Request):
         candidate_interviews = db.fetch_all("candidate_interviews", {"interview_id": interview_id})
 
         total_candidates = len(candidate_interviews)
-        scheduled_count = len([ci for ci in candidate_interviews if ci.get("status") == "scheduled"])
+        scheduled_count = len([ci for ci in candidate_interviews if ci.get("status") == "Scheduled"])
 
         return {
             "interview_id": interview_id,

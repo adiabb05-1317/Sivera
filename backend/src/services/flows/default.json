@@ -1,0 +1,268 @@
+{
+  "nodes": {
+    "end": {
+      "functions": [],
+      "post_actions": [{ "type": "end_conversation" }],
+      "task_messages": [
+        { "role": "system", "content": "The interview is now complete." }
+      ],
+      "transition_to": "end"
+    },
+    "introduction": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "collect_candidate_info",
+            "handler": "__function__:collect_candidate_info",
+            "parameters": {
+              "type": "object",
+              "required": ["name", "background"],
+              "properties": {
+                "name": { "type": "string" },
+                "background": { "type": "string" }
+              }
+            },
+            "description": "Collect candidate's name and background",
+            "transition_to": "background_discussion"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Your name is Sia. You are a professional technical interviewer conducting the interview for Google Cloud Engineer, AI. Keep responses clear and concise. Keep your responses under 150 words. Your responses will be read aloud, so keep them concise and conversational. Avoid special characters or formatting. You are allowed to ask follow up questions to the candidate."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Begin the interview with a professional introduction. Ask for the candidate's name and brief introduction. Keep responses concise."
+        }
+      ]
+    },
+    "candidate_questions": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "handle_candidate_questions",
+            "handler": "__function__:handle_candidate_questions",
+            "parameters": {
+              "type": "object",
+              "required": ["candidate_question"],
+              "properties": { "candidate_question": { "type": "string" } }
+            },
+            "description": "Handle candidate's questions.",
+            "transition_to": "interview_conclusion"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Provide informative and helpful answers to the candidate's questions. This is an opportunity to showcase the benefits of working at Google and on the Google Cloud Platform team."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Allow the candidate to ask questions about the role, the team, and Google Cloud Platform. Answer their questions honestly and thoroughly."
+        }
+      ]
+    },
+    "behavioral_questions": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_behavioral_response",
+            "handler": "__function__:evaluate_behavioral_response",
+            "parameters": {
+              "type": "object",
+              "required": ["communication_skills", "teamwork"],
+              "properties": {
+                "teamwork": { "type": "string" },
+                "problem_solving": { "type": "string" },
+                "communication_skills": { "type": "string" }
+              }
+            },
+            "description": "Evaluate the candidate's behavioral responses.",
+            "transition_to": "candidate_questions"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Listen carefully to the candidate's responses and ask follow-up questions to gain a deeper understanding of their experiences and skills. Assess their ability to articulate their thoughts clearly and concisely."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Ask behavioral questions to assess the candidate's communication, teamwork, and problem-solving skills. For example, 'Tell me about a time you had to work with a difficult client' or 'Describe a time you had to overcome a technical challenge on a project.'"
+        }
+      ]
+    },
+    "interview_conclusion": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "conclude_interview",
+            "handler": "__function__:conclude_interview",
+            "parameters": {
+              "type": "object",
+              "required": ["feedback"],
+              "properties": { "feedback": { "type": "string" } }
+            },
+            "description": "Conclude the interview.",
+            "transition_to": "end"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Express appreciation for the candidate's interest in the role and provide a clear timeline for when they can expect to hear back from the hiring team."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Thank the candidate for their time and provide information about the next steps in the hiring process. Mention the opportunity to share their preferred working location (Gurugram, Bengaluru, Hyderabad)."
+        }
+      ]
+    },
+    "background_discussion": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "process_background_info",
+            "handler": "__function__:process_background_info",
+            "parameters": {
+              "type": "object",
+              "required": ["ml_experience", "gcp_experience"],
+              "properties": {
+                "ml_experience": { "type": "string" },
+                "gcp_experience": { "type": "string" },
+                "project_details": { "type": "string" }
+              }
+            },
+            "description": "Process candidate's background information and experience with ML solutions.",
+            "transition_to": "coding_problem_introduction"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Focus on understanding the depth and breadth of the candidate's experience with machine learning and Google Cloud Platform. Ask follow-up questions to clarify their contributions and the technologies they've used."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Based on the candidate's background, ask about their experience with Machine Learning solution design and implementation, focusing on Google Cloud Platform. Inquire about specific projects and technologies used. Keep responses concise."
+        }
+      ]
+    },
+    "system_design_question": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "present_system_design",
+            "handler": "__function__:present_system_design",
+            "parameters": {
+              "type": "object",
+              "required": ["design_scenario"],
+              "properties": { "design_scenario": { "type": "string" } }
+            },
+            "description": "Present a system design question to the candidate.",
+            "transition_to": "behavioral_questions"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Guide the candidate through the system design process, encouraging them to consider factors such as scalability, reliability, and cost-effectiveness. Prompt them to explain their choices of GCP services."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Present a system design question related to building a scalable machine learning pipeline on Google Cloud Platform. For example, designing a real-time recommendation system or a batch processing pipeline for training ML models. Focus on leveraging GCP services."
+        }
+      ]
+    },
+    "coding_problem_discussion": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_problem_solving",
+            "handler": "__function__:evaluate_problem_solving",
+            "parameters": {
+              "type": "object",
+              "required": ["solution_quality", "code_clarity"],
+              "properties": {
+                "code_clarity": { "type": "string" },
+                "solution_quality": { "type": "string" },
+                "problem_solving_approach": { "type": "string" }
+              }
+            },
+            "description": "Evaluate the candidate's problem-solving skills and code quality.",
+            "transition_to": "system_design_question"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Provide constructive feedback and ask probing questions to understand the candidate's reasoning behind their code. Assess their ability to debug and optimize their solution."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Observe the candidate's problem-solving approach, coding style, and ability to explain their solution. Ask clarifying questions about their code and choices. Focus on Python, Scala, or R."
+        }
+      ]
+    },
+    "coding_problem_introduction": {
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "present_coding_problem",
+            "handler": "__function__:present_coding_problem",
+            "parameters": {
+              "type": "object",
+              "required": ["problem_statement"],
+              "properties": { "problem_statement": { "type": "string" } }
+            },
+            "description": "Present a coding problem to the candidate.",
+            "transition_to": "coding_problem_discussion"
+          }
+        }
+      ],
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "Clearly state the coding problem and provide any necessary context. Allow the candidate time to ask clarifying questions before they begin coding."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Present a coding problem related to data structures and algorithms, relevant to machine learning tasks. For example, implementing a simple recommendation algorithm or a data transformation function. State the problem clearly and concisely."
+        }
+      ]
+    }
+  },
+  "initial_node": "introduction"
+}

@@ -4,11 +4,10 @@ import usePathStore from "@/app/store/PathStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/logos";
-import { Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
+import { CheckCircle } from "lucide-react";
 
 const ConclusionSection = () => {
-  const { theme } = useTheme();
   const { resetStore } = usePathStore();
 
   const handleStartNewSession = () => {
@@ -16,76 +15,33 @@ const ConclusionSection = () => {
     window.location.reload();
   };
 
+  const handleReturnToDashboard = () => {
+    window.location.href = "/dashboard";
+  };
+
   return (
-    <section className="w-full h-full flex items-center justify-center p-6 bg-app-blue-50 dark:bg-app-blue-900 relative overflow-hidden">
-      {/* Animated celebratory background for dark mode */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        {/* Light gradient for light mode, animated glow for dark mode */}
-        <div className="absolute inset-0 bg-gradient-to-br from-app-blue-100/60 to-app-blue-100/40 dark:from-app-blue-500/5 dark:via-app-blue-800/20 dark:to-app-blue-900/30 transition-all duration-700" />
-        <div className="hidden dark:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[340px] rounded-full bg-gradient-to-br from-app-blue-400/10 via-app-blue-500/10 to-app-blue-900/20 blur-3xl opacity-40 animate-pulse-slow" />
-      </div>
-
-      {/* Content */}
-      <Card className="relative max-w-2xl w-full z-20 animate-fade-in rounded-2xl shadow-2xl border border-app-blue-200 dark:border-app-blue-500/20 bg-white/90 dark:bg-app-blue-800 backdrop-blur-xl transition-all duration-500">
-        <div className="absolute top-0 left-0 w-full h-1 bg-app-blue-500 dark:bg-app-blue-400/60 rounded-t-2xl" />
-
-        <CardContent className="flex flex-col items-center p-8 md:p-12">
-          {/* Logo */}
-          <div className="mb-6 relative">
-            <div className="w-24 h-24 rounded-full bg-app-blue-300/50 dark:bg-white/90 flex items-center justify-center mb-2 shadow-inner shadow-app-blue-200/40 dark:shadow-app-blue-900/40 backdrop-blur-md">
-              <Logo width={35} height={35} />
-              <div className="absolute bottom-2 right-2 bg-app-blue-900 dark:bg-app-blue-600 rounded-full p-1 shadow-md">
-                <Icons.CircleCheck className="w-4 h-4 text-white" />
-              </div>
-            </div>
+    <section className="w-full h-full flex items-center justify-center p-6 bg-app-blue-50 dark:bg-[#101624] min-h-screen">
+      <Card className="relative max-w-lg w-full z-20 animate-fade-in rounded-2xl shadow-xl border border-app-blue-200 dark:border-app-blue-700 bg-white/95 dark:bg-[#232d44] backdrop-blur-xl transition-all duration-500">
+        <div className="absolute top-0 left-0 w-full h-1 bg-app-blue-500 dark:bg-app-blue-400/80 rounded-t-2xl" />
+        <CardContent className="flex flex-col items-center p-10 md:p-14">
+          {/* Professional Icon */}
+          <div className="mb-6 flex flex-col items-center">
+            <CheckCircle className="w-14 h-14 text-app-blue-600 dark:text-app-blue-200 mb-2" />
           </div>
-
-          {/* Text */}
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl font-bold mb-3 text-app-blue-900 dark:text-white drop-shadow-sm">
+          {/* Heading and Message */}
+          <div className="mb-6 text-center w-full">
+            <h2 className="text-2xl font-bold mb-2 tracking-tight text-app-blue-900 dark:text-white/90">
               Session Complete
             </h2>
-            <p className="text-app-blue-500/80 dark:text-gray-300 font-medium mb-4">
-              Your interview session has been successfully completed.
+            <hr className="my-4 border-app-blue-100 dark:border-app-blue-700 w-1/2 mx-auto" />
+            <p className="text-app-blue-700/90 dark:text-gray-200 font-medium text-base leading-relaxed">
+              Our team will review your submission and contact you regarding the
+              next steps. If you have any questions, please reach out to your
+              recruiter.
             </p>
-
-            {/* Session stats */}
-            <div className="mt-6 grid grid-cols-2 gap-4 px-6">
-              <div className="bg-app-blue-100/80 dark:bg-white/10 backdrop-blur-md p-3 rounded-lg shadow-sm border border-app-blue-200/60 dark:border-white/10">
-                <div className="text-sm text-app-blue-600 dark:text-gray-300">
-                  Duration
-                </div>
-                <div className="text-lg font-semibold text-app-blue-900 dark:text-white">
-                  15 minutes
-                </div>
-              </div>
-              <div className="bg-app-blue-100/80 dark:bg-white/10 backdrop-blur-md p-3 rounded-lg shadow-sm border border-app-blue-200/60 dark:border-white/10">
-                <div className="text-sm text-app-blue-600 dark:text-gray-300">
-                  Questions
-                </div>
-                <div className="text-lg font-semibold text-app-blue-900 dark:text-white">
-                  5 answered
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full">
-            <Button
-              onClick={handleStartNewSession}
-              className="bg-app-blue-500 hover:bg-app-blue-600 active:bg-app-blue-700 text-white font-semibold shadow-lg hover:shadow-xl backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] px-6 py-3 rounded-lg"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Start New Session
-            </Button>
-            <Button
-              variant="outline"
-              className="border-2 border-app-blue-200 dark:border-app-blue-600 text-app-blue-700 dark:text-app-blue-200 hover:bg-app-blue-100 hover:text-app-blue-800 dark:hover:bg-app-blue-800/50 hover:border-app-blue-400 dark:hover:border-app-blue-500 font-medium shadow-md backdrop-blur-md transition-all duration-300 px-6 py-3 rounded-lg"
-            >
-              <Icons.Chat className="w-4 h-4 mr-2" />
-              Download Summary
-            </Button>
+            <span className="block mt-4 text-xs text-app-blue-400 dark:text-app-blue-200/60 font-normal">
+              You may now safely close this window.
+            </span>
           </div>
         </CardContent>
       </Card>

@@ -114,7 +114,8 @@ export default function AnalyticsPage() {
     { name: "Below Average", value: 8, color: "#EA580C" }, // orange-600
     { name: "Poor", value: 4, color: "#DC2626" }, // red-600
   ];
-  const performanceData = resolvedTheme === "dark" ? performanceDataDark : performanceDataLight;
+  const performanceData =
+    resolvedTheme === "dark" ? performanceDataDark : performanceDataLight;
 
   // Weekly time-to-hire trend (in days)
   const timeToHireData = [
@@ -130,7 +131,10 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-end space-y-4 md:flex-row md:items-center md:space-y-0">
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Insights and performance metrics for your interview process.
+        </p>
         <div className="flex space-x-3">
           <Button variant="outline" className="cursor-pointer">
             <Filter className="mr-2 h-4 w-4" />
@@ -166,7 +170,7 @@ export default function AnalyticsPage() {
                   <dt className="truncate text-xs font-medium text-gray-500 tracking-wider uppercase dark:text-gray-300">
                     {stat.label}
                   </dt>
-                  <dd className="mt-2 text-2xl font-bold text-gray-900 tracking-tight dark:text-white">
+                  <dd className="mt-2 text-lg font-bold text-gray-900 tracking-tight dark:text-white">
                     {stat.value}
                   </dd>
                 </div>
@@ -219,16 +223,16 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 12.5 }}
+                    tick={{ fontSize: 11 }}
                     stroke="#cbd5e1"
                   />
-                  <YAxis tick={{ fontSize: 12.5 }} stroke="#cbd5e1" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#cbd5e1" />
                   <Tooltip
-                    contentStyle={{ fontSize: 13.5 }}
-                    itemStyle={{ fontSize: 13.5 }}
-                    labelStyle={{ fontSize: 12.5 }}
+                    contentStyle={{ fontSize: 12 }}
+                    itemStyle={{ fontSize: 12 }}
+                    labelStyle={{ fontSize: 11 }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Area
                     type="monotone"
                     dataKey="interviews"
@@ -261,7 +265,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center mb-6">
-              <div className="text-5xl font-bold text-app-blue-6/00 tracking-tight dark:text-app-blue-4/00">
+              <div className="text-3xl font-bold text-app-blue-6/00 tracking-tight dark:text-app-blue-4/00">
                 15
               </div>
               <div className="ml-4 text-gray-500 text-xs tracking-wide dark:text-gray-300">
@@ -277,7 +281,7 @@ export default function AnalyticsPage() {
                   <div className="text-green-800 dark:text-green-300 text-xs font-medium tracking-wider uppercase">
                     Fastest Hire
                   </div>
-                  <div className="text-green-900 dark:text-green-100 text-xl font-semibold mt-1 tracking-tight">
+                  <div className="text-green-900 dark:text-green-100 text-lg font-semibold mt-1 tracking-tight">
                     9 days
                   </div>
                   <div className="text-green-700 dark:text-green-400 text-xs mt-1 tracking-wide">
@@ -291,7 +295,7 @@ export default function AnalyticsPage() {
                   <div className="text-app-blue-8/00 dark:text-app-blue-3/00 text-xs font-medium tracking-wider uppercase">
                     Improvement
                   </div>
-                  <div className="text-app-blue-9/00 dark:text-app-blue-1/00 text-xl font-semibold mt-1 tracking-tight">
+                  <div className="text-app-blue-9/00 dark:text-app-blue-1/00 text-lg font-semibold mt-1 tracking-tight">
                     -28%
                   </div>
                   <div className="text-app-blue-7/00 dark:text-app-blue-4/00 text-xs mt-1 tracking-wide">
@@ -305,7 +309,7 @@ export default function AnalyticsPage() {
                   <div className="text-blue-800 dark:text-blue-300 text-xs font-medium tracking-wider uppercase">
                     Top Performer
                   </div>
-                  <div className="text-blue-900 dark:text-blue-100 text-xl font-semibold mt-1 tracking-tight">
+                  <div className="text-blue-900 dark:text-blue-100 text-lg font-semibold mt-1 tracking-tight">
                     UX Design
                   </div>
                   <div className="text-blue-700 dark:text-blue-400 text-xs mt-1 tracking-wide">
@@ -319,7 +323,7 @@ export default function AnalyticsPage() {
                   <div className="text-purple-800 dark:text-purple-300 text-xs font-medium tracking-wider uppercase">
                     Goal
                   </div>
-                  <div className="text-purple-900 dark:text-purple-100 text-xl font-semibold mt-1 tracking-tight">
+                  <div className="text-purple-900 dark:text-purple-100 text-lg font-semibold mt-1 tracking-tight">
                     14 days
                   </div>
                   <div className="text-purple-700 dark:text-purple-400 text-xs mt-1 tracking-wide">

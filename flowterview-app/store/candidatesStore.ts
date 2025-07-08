@@ -45,7 +45,9 @@ interface CandidatesState {
     candidates: Array<{
       name: string;
       email: string;
+      phone: string;
       resumeFile?: File;
+      resume_url?: string;
       status?: CandidateStatus;
     }>;
     jobId: string;

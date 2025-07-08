@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
   CardContent,
@@ -30,8 +29,10 @@ export default function SimpleLoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // Simple redirect to home page
-          emailRedirectTo: window.location.origin,
+          // Using the environment variable for production
+          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL
+            ? process.env.NEXT_PUBLIC_SITE_URL
+            : window.location.origin,
         },
       });
 
@@ -69,7 +70,6 @@ export default function SimpleLoginPage() {
   if (success) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
           <CardHeader className="flex flex-col items-center justify-center">
             <CardTitle className="tracking-widest text-2xl">
@@ -108,7 +108,6 @@ export default function SimpleLoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-100 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
           <CardTitle className="tracking-widest text-2xl">

@@ -52,6 +52,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   // Track the current messages being built
   const currentBotMessageRef = useRef<string>("");
   const latestUserTranscriptRef = useRef<string>("");
+  const accumulatedUserTranscriptRef = useRef<string>("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -173,38 +174,58 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
     client.on(RTVIEvent.UserStartedSpeaking, () => {
       setIsUserSpeaking(true);
+      // Clear any previous transcript when user starts speaking
+      setCurrentUserTranscript("");
+      latestUserTranscriptRef.current = "";
+      // Don't clear accumulated transcript here - we want to build it up during the session
     });
 
     client.on(RTVIEvent.UserTranscript, (data) => {
-      // Just update our ref with the latest transcript
+      // Only process final transcripts
       if (data.final) {
+        latestUserTranscriptRef.current = data.text;
+        setCurrentUserTranscript(data.text);
+        setIsUserSpeaking(false);
+        setBotState("thinking");
+
+        // Accumulate the transcript instead of immediately adding to chat history
+        const finalTranscript = latestUserTranscriptRef.current.trim();
+        if (finalTranscript) {
+          // Add to accumulated transcript with a space if there's already content
+          if (accumulatedUserTranscriptRef.current) {
+            accumulatedUserTranscriptRef.current += " " + finalTranscript;
+          } else {
+            accumulatedUserTranscriptRef.current = finalTranscript;
+          }
+        }
+
+        // Clear the current transcript display
+        setCurrentUserTranscript("");
+        latestUserTranscriptRef.current = "";
       }
     });
 
-    client.on(RTVIEvent.UserStoppedSpeaking, () => {
-      setIsUserSpeaking(false);
-      setBotState("thinking");
-
-      // Now append the final transcript to chat history
-      const finalTranscript = latestUserTranscriptRef.current.trim();
-      if (finalTranscript) {
-        const currentHistory = usePathStore.getState().currentChatHistory;
-        const newMessage: Message = {
-          role: "user",
-          content: finalTranscript,
-        };
-        setCurrentChatHistory([...currentHistory, newMessage]);
-      }
-
-      // Clear everything
-      setCurrentUserTranscript("");
-      latestUserTranscriptRef.current = "";
-    });
+    client.on(RTVIEvent.UserStoppedSpeaking, () => {});
 
     client.on(RTVIEvent.BotStartedSpeaking, () => {
       setIsBotSpeaking(true);
       setShowStarterQuestions(false);
       setBotState("speaking");
+
+      // Add accumulated user transcript to chat history when bot starts speaking
+      const accumulatedTranscript = accumulatedUserTranscriptRef.current.trim();
+      if (accumulatedTranscript) {
+        const currentHistory = usePathStore.getState().currentChatHistory;
+        const newMessage: Message = {
+          role: "user",
+          content: accumulatedTranscript,
+        };
+        setCurrentChatHistory([...currentHistory, newMessage]);
+
+        // Clear the accumulated transcript
+        accumulatedUserTranscriptRef.current = "";
+      }
+
       // Reset the message being built
       currentBotMessageRef.current = "";
     });
@@ -242,6 +263,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       onClearTranscripts();
       setCurrentBotTranscript("");
       currentBotMessageRef.current = "";
+      // Also clear accumulated user transcript after bot finishes
+      accumulatedUserTranscriptRef.current = "";
     });
 
     client.on(RTVIEvent.TransportStateChanged, (state) => {
@@ -284,17 +307,20 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       const videoTrack = stream.getVideoTracks()[0];
 
+      const pipecat_base_url =
+        process.env.NEXT_PUBLIC_PIPECAT_BASE_URL || "https://core.sivera.io";
+
       const rtviClient = new RTVIClient({
         params: {
-          baseUrl:
-            process.env.NEXT_PUBLIC_PIPECAT_BASE_URL ||
-            "http://localhost:8000/api/v1",
+          baseUrl: `${pipecat_base_url}/api/v1`,
           audioElement: audioRef.current,
           audioTrack: microphoneTrack,
           videoTrack: videoTrack,
           requestData: {
             job_id: usePathStore.getState().jobId,
             candidate_id: usePathStore.getState().candidateId,
+            linkedin_profile: usePathStore.getState().linkedin_profile,
+            additional_links: usePathStore.getState().additional_links,
           },
         },
         transport: new DailyTransport({
@@ -486,6 +512,8 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         rtviClientRef.current.disconnect().catch(console.error);
       }
       setConnectionStatus("disconnected");
+      // Clear accumulated transcript on cleanup
+      accumulatedUserTranscriptRef.current = "";
     };
   }, [callStatus]);
 

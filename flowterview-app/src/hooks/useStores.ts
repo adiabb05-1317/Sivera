@@ -4,6 +4,7 @@ import {
   useCandidatesStore,
   useJobsStore,
   useInterviewsStore,
+  useAnalyticsStore,
 } from "../../store";
 
 // Auth hooks
@@ -184,12 +185,89 @@ export const useInterviews = () => {
   };
 };
 
+// Analytics hooks
+export const useAnalytics = () => {
+  const store = useAnalyticsStore();
+  const auth = useAuthStore();
+  const fetchTriggered = useRef(false);
+  const orgScoreFetchTriggered = useRef(false);
+
+  useEffect(() => {
+    // Auto-fetch analytics overview when user is authenticated and data is stale
+    if (
+      auth.isAuthenticated &&
+      store.overview.isStale &&
+      !store.overview.isLoading &&
+      !fetchTriggered.current
+    ) {
+      fetchTriggered.current = true;
+      store.fetchOverview().finally(() => {
+        fetchTriggered.current = false;
+      });
+    }
+  }, [auth.isAuthenticated, store.overview.isStale, store.overview.isLoading]);
+
+  useEffect(() => {
+    // Auto-fetch organization average score when user is authenticated and data is stale
+    if (
+      auth.isAuthenticated &&
+      store.organizationAverageScore.isStale &&
+      !store.organizationAverageScore.isLoading &&
+      !orgScoreFetchTriggered.current
+    ) {
+      orgScoreFetchTriggered.current = true;
+      store.fetchOrganizationAverageScore().finally(() => {
+        orgScoreFetchTriggered.current = false;
+      });
+    }
+  }, [
+    auth.isAuthenticated,
+    store.organizationAverageScore.isStale,
+    store.organizationAverageScore.isLoading,
+  ]);
+
+  return {
+    // Data
+    overview: store.overview.data,
+    organizationAverageScore: store.organizationAverageScore.data,
+    isLoading:
+      store.overview.isLoading || store.organizationAverageScore.isLoading,
+    error: store.overview.error || store.organizationAverageScore.error,
+
+    // Actions
+    fetchOverview: store.fetchOverview,
+    fetchInterviewAnalytics: store.fetchInterviewAnalytics,
+    fetchCandidateAnalytics: store.fetchCandidateAnalytics,
+    fetchAverageScore: store.fetchAverageScore,
+    fetchOrganizationAverageScore: store.fetchOrganizationAverageScore,
+    analyzeInterview: store.analyzeInterview,
+
+    // Cache management
+    invalidateCache: store.invalidateCache,
+    invalidateInterviewCache: store.invalidateInterviewCache,
+
+    // Selectors
+    getInterviewAnalytics: store.getInterviewAnalytics,
+    getCandidateAnalytics: store.getCandidateAnalytics,
+    getAverageScore: store.getAverageScore,
+    getOrganizationAverageScore: store.getOrganizationAverageScore,
+    getOverviewData: store.getOverviewData,
+
+    // Cache management
+    refresh: () => {
+      store.fetchOverview(true);
+      store.fetchOrganizationAverageScore(true);
+    },
+  };
+};
+
 // Combined hook for dashboard pages that need multiple stores
 export const useDashboard = () => {
   const auth = useAuth();
   const candidates = useCandidates();
   const jobs = useJobs();
   const interviews = useInterviews();
+  const analytics = useAnalytics();
 
   const isLoading =
     candidates.isLoading || jobs.isLoading || interviews.isLoading;
@@ -200,6 +278,7 @@ export const useDashboard = () => {
     candidates,
     jobs,
     interviews,
+    analytics,
     isLoading,
     hasError,
     refreshAll: () => {

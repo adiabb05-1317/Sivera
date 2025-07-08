@@ -1,15 +1,11 @@
 import json
 from typing import Any, Dict, List
-
-# from src.llm_handler.generic_llm import GenericLLM
+from src.llm_handler import generic_llm
 from src.utils.logger import logger
 
 
 class InterviewAnalytics:
     def __init__(self):
-        # self.llm = GenericLLM(
-        #     model_name="gemini-2.0-flash", api_key=Config.GEMINI_API_KEY
-        # )
         pass
 
     def _prepare_prompt(self, chat_history: List[Dict[str, str]]) -> str:
@@ -24,16 +20,24 @@ class InterviewAnalytics:
         4. Areas of improvement for the candidate
         5. Communication style assessment
         6. Technical proficiency assessment
+        7. What would he be good at? (2-3 sentences)
+        8. What would he not be good at? (2-3 sentences)
 
         Format your response as a JSON with the following structure:
         {
             "summary": "Brief summary here",
+            "good_at": "What would he be good at? (2-3 sentences)",
+            "good_at_skills": ["skill1", "skill2", ...],
+            "not_good_at": "What would he not be good at? (2-3 sentences)",
+            "not_good_at_skills": ["skill1", "skill2", ...],
             "technical_topics": ["topic1", "topic2", ...],
             "strengths": ["strength1", "strength2", ...],
+            "weaknesses": ["weakness1", "weakness2", ...],
             "areas_for_improvement": ["area1", "area2", ...],
             "communication_score": X (1-10 scale),
             "technical_score": X (1-10 scale),
-            "overall_assessment": "Brief overall assessment"
+            "overall_assessment": "Brief overall assessment",
+            "overall_score": X (1-10 scale)
         }
 
         Here is the interview conversation:
@@ -58,7 +62,7 @@ class InterviewAnalytics:
         """
         try:
             prompt = self._prepare_prompt(chat_history)
-            response = self.llm.handle_llm_request(prompt)
+            response = await generic_llm.call_llm(prompt)
 
             try:
                 analytics = json.loads(response)

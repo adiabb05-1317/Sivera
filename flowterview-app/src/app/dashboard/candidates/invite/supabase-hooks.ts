@@ -66,6 +66,7 @@ export function useBulkAddCandidates() {
     candidates: Array<{
       name: string;
       email: string;
+      phone: string;
       resumeFile?: File;
       status?: CandidateStatus;
     }>;

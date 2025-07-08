@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -14,9 +14,15 @@ class OrganizationIn(BaseModel):
     name: str
 
 
+class OrganizationUpdateIn(BaseModel):
+    name: Optional[str] = None
+    logo_url: Optional[str] = None
+
+
 class OrganizationOut(BaseModel):
     id: str
     name: str
+    logo_url: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -58,10 +64,41 @@ async def get_organization(org_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/{org_id}", response_model=OrganizationOut)
+async def update_organization(org_id: str, org_update: OrganizationUpdateIn, request: Request):
+    try:
+        # Check if organization exists
+        existing_org = db.fetch_one("organizations", {"id": org_id})
+        if not existing_org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+
+        # Prepare update data
+        update_data = {}
+        if org_update.name is not None:
+            update_data["name"] = org_update.name
+        if org_update.logo_url is not None:
+            update_data["logo_url"] = org_update.logo_url
+
+        if not update_data:
+            # No updates provided, return existing organization
+            return existing_org
+
+        # Update organization
+        db.update("organizations", update_data, {"id": org_id})
+
+        # Fetch and return the updated organization
+        updated_org = db.fetch_one("organizations", {"id": org_id})
+        if not updated_org:
+            raise HTTPException(status_code=404, detail="Organization not found after update")
+        return updated_org
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/", response_model=OrganizationOut)
 async def create_organization(org: OrganizationIn, request: Request):
     try:
-        created_org = db.execute_query("organizations", {"name": org.name})
+        created_org = db.execute_query("organizations", {"domain": org.name})
         return created_org
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))

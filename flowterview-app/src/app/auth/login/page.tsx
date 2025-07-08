@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { setUserContext } from "@/lib/auth-client";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import {
   Card,
   CardContent,
@@ -88,8 +87,10 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // Using absolute URL to ensure proper redirect
-          emailRedirectTo: window.location.origin + "/auth/callback",
+          // Using the environment variable for production
+          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL
+            ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+            : `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -117,10 +118,9 @@ export default function LoginPage() {
   if (sessionLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg flex flex-col items-center justify-center">
           <div
-            className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+            className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
             style={{
               fontFamily: "KyivType Sans",
             }}
@@ -148,11 +148,10 @@ export default function LoginPage() {
   if (magicLinkSent) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <FloatingPaths position={-1} className="inset-0 opacity-30" />
         <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
           <div className="text-center">
             <div
-              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
               style={{
                 fontFamily: "KyivType Sans",
               }}
@@ -176,12 +175,11 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-app-blue-50/20 to-app-blue-300/30 dark:bg-gradient-to-t dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <FloatingPaths position={-1} className="inset-0 opacity-30" />
       <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
         <CardHeader className="flex flex-col items-center justify-center">
-          <CardTitle className="tracking-widest text-2xl">
+          <CardTitle className="tracking-widest text-lg">
             <div
-              className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
+              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
               style={{
                 fontFamily: "KyivType Sans",
               }}
@@ -202,7 +200,7 @@ export default function LoginPage() {
                 </Label>
                 <Input
                   id="name"
-                  placeholder="email@company.com"
+                  placeholder="email@domain.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"

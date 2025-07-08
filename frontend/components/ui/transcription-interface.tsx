@@ -33,42 +33,29 @@ const MessageBubble = memo<{
     });
   }, []);
 
+  const isSia = message.sender === "Sia";
+
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 mb-1">
+    <div className="mb-4 mt-2">
+      {/* Sender name positioned based on who is speaking */}
+      <div className={cn("mb-1", isSia ? "text-left" : "text-right")}>
         <h4
           className={cn(
-            "text-sm font-semibold",
-            message.sender === "Sia"
-              ? "text-[--meet-primary]"
-              : "text-[--meet-text-primary]"
+            "text-[0.8rem] -mb-0.5 font-semibold font-kyiv",
+            isSia
+              ? "text-[--meet-primary] ml-1"
+              : "text-[--meet-text-primary] mr-1"
           )}
         >
           {message.sender}
         </h4>
-        {!isLive && (
-          <span className="text-xs text-[--meet-text-secondary]">
-            {formatTime(message.timestamp)}
-          </span>
-        )}
-        {isLive && isTranscribing && (
-          <div className="flex items-center gap-1">
-            <div className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"></div>
-            <div
-              className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"
-              style={{ animationDelay: "0.1s" }}
-            ></div>
-            <div
-              className="w-1 h-1 bg-[--meet-primary] rounded-full animate-bounce"
-              style={{ animationDelay: "0.2s" }}
-            ></div>
-          </div>
-        )}
       </div>
+
+      {/* Message bubble */}
       <div
         className={cn(
           "p-3 rounded-lg text-sm",
-          message.sender === "Sia"
+          isSia
             ? "bg-gradient-to-r from-app-blue-50 to-app-blue-100 dark:from-app-blue-900/20 dark:to-app-blue-800/20 border border-app-blue-200 dark:border-app-blue-700/50"
             : "bg-[--meet-surface-light] border border-[--meet-border]"
         )}
@@ -76,7 +63,7 @@ const MessageBubble = memo<{
         <p className="text-[--meet-text-primary] leading-relaxed">
           {message.content}
           {isLive && isTranscribing && (
-            <span className="inline-block w-2 h-4 bg-[--meet-primary] ml-1 animate-pulse rounded-sm"></span>
+            <span className="inline-block w-2.5 h-2.5 bg-[--meet-primary] ml-1 animate-pulse rounded-full"></span>
           )}
         </p>
       </div>
@@ -184,15 +171,35 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     smartScrollToBottom();
   }, [messages.length, smartScrollToBottom]);
 
-  // For live transcription, be less aggressive with scrolling
+  // For live transcription, scroll more frequently as content is being populated
   useEffect(() => {
     if (liveTranscription && liveTranscription.length > 0) {
-      // Only scroll if user is already at bottom and transcription is getting long
-      if (!isUserScrolledUp && liveTranscription.length % 100 === 0) {
+      // Scroll more frequently - every 20 characters or every word (whichever comes first)
+      if (
+        !isUserScrolledUp &&
+        (liveTranscription.length % 20 === 0 || liveTranscription.endsWith(" "))
+      ) {
         smartScrollToBottom(true); // Immediate scroll for live transcription when at bottom
       }
     }
   }, [liveTranscription, smartScrollToBottom, isUserScrolledUp]);
+
+  // Additional effect to ensure continuous scrolling during live transcription
+  useEffect(() => {
+    if (liveTranscription && isTranscribing && !isUserScrolledUp) {
+      // Debounced scroll for continuous content updates
+      const scrollTimeout = setTimeout(() => {
+        smartScrollToBottom(true);
+      }, 100);
+
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [
+    liveTranscription,
+    isTranscribing,
+    isUserScrolledUp,
+    smartScrollToBottom,
+  ]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -222,10 +229,10 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     <div className={cn("flex flex-col h-full", className)}>
       <ScrollArea
         ref={scrollAreaRef}
-        className="h-full px-4 pb-3 dark:bg-black dark:border-none"
+        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none hide-scrollbar"
       >
         {messages.length === 0 && !liveTranscription ? (
-          <div className="flex items-center justify-center h-full text-[--meet-text-secondary]">
+          <div className="flex items-center justify-center h-full text-[--meet-text-secondary] m-3">
             <p className="text-xs text-center">
               Conversation will appear here...
             </p>

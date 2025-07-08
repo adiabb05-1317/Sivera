@@ -20,6 +20,7 @@ class CandidateIn(BaseModel):
     job_id: str
     resume_url: str = None
     status: str = "Applied"
+    phone: str = None
 
 
 class BulkCandidateIn(BaseModel):
