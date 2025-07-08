@@ -245,14 +245,9 @@ export default function CandidatesPage() {
   return (
     <div className="space-y-6 overflow-auto">
       <div className="flex flex-row justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-            Candidates
-          </h1>
-          <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
-            Manage and track candidates in your recruitment pipeline.
-          </p>
-        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Manage and track candidates in your recruitment pipeline.
+        </p>
         <Button
           onClick={() => router.push("/dashboard/candidates/invite")}
           className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"

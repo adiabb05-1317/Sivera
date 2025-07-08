@@ -530,6 +530,16 @@ class InterviewFlow:
                                     f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
                                 )
 
+                                ix = str(uuid.uuid4())
+                                self.db.execute_query("interview_analytics", {
+                                    "id": ix,
+                                    "interview_id": self.interview.get("id"),
+                                    "organization_id": self.job.get("organization_id"),
+                                    "candidate_id": self.candidate_id,
+                                    "candidate_interview_id": candidate_interview_id.get("id"),
+                                    "data": json.dumps(analytics),
+                                })
+
                                 self.db.execute_query(
                                     "interview_sessions",
                                     {
@@ -537,7 +547,7 @@ class InterviewFlow:
                                         "session_history": session_data.get("id"),
                                         "created_at": self.interview_start_time.isoformat(),
                                         "updated_at": interview_end_time.isoformat(),
-                                        "analytics": analytics,
+                                        "analytics": ix,
                                         "status": "Completed",
                                     },
                                 )

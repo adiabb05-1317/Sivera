@@ -395,13 +395,13 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-          Settings
-        </h1>
-        <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
-          Manage your application preferences and integrations.
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Customize your application preferences and integrations.
         </p>
+        <Button className="invisible" variant="outline">
+          This button is to make the text aligned for all the pages
+        </Button>
       </div>
 
       {/* Company Details */}

@@ -7,7 +7,7 @@ from loguru import logger
 from src.utils.llm_factory import generate_text
 from storage.db_manager import DatabaseManager
 
-router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
+router = APIRouter(prefix="/api/v1/analytics", tags=["Analytics"])
 
 db = DatabaseManager()
 
@@ -56,6 +56,50 @@ def _prepare_prompt(chat_history: List[Dict[str, str]]) -> str:
         role = "Interviewer" if message["role"] == "assistant" else "Candidate"
         context += f"{role}: {message['content']}\n\n"
     return context
+
+@router.get("/interview/{interview_id}")
+async def get_interview_analytics(interview_id: str) -> Dict[str, Any]:
+    """
+    Get the analytics for a specific interview.
+    """
+    analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
+    return {"analytics": analytics}
+
+@router.get("/interview/{interview_id}/candidate/{candidate_id}")
+async def get_interview_candidate_analytics(interview_id: str, candidate_id: str) -> Dict[str, Any]:
+    """
+    Get the analytics for a specific interview and candidate.
+    """
+    analytics = db.fetch_one("interview_analytics", {"interview_id": interview_id, "candidate_id": candidate_id})
+    return {"analytics": analytics}
+
+@router.get("/average-score")
+async def get_average_score(request: Request) -> Dict[str, Any]:
+    """
+    Get the average score for all interviews.
+    """
+    organization_id = request.headers.get("X-Organization-Id")
+    analytics = db.fetch_all("interview_analytics", {"organization_id": organization_id})
+    total_score = 0
+    count = 0
+    for a in analytics:
+        total_score += a.get("data").get("overall_score")
+        count += 1
+    return {"average_score": total_score / count}
+
+@router.get("/average-score/{interview_id}")
+async def get_interview_average_score(interview_id: str) -> Dict[str, Any]:
+    """
+    Get the average score for a specific interview.
+    """
+    analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
+
+    total_score = 0
+    count = 0 
+    for a in analytics:
+        total_score += a.get("data").get("overall_score")
+        count += 1
+    return {"average_score": total_score / count}
 
 @router.post("/analyze-interview")
 async def analyze_interview(request: AnalyzeInterviewRequest) -> Dict[str, Any]:

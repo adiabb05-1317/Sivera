@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Users, Activity, ChevronRight } from "lucide-react";
+import { FileText, Users, Activity, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import {
@@ -17,8 +17,15 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Use our dashboard hook for comprehensive data
-  const { candidates, jobs, interviews, isLoading, hasError, refreshAll } =
-    useDashboard();
+  const {
+    candidates,
+    jobs,
+    interviews,
+    analytics,
+    isLoading,
+    hasError,
+    refreshAll,
+  } = useDashboard();
 
   // Calculate stats from store data
   const stats = [
@@ -36,9 +43,9 @@ export default function DashboardPage() {
     },
     {
       id: 3,
-      name: "Completion Rate",
-      value: "92%", // You can calculate this from actual data
-      icon: Activity,
+      name: "Average Interview Score",
+      value: analytics.getOrganizationAverageScore()?.toString() || "0",
+      icon: Star,
     },
   ];
 
@@ -60,13 +67,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-          Dashboard
-        </h1>
-        <p className="text-xs font-semibold opacity-50 dark:text-gray-300">
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Overview of your interview activities and key metrics.
         </p>
+        <Button className="invisible" variant="outline">
+          This button is to make the text aligned for all the pages
+        </Button>
       </div>
       {/* Stats */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

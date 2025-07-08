@@ -3,12 +3,14 @@ import { useAuthStore } from "./authStore";
 import { useCandidatesStore } from "./candidatesStore";
 import { useJobsStore } from "./jobsStore";
 import { useInterviewsStore } from "./interviewsStore";
+import { useAnalyticsStore } from "./analyticsStore";
 
 // Main store exports
 export { useAuthStore } from "./authStore";
 export { useCandidatesStore } from "./candidatesStore";
 export { useJobsStore } from "./jobsStore";
 export { useInterviewsStore } from "./interviewsStore";
+export { useAnalyticsStore } from "./analyticsStore";
 
 // Type exports
 export type * from "./types";
@@ -66,12 +68,15 @@ export const initializeStores = async (force = false) => {
         const candidatesStore = useCandidatesStore.getState();
         const jobsStore = useJobsStore.getState();
         const interviewsStore = useInterviewsStore.getState();
+        const analyticsStore = useAnalyticsStore.getState();
 
         // Fetch data in parallel for better performance
         await Promise.all([
           candidatesStore.fetchCandidatesByJob(),
           jobsStore.fetchJobs(),
           interviewsStore.fetchInterviews(),
+          analyticsStore.fetchOverview(),
+          analyticsStore.fetchOrganizationAverageScore(),
         ]).catch(console.error);
       }
 
