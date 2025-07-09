@@ -245,8 +245,8 @@ export default function AuthCallbackPage() {
           <CardFooter className="flex flex-col items-center">
             <Button
               asChild
+              className="cursor-pointer text-xs"
               variant="outline"
-              className="dark:border-zinc-700 dark:text-gray-200"
             >
               <a href="/auth/login">Back to Login</a>
             </Button>

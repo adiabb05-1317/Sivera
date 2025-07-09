@@ -163,7 +163,11 @@ export default function LoginPage() {
               the link in the email to sign in.
             </p>
             <div className="mt-8">
-              <Button variant="outline" onClick={() => setMagicLinkSent(false)}>
+              <Button
+                className="cursor-pointer text-xs"
+                variant="outline"
+                onClick={() => setMagicLinkSent(false)}
+              >
                 Try again
               </Button>
             </div>
@@ -233,7 +237,7 @@ export default function LoginPage() {
           </div>
           <div className="flex flex-col items-center space-y-3 w-full">
             <Button
-              className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:border-app-blue-400/80 dark:hover:bg-app-blue-400/10 dark:text-app-blue-3/00 dark:hover:text-app-blue-2/00 dark:focus:ring-app-blue-4/00 dark:focus:ring-offset-zinc-900 w-[80%]"
+              className="cursor-pointer text-xs"
               variant="outline"
               onClick={handleLogin}
             >
@@ -246,8 +250,8 @@ export default function LoginPage() {
                 : "Send magic link"}
             </Button>
             <Button
+              className="cursor-pointer text-xs"
               variant="outline"
-              className="w-[80%] cursor-pointer dark:border-zinc-700 dark:text-gray-200"
               onClick={() => {
                 router.push("/auth/signup");
               }}

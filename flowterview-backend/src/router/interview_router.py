@@ -1174,6 +1174,11 @@ async def update_interview(interview_id: str, updates: InterviewUpdate, request:
         current = db.fetch_one("interviews", {"id": interview_id})
         if not current:
             raise HTTPException(status_code=404, detail="Interview not found")
+
+        # Check if status is changing to "active" to trigger phone screen scheduling
+        old_status = current.get("status")
+        new_status = updates.status
+
         # Merge current record with updates
         update_dict = {
             **current,
@@ -1182,6 +1187,20 @@ async def update_interview(interview_id: str, updates: InterviewUpdate, request:
         allowed_fields = {"title", "organization_id", "created_by", "status"}
         update_dict = {k: v for k, v in update_dict.items() if k in allowed_fields}
         db.update("interviews", update_dict, {"id": interview_id})
+
+        # Trigger phone screen scheduling if status changed to "active"
+        if old_status != "active" and new_status == "active":
+            try:
+                # Schedule phone screens in the background
+                import asyncio
+
+                from src.router.phone_screen_router import schedule_phone_screens_for_interview
+
+                asyncio.create_task(schedule_phone_screens_for_interview(interview_id))
+                logger.info(f"Triggered phone screen scheduling for interview {interview_id}")
+            except Exception as e:
+                logger.error(f"Failed to trigger phone screen scheduling: {e}")
+                # Don't fail the interview update if phone screen scheduling fails
 
         # Fetch the updated record to return
         updated = db.fetch_one("interviews", {"id": interview_id})

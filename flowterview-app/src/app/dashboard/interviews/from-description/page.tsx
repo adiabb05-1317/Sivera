@@ -31,6 +31,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { useRouter } from "next/navigation";
+import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
 
 interface FormData {
   title: string;
@@ -58,7 +59,6 @@ export default function GenerateFromDescriptionPage() {
   const [phoneScreenQuestions, setPhoneScreenQuestions] = useState<string[]>(
     []
   );
-  const [newQuestion, setNewQuestion] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -296,27 +296,6 @@ export default function GenerateFromDescriptionPage() {
   const phoneInterviewIncomplete =
     processStages.phoneInterview && phoneScreenQuestions.length === 0;
 
-  // Phone screen question management functions
-  const addPhoneScreenQuestion = () => {
-    if (newQuestion.trim() && phoneScreenQuestions.length < 5) {
-      if (!phoneScreenQuestions.includes(newQuestion.trim())) {
-        setPhoneScreenQuestions((prev) => [...prev, newQuestion.trim()]);
-        setNewQuestion("");
-      }
-    }
-  };
-
-  const removePhoneScreenQuestion = (index: number) => {
-    setPhoneScreenQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleQuestionKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addPhoneScreenQuestion();
-    }
-  };
-
   if (isInterviewCreated) {
     return (
       <div className="space-y-6">
@@ -423,7 +402,7 @@ export default function GenerateFromDescriptionPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className={`cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900`}
+                  className="cursor-pointer text-xs"
                   variant="outline"
                 >
                   {loading && <Loader2 className="animate-spin mr-2" />}
@@ -454,7 +433,7 @@ export default function GenerateFromDescriptionPage() {
                   saving || allProcessStagesDisabled || phoneInterviewIncomplete
                 }
                 variant="outline"
-                className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                className="cursor-pointer text-xs"
               >
                 {saving && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                 {!saving && <Save className="mr-2 h-4 w-4" />}
@@ -637,91 +616,15 @@ export default function GenerateFromDescriptionPage() {
               </div>
             </div>
 
-            {/* Phone Screen Questions Section */}
-            {processStages.phoneInterview && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
-                    <label className="text-sm font-medium dark:text-gray-200">
-                      Phone Screen Questions
-                    </label>
-                  </div>
-                  {phoneScreenQuestions.length >= 5 && (
-                    <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
-                      Maximum questions reached (5)
-                    </div>
-                  )}
-                </div>
-
-                {/* Questions Container */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
-                  {/* Current Questions Display */}
-                  {phoneScreenQuestions.length > 0 && (
-                    <div className="space-y-3">
-                      {phoneScreenQuestions.map((question, index) => (
-                        <div
-                          key={index}
-                          className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <span className="text-xs font-semibold text-app-blue-600 dark:text-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/30 rounded-full min-w-[24px] h-6 flex items-center justify-center mt-0.5">
-                            {index + 1}
-                          </span>
-                          <span className="flex-1 text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
-                            {question}
-                          </span>
-                          <Button
-                            onClick={() => removePhoneScreenQuestion(index)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-full shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Empty State */}
-                  {phoneScreenQuestions.length === 0 && (
-                    <div className="text-center py-8">
-                      <Phone className="mx-auto h-8 w-8 mb-3 text-gray-300 dark:text-gray-600" />
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
-                        No questions added yet
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        Add up to 5 questions for phone screening
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Add New Question */}
-                  <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <Input
-                      placeholder="Enter a phone screen question..."
-                      value={newQuestion}
-                      onChange={(e) => setNewQuestion(e.target.value)}
-                      onKeyPress={handleQuestionKeyPress}
-                      className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
-                      disabled={phoneScreenQuestions.length >= 5}
-                    />
-                    <Button
-                      onClick={addPhoneScreenQuestion}
-                      variant="outline"
-                      size="sm"
-                      disabled={
-                        !newQuestion.trim() || phoneScreenQuestions.length >= 5
-                      }
-                      className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Phone Interview Section */}
+            <PhoneInterviewSection
+              isPhoneScreenEnabled={processStages.phoneInterview}
+              phoneScreenQuestions={phoneScreenQuestions}
+              onQuestionsChange={setPhoneScreenQuestions}
+              isEditable={true}
+              bulkPhoneScreenOpen={false}
+              setBulkPhoneScreenOpen={() => {}}
+            />
 
             {/* Skills Section */}
             <div className="space-y-4">
@@ -811,9 +714,8 @@ export default function GenerateFromDescriptionPage() {
                   <Button
                     onClick={addCustomSkill}
                     variant="outline"
-                    size="sm"
                     disabled={!newSkill.trim() || selectedSkills.length >= 15}
-                    className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
+                    className="cursor-pointer text-xs"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Add

@@ -445,8 +445,8 @@ export default function SettingsPage() {
             <div className="flex items-center space-x-3">
               <Button
                 onClick={() => setShowCompanySetupModal(true)}
+                className="cursor-pointer text-xs"
                 variant="outline"
-                className="text-app-blue-600 border-app-blue-300 hover:bg-app-blue-50 hover:text-app-blue-700 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300 cursor-pointer"
               >
                 <Edit3 className="h-3 w-3 mr-1" />
                 {organization?.name ? "Edit" : "Setup"}
@@ -576,9 +576,8 @@ export default function SettingsPage() {
                     >
                       <DrawerTrigger asChild>
                         <Button
+                          className="cursor-pointer text-xs"
                           variant="outline"
-                          size="sm"
-                          className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-900/20 dark:hover:text-gray-300"
                         >
                           <Settings className="h-3 w-3" />
                         </Button>
@@ -611,9 +610,8 @@ export default function SettingsPage() {
                                   testLinkedInIntegration();
                                   setSettingsDrawerOpen(false);
                                 }}
+                                className="cursor-pointer text-xs"
                                 variant="outline"
-                                size="sm"
-                                className="text-app-blue-600 border-app-blue-200 hover:bg-app-blue-50 hover:text-app-blue-700 hover:border-app-blue-300 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300 transition-colors w-full"
                               >
                                 Test Connection
                               </Button>
@@ -640,9 +638,8 @@ export default function SettingsPage() {
                                   setSettingsDrawerOpen(false);
                                 }}
                                 variant="outline"
-                                size="sm"
                                 disabled={linkedInRemoving || linkedInLoading}
-                                className="text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-400 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition-colors w-full"
+                                className="cursor-pointer text-xs"
                               >
                                 {linkedInRemoving && (
                                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -654,7 +651,12 @@ export default function SettingsPage() {
                           </div>
                           <DrawerFooter>
                             <DrawerClose asChild>
-                              <Button variant="outline">Close</Button>
+                              <Button
+                                className="cursor-pointer text-xs"
+                                variant="outline"
+                              >
+                                Close
+                              </Button>
                             </DrawerClose>
                           </DrawerFooter>
                         </div>
@@ -675,7 +677,7 @@ export default function SettingsPage() {
                       linkedInStatus?.is_connected
                         ? "text-orange-600 border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:text-orange-400 dark:border-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-300"
                         : "text-app-blue-600 border-app-blue-300 hover:bg-app-blue-50 hover:text-app-blue-700 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300"
-                    } cursor-pointer`}
+                    } cursor-pointer text-xs`}
                   >
                     {linkedInLoading && (
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />

@@ -324,7 +324,7 @@ export default function InviteCandidatesPage() {
         <div className="flex items-center">
           <Button
             variant="link"
-            className="text-xs dark:text-gray-300 cursor-pointer"
+            className="cursor-pointer text-xs"
             onClick={() => {
               router.push("/dashboard/candidates");
             }}
@@ -356,7 +356,7 @@ export default function InviteCandidatesPage() {
       <div className="flex items-center">
         <Button
           onClick={() => router.push("/dashboard/candidates")}
-          className="cursor-pointer"
+          className="cursor-pointer text-xs"
           variant="link"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
@@ -410,7 +410,7 @@ export default function InviteCandidatesPage() {
                     onClick={() =>
                       document.getElementById("csv-upload")?.click()
                     }
-                    className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                    className="cursor-pointer text-xs"
                   >
                     {isUploading ? (
                       "Uploading..."
@@ -426,7 +426,6 @@ export default function InviteCandidatesPage() {
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="sm"
                         className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
                         type="button"
                       >
@@ -529,7 +528,7 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                     <Button
                       variant="outline"
                       size="icon"
-                      className="cursor-pointer rounded-full"
+                      className="cursor-pointer rounded-full text-xs"
                       onClick={() => removeCandidateRow(candidate.id)}
                     >
                       <X className="h-4 w-4 text-red-400" />
@@ -606,7 +605,11 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                             htmlFor={`resume-upload-${candidate.id}`}
                             className="cursor-pointer"
                           >
-                            <Button asChild variant="outline">
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="text-xs"
+                            >
                               <span>Choose File</span>
                             </Button>
                           </label>
@@ -636,8 +639,8 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
 
               <Button
                 type="button"
-                variant="ghost"
-                className="text-app-blue-6/00 cursor-pointer"
+                variant="outline"
+                className="text-app-blue-6/00 cursor-pointer text-xs"
                 onClick={addCandidateRow}
               >
                 <Plus className="mr-1 h-4 w-4" />
@@ -648,7 +651,8 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
             <div className="flex flex-col md:flex-row items-center justify-end space-y-3 md:space-y-0 md:space-x-4">
               <Button
                 onClick={() => router.push("/dashboard/candidates")}
-                className="cursor-pointer text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                className="cursor-pointer text-xs"
+                variant="outline"
               >
                 Cancel
               </Button>
@@ -662,7 +666,7 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                   !allCandidatesHaveResumes()
                 }
                 variant="outline"
-                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                className="cursor-pointer text-xs"
               >
                 {isSubmitting || bulkLoading ? (
                   "Processing..."

@@ -222,8 +222,7 @@ export function BulkInviteDialog({
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="cursor-pointer"
+                  className="cursor-pointer text-xs"
                   onClick={
                     selectedCandidates.length === availableCandidates.length
                       ? clearSelection
@@ -353,7 +352,7 @@ export function BulkInviteDialog({
                 variant="outline"
                 onClick={handleClose}
                 disabled={isLoading}
-                className="cursor-pointer"
+                className="cursor-pointer text-xs"
               >
                 Cancel
               </Button>
@@ -361,7 +360,7 @@ export function BulkInviteDialog({
                 <Button
                   onClick={sendBulkInvites}
                   disabled={isLoading || selectedCandidates.length === 0}
-                  className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  className="cursor-pointer text-xs"
                   variant="outline"
                 >
                   {isLoading ? (
@@ -384,7 +383,8 @@ export function BulkInviteDialog({
               disabled={
                 inviteStatus?.scheduled_count !== selectedCandidates.length
               }
-              className="bg-app-blue-6/00 hover:bg-app-blue-7/00 text-white"
+              className="cursor-pointer text-xs"
+              variant="outline"
             >
               {inviteStatus?.scheduled_count === selectedCandidates.length
                 ? "Done"

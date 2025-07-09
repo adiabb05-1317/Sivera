@@ -4,7 +4,7 @@ import { Plus, Search, Filter, Eye, View, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,9 +54,9 @@ const CandidateViewDialog = ({
           <div className="flex flex-col gap-2 w-full">
             {candidate.resume_url && (
               <Button
-                variant="outline"
                 onClick={() => window.open(candidate.resume_url, "_blank")}
-                className="cursor-pointer"
+                variant="outline"
+                className="cursor-pointer text-xs"
               >
                 <Eye className="mr-2 h-4 w-4" />
                 View Resume
@@ -68,7 +68,7 @@ const CandidateViewDialog = ({
             <Button
               onClick={() => handleSendInvite(candidate)}
               variant="outline"
-              className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+              className="cursor-pointer text-xs"
             >
               <Send className="mr-2 h-4 w-4" />
               Invite for Interview
@@ -99,15 +99,35 @@ export default function CandidatesPage() {
   } = useCandidates();
   const { jobs, fetchJobs } = useJobs();
 
-  // Status badge color mapping (for capitalized statuses)
-  const statusColors: Record<string, string> = {
-    Applied: "bg-black-100 text-black-800",
-    Screening: "bg-yellow-100 text-yellow-800",
-    Interview_Scheduled: "bg-blue-100 text-blue-800",
-    Interviewed: "bg-app-blue-1/00 text-app-blue-8/00",
-    Hired: "bg-green-100 text-green-800",
-    On_Hold: "bg-orange-100 text-orange-800",
-    Rejected: "bg-red-100 text-red-800",
+  // Status badge color mapping using only app colors
+  const getCandidateStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "Applied":
+        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+      case "Screening":
+        return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
+      case "Interview_Scheduled":
+        return "bg-app-blue-200/90 text-app-blue-800 border-app-blue-400/80";
+      case "Interviewed":
+        return "bg-app-blue-200/80 text-app-blue-900 border-app-blue-500/80";
+      case "Hired":
+        return "bg-app-blue-500/80 text-white border-app-blue-600/80";
+      case "On_Hold":
+        return "bg-app-blue-800/20 text-app-blue-600 border-app-blue-700/50";
+      case "Rejected":
+        return "bg-app-blue-900/30 text-app-blue-400 border-app-blue-800/50";
+      default:
+        return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
+    }
+  };
+
+  // Utility function to format status text consistently
+  const formatStatusText = (status: string) => {
+    return status
+      .replace(/_/g, " ") // Replace underscores with spaces
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   };
 
   // Status display label mapping
@@ -250,7 +270,7 @@ export default function CandidatesPage() {
         </p>
         <Button
           onClick={() => router.push("/dashboard/candidates/invite")}
-          className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+          className="cursor-pointer text-xs"
           variant="outline"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -279,7 +299,7 @@ export default function CandidatesPage() {
               variant="outline"
               role="combobox"
               aria-expanded={popoverOpen}
-              className="w-[280px] justify-between"
+              className="w-[280px] justify-between cursor-pointer text-xs"
             >
               {selectedJobIds.length === 0 && selectedStatuses.length === 0
                 ? "Filter by Job Role or Status"
@@ -287,8 +307,8 @@ export default function CandidatesPage() {
                     ...jobs
                       .filter((job: any) => selectedJobIds.includes(job.id))
                       .map((job: any) => job.title),
-                    ...selectedStatuses.map(
-                      (status) => statusLabels[status] || status
+                    ...selectedStatuses.map((status) =>
+                      formatStatusText(status)
                     ),
                   ].join(", ")}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -331,7 +351,7 @@ export default function CandidatesPage() {
                 {Object.keys(statusLabels).map((status) => (
                   <CommandItem
                     key={status}
-                    value={statusLabels[status]}
+                    value={formatStatusText(status)}
                     onSelect={() => {
                       setSelectedStatuses((prev) =>
                         prev.includes(status)
@@ -348,7 +368,7 @@ export default function CandidatesPage() {
                           : "opacity-0"
                       )}
                     />
-                    {statusLabels[status]}
+                    {formatStatusText(status)}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -415,12 +435,11 @@ export default function CandidatesPage() {
                     <td className="px-6 py-6 whitespace-nowrap text-sm">
                       <Badge
                         variant="outline"
-                        className={cn(
-                          "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",
-                          statusColors[candidate.status]
-                        )}
+                        className={`${getCandidateStatusBadgeClass(
+                          candidate.status
+                        )} font-normal text-xs border-[0.5px] opacity-80`}
                       >
-                        {statusLabels[candidate.status] || candidate.status}
+                        {formatStatusText(candidate.status)}
                       </Badge>
                     </td>
                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">

@@ -135,8 +135,8 @@ export default function AnalyticsPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Insights and performance metrics for your interview process.
         </p>
-        <div className="flex space-x-3">
-          <Button variant="outline" className="cursor-pointer">
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" className="cursor-pointer text-xs">
             <Filter className="mr-2 h-4 w-4" />
             <span className="text-sm">Filter Data</span>
           </Button>

@@ -137,8 +137,8 @@ export default function SignupPage() {
           <CardFooter className="flex flex-col items-center">
             <Button
               asChild
+              className="cursor-pointer text-xs"
               variant="outline"
-              className="dark:border-zinc-700 dark:text-gray-200"
             >
               <Link href="/auth/login">Back to sign in</Link>
             </Button>
@@ -228,7 +228,7 @@ export default function SignupPage() {
                 type="submit"
                 variant="outline"
                 disabled={loading}
-                className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 w-[80%] dark:border-app-blue-400/80 dark:hover:bg-app-blue-400/10 dark:text-app-blue-3/00 dark:hover:text-app-blue-2/00 dark:focus:ring-app-blue-4/00 dark:focus:ring-offset-zinc-900"
+                className="cursor-pointer text-xs"
               >
                 {loading ? "Signing up..." : "Sign Up"}
               </Button>

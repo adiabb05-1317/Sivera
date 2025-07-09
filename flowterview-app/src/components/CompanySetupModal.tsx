@@ -259,7 +259,7 @@ export default function CompanySetupModal({
                   onClick={onCancel}
                   disabled={isSubmitting}
                   variant="outline"
-                  className="cursor-pointer border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                  className="cursor-pointer text-xs"
                 >
                   Cancel
                 </Button>
@@ -268,7 +268,7 @@ export default function CompanySetupModal({
                 <Button
                   type="submit"
                   disabled={isSubmitting || !name.trim()}
-                  className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                  className="cursor-pointer text-xs"
                   variant="outline"
                 >
                   {isSubmitting ? (

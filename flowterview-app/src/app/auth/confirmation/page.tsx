@@ -59,11 +59,7 @@ export default function ConfirmationPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-center">
-          <Button
-            asChild
-            variant="outline"
-            className="dark:border-zinc-700 dark:text-gray-200"
-          >
+          <Button asChild className="cursor-pointer text-xs" variant="outline">
             <Link href="/auth/login">Go to Login</Link>
           </Button>
         </CardFooter>

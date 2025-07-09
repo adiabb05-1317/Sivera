@@ -248,7 +248,7 @@ export default function CodeEditor({
 
       <div className="flex justify-end py-4 px-6 bg-app-blue-50 dark:bg-[--meet-surface] border-t border-app-blue-200 dark:border-app-blue-700">
         <Button
-          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-400/10 text-app-blue-500 dark:text-app-blue-200 hover:text-app-blue-600 dark:hover:text-app-blue-100 focus:ring-app-blue-500 dark:focus:ring-app-blue-400 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 text-xs"
+          className="cursor-pointer text-xs"
           variant="outline"
           onClick={handleSubmit}
         >

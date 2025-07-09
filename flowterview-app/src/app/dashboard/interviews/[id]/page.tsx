@@ -23,7 +23,7 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,6 +51,7 @@ import {
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
+import { BulkPhoneScreenScheduler } from "@/components/ui/bulk-phone-screen-scheduler";
 import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 import {
   authenticatedFetch,
@@ -58,6 +59,46 @@ import {
   getUserContext,
 } from "@/lib/auth-client";
 import { Label } from "recharts";
+import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
+import { PhoneScreenStatus } from "@/components/ui/phone-screen-status";
+
+// Status badge color mapping using only app colors
+const getCandidateStatusBadgeClass = (status: string) => {
+  switch (status) {
+    case "Applied":
+      return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+    case "Screening":
+      return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
+    case "Interview_Scheduled":
+    case "scheduled":
+      return "bg-app-blue-200/90 text-app-blue-800 border-app-blue-400/80";
+    case "Interviewed":
+      return "bg-app-blue-200/80 text-app-blue-900 border-app-blue-500/80";
+    case "completed":
+      return "bg-app-blue-300/90 text-app-blue-900 border-app-blue-500/80";
+    case "started":
+      return "bg-app-blue-400/90 text-app-blue-900 border-app-blue-500/80";
+    case "invited":
+      return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
+    case "Hired":
+      return "bg-app-blue-500/90 text-white border-app-blue-600/80";
+    case "On_Hold":
+      return "bg-app-blue-800/20 text-app-blue-600 border-app-blue-700/50";
+    case "Rejected":
+      return "bg-app-blue-900/30 text-app-blue-400 border-app-blue-800/50";
+    default:
+      return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
+  }
+};
+
+// Utility function to format status text consistently
+const formatStatusText = (status: string) => {
+  return status
+    .replace(/_/g, " ") // Replace underscores with spaces
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
 
 // Candidate View Dialog Component
 const CandidateViewDialog = ({
@@ -137,8 +178,15 @@ const CandidateViewDialog = ({
           <div className="grid grid-cols-4 items-center gap-4">
             <label className="text-right text-sm font-medium">Status:</label>
             <div className="col-span-3">
-              <Badge variant="outline" className="text-xs">
-                {candidate.interview_status || candidate.status}
+              <Badge
+                variant="outline"
+                className={`${getCandidateStatusBadgeClass(
+                  candidate.interview_status || candidate.status || "Applied"
+                )} font-normal text-xs border-[0.5px] opacity-80`}
+              >
+                {formatStatusText(
+                  candidate.interview_status || candidate.status || "Applied"
+                )}
               </Badge>
             </div>
           </div>
@@ -151,9 +199,8 @@ const CandidateViewDialog = ({
                 <div className="col-span-3">
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => window.open(candidate.room_url, "_blank")}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-xs"
                   >
                     <Eye className="mr-2 h-4 w-4" />
                     Join Interview
@@ -175,7 +222,7 @@ const CandidateViewDialog = ({
                     variant="outline"
                     onClick={handleShowAnalytics}
                     disabled={loadingAnalytics}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-xs"
                   >
                     {loadingAnalytics ? (
                       <>
@@ -295,7 +342,7 @@ const CandidateViewDialog = ({
                 <Button
                   variant="outline"
                   onClick={handleViewMoreDetails}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-xs"
                 >
                   <ArrowRight className="mr-2 h-4 w-4" />
                   View Detailed Analysis
@@ -304,7 +351,7 @@ const CandidateViewDialog = ({
                   <Button
                     variant="outline"
                     onClick={() => window.open(candidate.resume_url, "_blank")}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-xs"
                   >
                     <Eye className="mr-2 h-4 w-4" />
                     View Resume
@@ -324,7 +371,7 @@ const CandidateViewDialog = ({
                       onClick={() =>
                         window.open(candidate.resume_url, "_blank")
                       }
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       View Resume
@@ -348,7 +395,7 @@ const CandidateViewDialog = ({
                       onClick={() =>
                         window.open(candidate.resume_url, "_blank")
                       }
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       View Resume
@@ -368,7 +415,7 @@ const CandidateViewDialog = ({
                       onClick={() =>
                         window.open(candidate.resume_url, "_blank")
                       }
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       View Resume
@@ -393,7 +440,7 @@ const CandidateViewDialog = ({
                       onClick={() =>
                         window.open(candidate.resume_url, "_blank")
                       }
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       View Resume
@@ -433,7 +480,7 @@ const CandidateViewDialog = ({
                       onClick={() =>
                         window.open(candidate.resume_url, "_blank")
                       }
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       View Resume
@@ -447,7 +494,7 @@ const CandidateViewDialog = ({
                   <Button
                     onClick={() => handleSendInvite(candidate)}
                     variant="outline"
-                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                    className="cursor-pointer text-xs"
                   >
                     <Send className="mr-2 h-4 w-4" />
                     Invite for Interview
@@ -530,6 +577,7 @@ export default function InterviewDetailsPage() {
   );
   const [showAllCandidates, setShowAllCandidates] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
+  const [bulkPhoneScreenOpen, setBulkPhoneScreenOpen] = useState(false);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
@@ -958,7 +1006,7 @@ export default function InterviewDetailsPage() {
         <Button
           onClick={() => router.push("/dashboard/interviews")}
           variant="link"
-          className="mr-2 cursor-pointer"
+          className="mr-2 cursor-pointer text-xs"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -1027,8 +1075,11 @@ export default function InterviewDetailsPage() {
                         }
                       }}
                     >
-                      <SelectTrigger className="w-[13rem] cursor-pointer">
-                        <SelectValue>Select Interview Status</SelectValue>
+                      <SelectTrigger className="w-[8rem] cursor-pointer">
+                        <SelectValue>
+                          {interviewStatus.charAt(0).toUpperCase() +
+                            interviewStatus.slice(1)}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
@@ -1059,7 +1110,7 @@ export default function InterviewDetailsPage() {
                         onClick={handleSaveChanges}
                         disabled={saving}
                         variant="outline"
-                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                        className="cursor-pointer text-xs"
                       >
                         {saving && (
                           <Loader2 className="animate-spin mr-2 h-4 w-4" />
@@ -1254,93 +1305,6 @@ export default function InterviewDetailsPage() {
                   </div>
                 </div>
 
-                {/* Phone Screen Questions Section */}
-                {processStages.phoneInterview && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-app-blue-600 dark:text-app-blue-400" />
-                        <label className="text-sm font-medium dark:text-gray-200">
-                          Phone Screen Questions
-                        </label>
-                      </div>
-                      {phoneScreenQuestions.length >= 5 && (
-                        <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md">
-                          Maximum questions reached (5)
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Questions Container */}
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
-                      {/* Current Questions Display */}
-                      {phoneScreenQuestions.length > 0 && (
-                        <div className="space-y-3">
-                          {phoneScreenQuestions.map((question, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
-                            >
-                              <span className="text-xs font-semibold text-app-blue-600 dark:text-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/30 rounded-full min-w-[24px] h-6 flex items-center justify-center mt-0.5">
-                                {index + 1}
-                              </span>
-                              <span className="flex-1 text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
-                                {question}
-                              </span>
-                              <Button
-                                onClick={() => removePhoneScreenQuestion(index)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-full shrink-0"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Empty State */}
-                      {phoneScreenQuestions.length === 0 && (
-                        <div className="text-center py-8">
-                          <Phone className="mx-auto h-8 w-8 mb-3 text-gray-300 dark:text-gray-600" />
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
-                            No questions added yet
-                          </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">
-                            Add up to 5 questions for phone screening
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Add New Question */}
-                      <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <Input
-                          placeholder="Enter a phone screen question..."
-                          value={newQuestion}
-                          onChange={(e) => setNewQuestion(e.target.value)}
-                          onKeyPress={handleQuestionKeyPress}
-                          className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-app-blue-500 dark:focus:border-app-blue-400"
-                          disabled={phoneScreenQuestions.length >= 5}
-                        />
-                        <Button
-                          onClick={addPhoneScreenQuestion}
-                          variant="outline"
-                          size="sm"
-                          disabled={
-                            !newQuestion.trim() ||
-                            phoneScreenQuestions.length >= 5
-                          }
-                          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Skills Section */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -1438,11 +1402,10 @@ export default function InterviewDetailsPage() {
                       <Button
                         onClick={addCustomSkill}
                         variant="outline"
-                        size="sm"
                         disabled={
                           !newSkill.trim() || selectedSkills.length >= 15
                         }
-                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 px-4"
+                        className="cursor-pointer text-xs"
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add
@@ -1516,132 +1479,175 @@ export default function InterviewDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Candidates Section */}
-            <div className="w-full">
-              <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                <CardContent className="py-4 px-3">
-                  <div className="m-5 mt-0 flex items-center justify-between">
-                    <h3 className="font-semibold mb-2 dark:text-white">
-                      Candidates
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {/* Bulk Invite Button */}
-                      <Button
-                        onClick={fetchAvailableCandidates}
-                        disabled={loadingCandidates}
-                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                        variant="outline"
-                      >
-                        {loadingCandidates ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-2 h-4 w-4" />
-                            Send Invitations
-                          </>
-                        )}
-                      </Button>
+            {/* Phone Interview Section */}
+            {job && (
+              <PhoneInterviewSection
+                jobId={job.id}
+                isPhoneScreenEnabled={processStages.phoneInterview}
+                phoneScreenQuestions={phoneScreenQuestions}
+                onQuestionsChange={setPhoneScreenQuestions}
+                onFirstChange={() => setFirstChange(true)}
+                isEditable={true}
+                bulkPhoneScreenOpen={bulkPhoneScreenOpen}
+                setBulkPhoneScreenOpen={setBulkPhoneScreenOpen}
+              />
+            )}
 
-                      <Button
-                        onClick={() =>
-                          router.push(
-                            `/dashboard/candidates/invite?interview=${id}`
-                          )
-                        }
-                        className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
-                        variant="outline"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add New Candidate
-                      </Button>
-                    </div>
+            {/* Candidates Section */}
+            <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
+              <CardHeader className="border-b border-gray-200 dark:border-gray-800 pb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-medium tracking-tight dark:text-white flex items-center gap-2">
+                      Candidates
+                    </CardTitle>
+                    <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                      Manage and track candidate invitations and status.
+                    </p>
                   </div>
-                  {invitedCandidates.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-                      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-2">
-                        No candidates assigned
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-400 mb-4">
-                        Get started by adding candidates to this interview.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table
-                        className="min-w-full rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-800 table-fixed"
-                        style={{ borderRadius: 12, overflow: "hidden" }}
-                      >
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/4 max-w-[180px] truncate">
-                              Name
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/3 max-w-[220px] truncate">
-                              Email
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/5 max-w-[120px] truncate">
-                              Status
-                            </th>
+                  <div className="flex items-center gap-2">
+                    {/* Phone Screen Scheduler - High Priority */}
+
+                    {/* Interview Invitations */}
+                    <Button
+                      onClick={fetchAvailableCandidates}
+                      disabled={loadingCandidates}
+                      className="cursor-pointer text-xs"
+                      variant="outline"
+                    >
+                      {loadingCandidates ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Send Invitations
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={() =>
+                        router.push(
+                          `/dashboard/candidates/invite?interview=${id}`
+                        )
+                      }
+                      className="cursor-pointer text-xs"
+                      variant="outline"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add New Candidate
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {invitedCandidates.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-4" />
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      No candidates assigned
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                      Get started by adding candidates to this interview.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table
+                      className="min-w-full rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-800 table-fixed"
+                      style={{ borderRadius: 12, overflow: "hidden" }}
+                    >
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/4 max-w-[180px] truncate">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/3 max-w-[220px] truncate">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/5 max-w-[120px] truncate">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                        {(showAllCandidates
+                          ? invitedCandidates
+                          : invitedCandidates.slice(0, 3)
+                        ).map((candidate) => (
+                          <tr
+                            key={candidate.id}
+                            className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                            onClick={() => setSelectedCandidate(candidate)}
+                          >
+                            <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
+                              {candidate.name}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 max-w-[220px] truncate overflow-hidden">
+                              {candidate.email}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
+                              <Badge
+                                variant="outline"
+                                className={`${getCandidateStatusBadgeClass(
+                                  candidate.interview_status ||
+                                    candidate.status ||
+                                    "Applied"
+                                )} font-normal text-xs border-[0.5px] opacity-80 truncate inline-block max-w-[100px] overflow-hidden`}
+                              >
+                                {formatStatusText(
+                                  candidate.interview_status ||
+                                    candidate.status ||
+                                    "Applied"
+                                )}
+                              </Badge>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          {(showAllCandidates
-                            ? invitedCandidates
-                            : invitedCandidates.slice(0, 3)
-                          ).map((candidate) => (
-                            <tr
-                              key={candidate.id}
-                              className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
-                              onClick={() => setSelectedCandidate(candidate)}
-                            >
-                              <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
-                                {candidate.name}
-                              </td>
-                              <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 max-w-[220px] truncate overflow-hidden">
-                                {candidate.email}
-                              </td>
-                              <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
-                                <span className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 rounded-full px-2 py-1 text-xs font-semibold truncate inline-block max-w-[100px] overflow-hidden">
-                                  {candidate.interview_status ||
-                                    candidate.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {invitedCandidates.length > 3 && !showAllCandidates && (
-                        <div className="flex justify-center mt-2">
-                          <Button
-                            variant="outline"
-                            className="text-app-blue-6/00 dark:text-app-blue-3/00 border-app-blue-400/80 hover:bg-app-blue-50/40 dark:hover:bg-app-blue-900/40 cursor-pointer"
-                            onClick={() => setShowAllCandidates(true)}
-                          >
-                            View all
-                          </Button>
-                        </div>
-                      )}
-                      {invitedCandidates.length > 3 && showAllCandidates && (
-                        <div className="flex justify-center mt-2">
-                          <Button
-                            variant="ghost"
-                            className="text-gray-500 dark:text-gray-300 cursor-pointer"
-                            onClick={() => setShowAllCandidates(false)}
-                          >
-                            Show less
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                        ))}
+                      </tbody>
+                    </table>
+                    {invitedCandidates.length > 3 && !showAllCandidates && (
+                      <div className="flex justify-center mt-2">
+                        <Button
+                          variant="outline"
+                          className="text-app-blue-6/00 dark:text-app-blue-3/00 border-app-blue-400/80 hover:bg-app-blue-50/40 dark:hover:bg-app-blue-900/40 cursor-pointer text-xs"
+                          onClick={() => setShowAllCandidates(true)}
+                        >
+                          View all
+                        </Button>
+                      </div>
+                    )}
+                    {invitedCandidates.length > 3 && showAllCandidates && (
+                      <div className="flex justify-center mt-2">
+                        <Button
+                          variant="ghost"
+                          className="text-gray-500 dark:text-gray-300 cursor-pointer"
+                          onClick={() => setShowAllCandidates(false)}
+                        >
+                          Show less
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Bulk Phone Screen Scheduler */}
+          <BulkPhoneScreenScheduler
+            open={bulkPhoneScreenOpen}
+            onOpenChange={setBulkPhoneScreenOpen}
+            jobId={job?.id || ""}
+            jobTitle={job?.title || "Interview"}
+            onScheduled={() => {
+              // Refresh the data after phone screens are scheduled
+              window.location.reload();
+            }}
+          />
 
           {/* Bulk Invite Dialog */}
           <BulkInviteDialog

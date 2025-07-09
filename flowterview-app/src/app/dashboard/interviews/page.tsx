@@ -39,15 +39,15 @@ export default function InterviewsPage() {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "active":
-        return "";
+        return "bg-app-blue-500/80 text-white border-app-blue-600/80";
       case "completed":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300";
+        return "bg-app-blue-100/90 text-app-blue-800 border-app-blue-300/80";
       case "draft":
-        return "bg-app-blue-100/90 dark:bg-app-blue-900/40";
+        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
       case "expired":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300";
+        return "bg-app-blue-900/20 text-app-blue-400 border-app-blue-700/50";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+        return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
     }
   };
 
@@ -59,7 +59,7 @@ export default function InterviewsPage() {
         </p>
         <Button
           onClick={() => router.push("/dashboard/interviews/from-description")}
-          className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+          className="cursor-pointer text-xs"
           variant="outline"
         >
           New Interview
@@ -79,7 +79,10 @@ export default function InterviewsPage() {
           />
         </div>
         <div className="inline-flex">
-          <Button className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-app-blue-5/00 dark:focus:ring-app-blue-4/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 cursor-pointer">
+          <Button
+            className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-app-blue-5/00 dark:focus:ring-app-blue-4/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 cursor-pointer"
+            variant="outline"
+          >
             <Filter className="mr-2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             Filter
           </Button>
@@ -118,16 +121,13 @@ export default function InterviewsPage() {
                           {interview.title}
                         </h3>
                         <Badge
-                          variant={
-                            interview.status === "active"
-                              ? "secondary"
-                              : "outline"
-                          }
+                          variant="outline"
                           className={`${getStatusBadgeClass(
                             interview.status
-                          )} font-normal text-xs border-0 opacity-80`}
+                          )} font-normal text-xs border-[0.5px] opacity-80`}
                         >
-                          {interview.status}
+                          {interview.status.charAt(0).toUpperCase() +
+                            interview.status.slice(1)}
                         </Badge>
                       </div>
                       <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
