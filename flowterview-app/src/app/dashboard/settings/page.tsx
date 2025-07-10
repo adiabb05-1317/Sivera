@@ -14,6 +14,11 @@ import {
   AlertTriangle,
   Building2,
   Edit3,
+  Users,
+  Crown,
+  User,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -35,9 +40,19 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
 import { useAuthStore } from "../../../../store";
+import { Input } from "@/components/ui/input";
 
 // LinkedIn integration types
 interface LinkedInIntegrationStatus {
@@ -53,13 +68,23 @@ interface LinkedInIntegrationStatus {
   };
 }
 
+// Organization member types
+interface OrganizationMember {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "recruiter" | "candidate";
+  organization_id: string;
+  created_at: string;
+}
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
   // Auth store for organization data
-  const { organization, fetchOrganization, setShowCompanySetupModal } =
+  const { organization, user, fetchOrganization, setShowCompanySetupModal } =
     useAuthStore();
 
   const openCompanyEdit = searchParams.get("openCompanyEdit");
@@ -73,6 +98,12 @@ export default function SettingsPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
+  // Organization members state
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false);
+  const [promotingUser, setPromotingUser] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const themeOptions = [
     {
       value: "light",
@@ -103,6 +134,90 @@ export default function SettingsPage() {
       setShowCompanySetupModal(true);
     }
   }, [openCompanyEdit]);
+
+  // Fetch organization members
+  const fetchOrganizationMembers = async () => {
+    if (!organizationId) return;
+
+    setMembersLoading(true);
+    try {
+      // Fetch all users and filter by organization_id
+      const response = await authenticatedFetch(`${backendUrl}/api/v1/users`);
+
+      if (response.ok) {
+        const allUsers = await response.json();
+        // Filter users by organization_id
+        const orgMembers = allUsers.filter(
+          (user: OrganizationMember) => user.organization_id === organizationId
+        );
+
+        // Sort: admins first, then by creation date
+        const sortedMembers = orgMembers.sort(
+          (a: OrganizationMember, b: OrganizationMember) => {
+            if (a.role === "admin" && b.role !== "admin") return -1;
+            if (a.role !== "admin" && b.role === "admin") return 1;
+            return (
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime()
+            );
+          }
+        );
+
+        setMembers(sortedMembers);
+      } else {
+        throw new Error("Failed to fetch organization members");
+      }
+    } catch (error) {
+      console.error("Error fetching organization members:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load organization members",
+        variant: "destructive",
+      });
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  // Promote user to admin
+  const promoteToAdmin = async (userId: string) => {
+    if (!user || user.role !== "admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only admins can promote other users",
+      });
+      return;
+    }
+
+    setPromotingUser(userId);
+    try {
+      const response = await authenticatedFetch(
+        `${backendUrl}/api/v1/users/${userId}/role`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "admin" }),
+        }
+      );
+
+      if (response.ok) {
+        toast({
+          title: "User Promoted",
+          description: "User has been promoted to admin successfully",
+        });
+        fetchOrganizationMembers();
+      }
+    } catch (error) {
+      console.error("Error promoting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to promote user",
+        variant: "destructive",
+      });
+    } finally {
+      setPromotingUser(null);
+    }
+  };
 
   // Check LinkedIn integration status on component mount
   useEffect(() => {
@@ -148,6 +263,13 @@ export default function SettingsPage() {
 
     initializeLinkedInStatus();
   }, [toast, searchParams]);
+
+  // Fetch organization members when organizationId is available
+  useEffect(() => {
+    if (organizationId) {
+      fetchOrganizationMembers();
+    }
+  }, [organizationId]);
 
   // Check LinkedIn integration status
   const checkLinkedInStatus = async (orgId: string) => {
@@ -413,44 +535,92 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                {organization?.logo_url ? (
-                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                    <img
-                      src={organization.logo_url}
-                      alt="Company logo"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-2 bg-app-blue-100 dark:bg-app-blue-900/30 rounded-lg">
-                    <Building2 className="h-6 w-6 text-app-blue-600 dark:text-app-blue-400" />
-                  </div>
-                )}
+          <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
+            {/* Company Name and Branding */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  {organization?.logo_url ? (
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                      <img
+                        src={organization.logo_url}
+                        alt="Company logo"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-app-blue-100 dark:bg-app-blue-900/30 rounded-lg">
+                      <Building2 className="h-6 w-6 text-app-blue-600 dark:text-app-blue-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-[1rem] font-medium text-gray-900 dark:text-white">
+                    {organization?.name || "Company Name Not Set"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {organization?.name
+                      ? "Your organization name and branding settings"
+                      : "Complete your company profile to get started"}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                  {organization?.name || "Company Name Not Set"}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {organization?.name
-                    ? "Your organization name and branding settings"
-                    : "Complete your company profile to get started"}
-                </p>
+
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={() => setShowCompanySetupModal(true)}
+                  className="cursor-pointer text-xs"
+                  variant="outline"
+                >
+                  <Edit3 className="h-3 w-3 mr-1" />
+                  {organization?.name ? "Edit" : "Setup"}
+                </Button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => setShowCompanySetupModal(true)}
-                className="cursor-pointer text-xs"
-                variant="outline"
-              >
-                <Edit3 className="h-3 w-3 mr-1" />
-                {organization?.name ? "Edit" : "Setup"}
-              </Button>
+            {/* Company Members */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0 w-10 h-10"></div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-white">
+                    Company Members
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {members.length > 0
+                      ? `${members.length} ${
+                          members.length === 1 ? "member" : "members"
+                        } in your organization`
+                      : "View and manage organization members"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={() => {
+                    if (members.length === 0) {
+                      fetchOrganizationMembers();
+                    }
+                    setMembersDialogOpen(true);
+                  }}
+                  className="cursor-pointer text-xs"
+                  variant="outline"
+                  disabled={membersLoading}
+                >
+                  {membersLoading ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-3 w-3 mr-1" />
+                      View Members
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -697,6 +867,162 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Organization Members Dialog */}
+      <Dialog open={membersDialogOpen} onOpenChange={setMembersDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-app-blue-600 dark:text-app-blue-400" />
+              Company Members
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+              {organization?.name && `Members of ${organization.name}`}
+              {members.length > 0 &&
+                ` • ${members.length} ${
+                  members.length === 1 ? "member" : "members"
+                }`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto">
+            {/* Search bar */}
+            <div className="flex items-center space-x-2 mb-4 py-2 px-1">
+              <Input
+                placeholder="Search members"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {membersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-app-blue-600 dark:text-app-blue-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Loading organization members...
+                  </p>
+                </div>
+              </div>
+            ) : members.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No members found
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  There are no members in your organization yet.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {members
+                  .filter((member) =>
+                    (member.name || member.email || "")
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase())
+                  )
+                  .map((member, index) => (
+                    <div
+                      key={member.id}
+                      className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
+                        member.role === "admin"
+                          ? "border-app-blue-200 bg-app-blue-50 dark:border-app-blue-700/50 dark:bg-app-blue-900/10"
+                          : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback
+                            className={`text-sm font-medium ${
+                              member.role === "admin"
+                                ? "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
+                                : "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
+                            }`}
+                          >
+                            {member.name
+                              ? member.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)
+                              : member.email
+                              ? member.email.substring(0, 2).toUpperCase()
+                              : "?"}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {member.name || member.email || "Unknown User"}
+                            </h4>
+                            {member.role === "admin" && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-app-blue-100 text-app-blue-700 border-app-blue-300 dark:bg-app-blue-900/20 dark:text-app-blue-400 dark:border-app-blue-600"
+                              >
+                                Admin
+                              </Badge>
+                            )}
+                            {member.id === user?.id && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-app-blue-100 text-app-blue-700 border-app-blue-300 dark:bg-app-blue-900/20 dark:text-app-blue-400 dark:border-app-blue-600"
+                              >
+                                You
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {member.email}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Joined{" "}
+                            {new Date(member.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Admin Actions */}
+                      {user?.role === "admin" &&
+                        member.id !== user?.id &&
+                        member.role !== "admin" && (
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              onClick={() => promoteToAdmin(member.id)}
+                              disabled={promotingUser === member.id}
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer text-xs"
+                            >
+                              Make Admin
+                            </Button>
+                          </div>
+                        )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {user?.role === "admin" &&
+                members.length > 1 &&
+                "Only admins can promote other members"}
+            </div>
+            <Button
+              onClick={() => setMembersDialogOpen(false)}
+              variant="outline"
+              className="cursor-pointer text-xs"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

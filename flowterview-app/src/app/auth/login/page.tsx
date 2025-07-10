@@ -235,9 +235,9 @@ export default function LoginPage() {
               Forgot your password?
             </Link>
           </div>
-          <div className="flex flex-col items-center space-y-3 w-full">
+          <div className="flex flex-col items-center space-y-3 w-full px-3">
             <Button
-              className="cursor-pointer text-xs"
+              className="cursor-pointer text-xs w-full"
               variant="outline"
               onClick={handleLogin}
             >
@@ -250,7 +250,7 @@ export default function LoginPage() {
                 : "Send magic link"}
             </Button>
             <Button
-              className="cursor-pointer text-xs"
+              className="cursor-pointer text-xs w-full"
               variant="outline"
               onClick={() => {
                 router.push("/auth/signup");

@@ -19,7 +19,7 @@ export type User = {
   id: string;
   email: string;
   organization_id: string;
-  role: "admin" | "interviewer" | "candidate";
+  role: "admin" | "recruiter" | "candidate";
   created_at: string;
   updated_at: string;
 };

@@ -155,8 +155,12 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
                     <span>{interview.candidates || 0} candidates</span>
-                    <span className="mx-1">&middot;</span>
-                    <span>{interview.date}</span>
+                    <span className="mx-2">&middot;</span>
+                    <span className="text-xs opacity-90">{interview.date}</span>
+                    <span className="mx-2">&middot;</span>
+                    <span className="text-xs opacity-90">
+                      {interview.created_by}
+                    </span>
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">

@@ -1105,7 +1105,7 @@ async def list_interviews(request: Request):
         # This will use idx_jobs_org_id_optimized and idx_interviews_job_id_optimized
         interviews = db.fetch_all(
             table="interviews",
-            select="id, status, created_at, candidates_invited, job_id, jobs!inner(id, title)",
+            select="id, status, created_at, candidates_invited, job_id, created_by, jobs!inner(id, title), users!inner(name, email)",
             eq_filters={"jobs.organization_id": user_context.organization_id},
             order_by=(
                 "created_at",
@@ -1136,6 +1136,7 @@ async def list_interviews(request: Request):
                     "status": interview.get("status", "open"),
                     "date": date,
                     "job_id": interview.get("job_id"),
+                    "created_by": interview.get("users", {}).get("email"),
                 }
             )
 
@@ -1601,4 +1602,18 @@ async def get_candidate_interview_details(candidate_interview_id: str, request: 
         raise he
     except Exception as e:
         logger.error(f"Error fetching candidate interview details for {candidate_interview_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch interview details.")
+
+@router.get("/by-job/{job_id}")
+async def get_interview_by_job(job_id: str, request: Request):
+    """
+    Get interview details by job ID
+    """
+    try:
+        interview = db.fetch_one("interviews", {"job_id": job_id})
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        return {"success": True, "interview": interview}
+    except Exception as e:
+        logger.error(f"Error fetching interview by job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch interview details.")

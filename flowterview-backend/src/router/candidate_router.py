@@ -64,7 +64,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
         jobs = {job["id"]: job["title"] for job in db.fetch_all("jobs")}
         # Attach job object to each candidate if job_id exists
         for c in candidates:
-            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-")}
+            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-"), "id": c.get("job_id")}
 
         def parse_created_at(dt_str):
             try:
@@ -78,7 +78,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
                     except Exception:
                         return float("-inf")
 
-        candidates.sort(key=lambda x: (x.get("job_id"), -parse_created_at(x["created_at"])))
+        candidates.sort(key=lambda x: (x.get("jobs", {}).get("id"), -parse_created_at(x["created_at"])))
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))

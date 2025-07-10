@@ -74,7 +74,6 @@ export default function SignupPage() {
             email,
             name,
             organization_name: orgName,
-            role: "admin", // or let user pick role
             user_id: userId,
           }),
         }
@@ -223,12 +222,12 @@ export default function SignupPage() {
                 </div>
               )}
             </div>
-            <div className="flex flex-col items-center space-y-3 w-full">
+            <div className="flex flex-col items-center space-y-3 w-full px-3">
               <Button
                 type="submit"
                 variant="outline"
                 disabled={loading}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-xs w-full"
               >
                 {loading ? "Signing up..." : "Sign Up"}
               </Button>

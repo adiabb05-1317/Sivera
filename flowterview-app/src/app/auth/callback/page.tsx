@@ -85,7 +85,6 @@ export default function AuthCallbackPage() {
                   user_id: userData?.user?.id,
                   email: email, // Use email directly
                   organization_name: orgName,
-                  role: "admin", // default role for login
                 }),
               }
             );
