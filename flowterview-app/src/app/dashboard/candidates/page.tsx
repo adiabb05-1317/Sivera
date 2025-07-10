@@ -262,7 +262,7 @@ export default function CandidatesPage() {
     // Remove duplicates based on job ID and ensure IDs are valid
     const uniqueRoles = jobRoles.filter(
       (role, index, self) =>
-        role.title && index === self.findIndex((r) => r.title === role.title)
+        role.id && index === self.findIndex((r) => r.id === role.id)
     );
 
     return uniqueRoles.sort((a, b) => a.title.localeCompare(b.title));

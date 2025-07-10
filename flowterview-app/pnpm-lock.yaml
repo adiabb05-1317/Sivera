@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@hello-pangea/dnd':
+        specifier: ^18.0.1
+        version: 18.0.1(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hookform/resolvers':
         specifier: ^5.0.1
         version: 5.0.1(react-hook-form@7.56.3(react@19.1.0))
@@ -131,6 +134,9 @@ importers:
       react-hot-toast:
         specifier: ^2.5.2
         version: 2.5.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      react-resizable-panels:
+        specifier: ^3.0.3
+        version: 3.0.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-toastify:
         specifier: ^11.0.5
         version: 11.0.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -434,6 +440,12 @@ packages:
 
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
+
+  '@hello-pangea/dnd@18.0.1':
+    resolution: {integrity: sha512-xojVWG8s/TGrKT1fC8K2tIWeejJYTAeJuj36zM//yEm/ZrnZUSFGS15BpO+jGZT1ybWvyXmeDJwPYb4dhWlbZQ==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
 
   '@hookform/resolvers@5.0.1':
     resolution: {integrity: sha512-u/+Jp83luQNx9AdyW2fIPGY6Y7NG68eN2ZW8FOJYL+M0i4s49+refdJdOp/A9n9HFQtQs3HIDHQvX3ZET2o7YA==}
@@ -1560,6 +1572,9 @@ packages:
   '@types/react@19.1.4':
     resolution: {integrity: sha512-EB1yiiYdvySuIITtD5lhW4yPyJ31RkJkkDw794LaQYrxCSaQV/47y5o1FMC4zF9ZyjUjzJMZwbovEnT5yHTW6g==}
 
+  '@types/use-sync-external-store@0.0.6':
+    resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
+
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
@@ -1934,6 +1949,9 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
+
+  css-box-model@1.2.1:
+    resolution: {integrity: sha512-a7Vr4Q/kd/aw96bnJG332W9V9LkJO69JRcaCYDUqjp6/z0w6VcZjgAcTbgFxEPfBgdnAwlh3iwu+hLopa+flJw==}
 
   csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
@@ -3113,6 +3131,9 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
+  raf-schd@4.0.3:
+    resolution: {integrity: sha512-tQkJl2GRWh83ui2DiPTJz9wEiMN20syf+5oKfB03yYP7ioZcJwsIK8FjrtLwH1m7C7e+Tt2yYBlrOpdT+dyeIQ==}
+
   range-parser@1.2.1:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
@@ -3156,6 +3177,18 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
+  react-redux@9.2.0:
+    resolution: {integrity: sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g==}
+    peerDependencies:
+      '@types/react': ^18.2.25 || ^19
+      react: ^18.0 || ^19
+      redux: ^5.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      redux:
+        optional: true
+
   react-remove-scroll-bar@2.3.8:
     resolution: {integrity: sha512-9r+yi9+mgU33AKcj6IbT9oRCO78WriSj6t/cF8DWBZJ9aOGPOTEDvdUDz1FwKim7QXWwmHqtdHnRJfhAxEG46Q==}
     engines: {node: '>=10'}
@@ -3175,6 +3208,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-resizable-panels@3.0.3:
+    resolution: {integrity: sha512-7HA8THVBHTzhDK4ON0tvlGXyMAJN1zBeRpuyyremSikgYh2ku6ltD7tsGQOcXx4NKPrZtYCm/5CBr+dkruTGQw==}
+    peerDependencies:
+      react: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
   react-smooth@4.0.4:
     resolution: {integrity: sha512-gnGKTpYwqL0Iii09gHobNolvX4Kiq4PKx6eWBCYYix+8cdw+cGo3do906l1NBPKkSWx1DghC1dlWG9L2uGd61Q==}
@@ -3231,6 +3270,9 @@ packages:
     peerDependencies:
       react: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  redux@5.0.1:
+    resolution: {integrity: sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==}
 
   reflect.getprototypeof@1.0.10:
     resolution: {integrity: sha512-00o4I+DVrefhv+nX0ulyi3biSHCPDe+yLv5o/p6d/UVlirijB8E16FtfwSAi4g3tcqrQ4lRAqQSoFEZJehYEcw==}
@@ -3896,6 +3938,18 @@ snapshots:
       react-dom: 19.1.0(react@19.1.0)
 
   '@floating-ui/utils@0.2.9': {}
+
+  '@hello-pangea/dnd@18.0.1(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@babel/runtime': 7.27.1
+      css-box-model: 1.2.1
+      raf-schd: 4.0.3
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+      react-redux: 9.2.0(@types/react@19.1.4)(react@19.1.0)(redux@5.0.1)
+      redux: 5.0.1
+    transitivePeerDependencies:
+      - '@types/react'
 
   '@hookform/resolvers@5.0.1(react-hook-form@7.56.3(react@19.1.0))':
     dependencies:
@@ -5037,6 +5091,8 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
+  '@types/use-sync-external-store@0.0.6': {}
+
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 20.17.47
@@ -5438,6 +5494,10 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
+
+  css-box-model@1.2.1:
+    dependencies:
+      tiny-invariant: 1.3.3
 
   csstype@3.1.3: {}
 
@@ -6750,6 +6810,8 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
+  raf-schd@4.0.3: {}
+
   range-parser@1.2.1: {}
 
   raw-body@3.0.0:
@@ -6792,6 +6854,15 @@ snapshots:
 
   react-is@18.3.1: {}
 
+  react-redux@9.2.0(@types/react@19.1.4)(react@19.1.0)(redux@5.0.1):
+    dependencies:
+      '@types/use-sync-external-store': 0.0.6
+      react: 19.1.0
+      use-sync-external-store: 1.5.0(react@19.1.0)
+    optionalDependencies:
+      '@types/react': 19.1.4
+      redux: 5.0.1
+
   react-remove-scroll-bar@2.3.8(@types/react@19.1.4)(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -6810,6 +6881,11 @@ snapshots:
       use-sidecar: 1.1.3(@types/react@19.1.4)(react@19.1.0)
     optionalDependencies:
       '@types/react': 19.1.4
+
+  react-resizable-panels@3.0.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+    dependencies:
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
 
   react-smooth@4.0.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
@@ -6884,6 +6960,8 @@ snapshots:
       recharts-scale: 0.4.5
       tiny-invariant: 1.3.3
       victory-vendor: 36.9.2
+
+  redux@5.0.1: {}
 
   reflect.getprototypeof@1.0.10:
     dependencies:

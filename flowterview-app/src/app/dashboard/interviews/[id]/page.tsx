@@ -22,6 +22,8 @@ import {
   Send,
   Check,
   ArrowRight,
+  GitBranch,
+  Kanban,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import {
   Select,
   SelectTrigger,
@@ -62,6 +65,7 @@ import { Label } from "recharts";
 import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
 import { PhoneScreenStatus } from "@/components/ui/phone-screen-status";
 import { InterviewAnalytics } from "@/components/ui/interview-analytics";
+import { CandidatePipeline } from "@/components/ui/candidate-pipeline";
 
 // Status badge color mapping using only app colors
 const getCandidateStatusBadgeClass = (status: string) => {
@@ -488,6 +492,7 @@ export default function InterviewDetailsPage() {
     "draft" | "active" | "completed"
   >("draft");
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [pipelineOpen, setPipelineOpen] = useState(false);
 
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -502,6 +507,7 @@ export default function InterviewDetailsPage() {
     phoneInterview: false,
     assessments: false,
     aiInterviewer: false,
+    humanInterview: false,
   });
 
   // Phone screen questions state
@@ -663,6 +669,7 @@ export default function InterviewDetailsPage() {
           phoneInterview: true,
           assessments: true,
           aiInterviewer: true,
+          humanInterview: true,
         });
       }
 
@@ -1040,10 +1047,10 @@ export default function InterviewDetailsPage() {
                   </div>
 
                   <div className="flex justify-center">
-                    <Carousel className="w-full max-w-md">
+                    <Carousel className="w-full max-w-2xl">
                       <CarouselContent>
                         {/* Phone Interview */}
-                        <CarouselItem className="basis-1/3">
+                        <CarouselItem className="basis-1/4">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1096,7 +1103,7 @@ export default function InterviewDetailsPage() {
                         </CarouselItem>
 
                         {/* Assessments */}
-                        <CarouselItem className="basis-1/3">
+                        <CarouselItem className="basis-1/4">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1145,7 +1152,7 @@ export default function InterviewDetailsPage() {
                         </CarouselItem>
 
                         {/* AI Interviewer */}
-                        <CarouselItem className="basis-1/3">
+                        <CarouselItem className="basis-1/4">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1188,7 +1195,60 @@ export default function InterviewDetailsPage() {
                                           : "text-gray-400 dark:text-gray-500"
                                       }`}
                                     >
-                                      Interviewer
+                                      Interview
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+
+                        {/* Human Interview */}
+                        <CarouselItem className="basis-1/4">
+                          <div className="p-1">
+                            <Card
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                                processStages.humanInterview
+                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                              }`}
+                              onClick={() =>
+                                toggleProcessStage("humanInterview")
+                              }
+                              title={`${
+                                processStages.humanInterview
+                                  ? "Disable"
+                                  : "Enable"
+                              } Human Interview`}
+                            >
+                              <CardContent className="flex aspect-square items-center justify-center p-6">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Users
+                                    className={`h-6 w-6 ${
+                                      processStages.humanInterview
+                                        ? "text-app-blue-600 dark:text-app-blue-400"
+                                        : "text-gray-400 dark:text-gray-500"
+                                    }`}
+                                  />
+                                  <div className="text-center">
+                                    <div
+                                      className={`text-sm font-semibold ${
+                                        processStages.humanInterview
+                                          ? "text-app-blue-600 dark:text-app-blue-400"
+                                          : "text-gray-500 dark:text-gray-400"
+                                      }`}
+                                    >
+                                      Human
+                                    </div>
+                                    <div
+                                      className={`text-xs ${
+                                        processStages.humanInterview
+                                          ? "text-app-blue-500 dark:text-app-blue-300"
+                                          : "text-gray-400 dark:text-gray-500"
+                                      }`}
+                                    >
+                                      Interview
                                     </div>
                                   </div>
                                 </div>
@@ -1326,7 +1386,7 @@ export default function InterviewDetailsPage() {
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Interview duration
+                      AI Interview duration
                     </label>
                   </div>
 
@@ -1413,7 +1473,22 @@ export default function InterviewDetailsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Phone Screen Scheduler - High Priority */}
+                    {/* Candidate Pipeline - Show only if there are interviewed candidates */}
+                    {invitedCandidates.some(
+                      (candidate) =>
+                        candidate.interview_status?.toLowerCase() ===
+                          "completed" ||
+                        candidate.status?.toLowerCase() === "completed"
+                    ) && (
+                      <Button
+                        onClick={() => setPipelineOpen(true)}
+                        className="cursor-pointer text-xs"
+                        variant="outline"
+                      >
+                        <Kanban className="mr-2 h-4 w-4" />
+                        View Candidate Pipeline
+                      </Button>
+                    )}
 
                     {/* Interview Invitations */}
                     <Button
@@ -1577,6 +1652,22 @@ export default function InterviewDetailsPage() {
               candidateId={selectedCandidate.id}
             />
           )}
+
+          {/* Candidate Pipeline Drawer */}
+          <Drawer open={pipelineOpen} onOpenChange={setPipelineOpen}>
+            <DrawerContent className="h-[95vh] p-0">
+              <CandidatePipeline
+                interviewedCandidates={invitedCandidates.filter(
+                  (candidate) =>
+                    candidate.interview_status?.toLowerCase() === "completed" ||
+                    candidate.status?.toLowerCase() === "completed"
+                )}
+                interviewId={id as string}
+                jobTitle={job?.title || "Interview"}
+                onClose={() => setPipelineOpen(false)}
+              />
+            </DrawerContent>
+          </Drawer>
         </>
       )}
     </div>

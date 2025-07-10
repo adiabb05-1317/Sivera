@@ -16,6 +16,7 @@ import {
   FileText,
   Bot,
   Route,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +54,7 @@ export default function GenerateFromDescriptionPage() {
     phoneInterview: true,
     assessments: true,
     aiInterviewer: true,
+    humanInterview: true,
   });
 
   // Phone screen questions state
@@ -290,7 +292,8 @@ export default function GenerateFromDescriptionPage() {
   const allProcessStagesDisabled =
     !processStages.phoneInterview &&
     !processStages.assessments &&
-    !processStages.aiInterviewer;
+    !processStages.aiInterviewer &&
+    !processStages.humanInterview;
 
   // Check if phone interview is enabled but no questions are provided
   const phoneInterviewIncomplete =
@@ -452,10 +455,10 @@ export default function GenerateFromDescriptionPage() {
               </div>
 
               <div className="flex justify-center">
-                <Carousel className="w-full max-w-md">
+                <Carousel className="w-full max-w-2xl">
                   <CarouselContent>
                     {/* Phone Interview */}
-                    <CarouselItem className="basis-1/3">
+                    <CarouselItem className="basis-1/4">
                       <div className="p-1">
                         <Card
                           className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -504,7 +507,7 @@ export default function GenerateFromDescriptionPage() {
                     </CarouselItem>
 
                     {/* Assessments */}
-                    <CarouselItem className="basis-1/3">
+                    <CarouselItem className="basis-1/4">
                       <div className="p-1">
                         <Card
                           className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -553,7 +556,7 @@ export default function GenerateFromDescriptionPage() {
                     </CarouselItem>
 
                     {/* AI Interviewer */}
-                    <CarouselItem className="basis-1/3">
+                    <CarouselItem className="basis-1/4">
                       <div className="p-1">
                         <Card
                           className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -592,7 +595,56 @@ export default function GenerateFromDescriptionPage() {
                                       : "text-gray-400 dark:text-gray-500"
                                   }`}
                                 >
-                                  Interviewer
+                                  Interview
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+
+                    {/* Human Interview */}
+                    <CarouselItem className="basis-1/4">
+                      <div className="p-1">
+                        <Card
+                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
+                            processStages.humanInterview
+                              ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
+                              : "opacity-50 hover:opacity-70 hover:border-gray-400"
+                          }`}
+                          onClick={() => toggleProcessStage("humanInterview")}
+                          title={`${
+                            processStages.humanInterview ? "Disable" : "Enable"
+                          } Human Interview`}
+                        >
+                          <CardContent className="flex aspect-square items-center justify-center p-6">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Users
+                                className={`h-6 w-6 ${
+                                  processStages.humanInterview
+                                    ? "text-app-blue-600 dark:text-app-blue-400"
+                                    : "text-gray-400 dark:text-gray-500"
+                                }`}
+                              />
+                              <div className="text-center">
+                                <div
+                                  className={`text-sm font-semibold ${
+                                    processStages.humanInterview
+                                      ? "text-app-blue-600 dark:text-app-blue-400"
+                                      : "text-gray-500 dark:text-gray-400"
+                                  }`}
+                                >
+                                  Human
+                                </div>
+                                <div
+                                  className={`text-xs ${
+                                    processStages.humanInterview
+                                      ? "text-app-blue-500 dark:text-app-blue-300"
+                                      : "text-gray-400 dark:text-gray-500"
+                                  }`}
+                                >
+                                  Interview
                                 </div>
                               </div>
                             </div>
@@ -729,7 +781,7 @@ export default function GenerateFromDescriptionPage() {
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Interview duration
+                  AI Interview duration
                 </label>
               </div>
 
