@@ -22,22 +22,20 @@ import {
   X,
   Search,
   Filter,
-  MoreHorizontal,
   ArrowRight,
-  Calendar,
   MessageSquare,
-  Users,
-  Undo,
-  Redo,
   CheckSquare,
   Plus,
   Loader2,
-  Move,
+  Save,
+  RotateCcw,
+  Trash2,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +53,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { DrawerHeader } from "./drawer";
+import { Checkbox } from "./checkbox";
 
 interface Candidate {
   id: string;
@@ -65,7 +65,7 @@ interface Candidate {
   ai_score?: number;
   skills?: string[];
   experience_years?: number;
-  notes?: string[];
+  notes?: string;
   pipeline_stage?: string;
 }
 
@@ -84,20 +84,16 @@ interface CandidatePipelineProps {
   onClose: () => void;
 }
 
-interface HistoryAction {
-  type: "move" | "bulk_move";
-  sourceStageId: string;
-  destinationStageId: string;
-  candidateIds: string[];
+interface PendingChange {
+  type: "move" | "add_note" | "add_round" | "remove_round";
+  candidateId?: string;
+  sourceStageId?: string;
+  destinationStageId?: string;
+  note?: string;
+  roundNumber?: number;
+  stageId?: string;
   timestamp: number;
 }
-
-const getScoreColor = (score?: number) => {
-  if (!score) return "bg-gray-100 text-gray-600 border-gray-300";
-  if (score >= 8) return "bg-green-100 text-green-700 border-green-300";
-  if (score >= 6) return "bg-yellow-100 text-yellow-700 border-yellow-300";
-  return "bg-red-100 text-red-700 border-red-300";
-};
 
 const CandidateCard: React.FC<{
   candidate: Candidate;
@@ -107,6 +103,7 @@ const CandidateCard: React.FC<{
   isSelected: boolean;
   onMove: (candidate: Candidate, direction: "next" | "prev") => void;
   isDragDropReady?: boolean;
+  hasChanges?: boolean;
 }> = ({
   candidate,
   index,
@@ -115,9 +112,8 @@ const CandidateCard: React.FC<{
   isSelected,
   onMove,
   isDragDropReady = false,
+  hasChanges = false,
 }) => {
-  const [showActions, setShowActions] = useState(false);
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -126,146 +122,168 @@ const CandidateCard: React.FC<{
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      onSelect(candidate, !isSelected);
+    // Don't toggle selection if clicking on action buttons or dropdown menus
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button:not([data-radix-collection-item])") ||
+      target.closest('[role="menuitem"]') ||
+      target.closest("[data-radix-dropdown-menu-content]")
+    ) {
+      return;
     }
+    onSelect(candidate, !isSelected);
   };
 
   const cardContent = (
     <div
-      className={`bg-white dark:bg-gray-900 rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 group ${
-        isSelected
+      className={`relative bg-white dark:bg-gray-900 rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 group select-none ${
+        hasChanges
+          ? "border-orange-400 bg-orange-50 dark:bg-orange-900/20"
+          : isSelected
           ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
-          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
       } shadow-sm hover:shadow-md`}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
       aria-selected={isSelected}
+      title="Click to select candidate"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={isSelected}
-            onChange={(e) => onSelect(candidate, e.target.checked)}
-            onClick={(e) => e.stopPropagation()}
-            className="rounded border-gray-300 text-app-blue-500 focus:ring-app-blue-500"
+            onCheckedChange={(checked) =>
+              onSelect(candidate, checked as boolean)
+            }
+            className="cursor-pointer"
           />
           <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
-            {candidate.name}
+            {candidate.name.length > 15
+              ? candidate.name.slice(0, 15) + "..."
+              : candidate.name}
           </h4>
-        </div>
-        <div className="flex items-center gap-1">
-          {showActions && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMove(candidate, "prev");
-                }}
-                title="Move to previous stage"
-              >
-                <ArrowRight className="h-3 w-3 rotate-180" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMove(candidate, "next");
-                }}
-                title="Move to next stage"
-              >
-                <ArrowRight className="h-3 w-3" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => onQuickAction("next_round", candidate)}
-                  >
-                    <ArrowRight className="mr-2 h-4 w-4" />
-                    Send to Next Round
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onQuickAction("schedule", candidate)}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Schedule Interview
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onQuickAction("add_note", candidate)}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Add Note
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+          {hasChanges && (
+            <Badge
+              variant="outline"
+              className="text-xs mx-1 px-1 py-0 bg-app-blue-50 text-app-blue-500 border-app-blue-300"
+            >
+              Modified
+            </Badge>
           )}
+        </div>
+        <div className="flex items-center gap-3 min-w-[85px] justify-end">
+          <Badge
+            variant="outline"
+            className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickAction("add_note", candidate);
+            }}
+          >
+            <MessageSquare className="h-4 w-4" />
+            {candidate.notes ? "Edit Note" : "Add Note"}
+          </Badge>
+          <div className="gap-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(candidate, "prev");
+              }}
+              title="Move to previous stage"
+            >
+              <ArrowLeft className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(candidate, "next");
+              }}
+              title="Move to next stage"
+            >
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
         {candidate.email}
       </p>
-      <div className="flex items-center gap-2">
-        {candidate.ai_score && (
-          <Badge
-            variant="outline"
-            className={`text-xs px-2 py-0.5 ${getScoreColor(
-              candidate.ai_score
-            )}`}
-          >
-            {candidate.ai_score}/10
-          </Badge>
-        )}
-        {candidate.experience_years && (
-          <Badge variant="outline" className="text-xs px-2 py-0.5">
-            {candidate.experience_years}y exp
-          </Badge>
+
+      {/* Content area with space for bottom-right score */}
+      <div className="pr-12">
+        {candidate.skills && candidate.skills.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {candidate.skills.slice(0, 2).map((skill, idx) => (
+              <Badge
+                key={idx}
+                variant="secondary"
+                className="text-xs px-1.5 py-0.5"
+              >
+                {skill}
+              </Badge>
+            ))}
+            {candidate.skills.length > 2 && (
+              <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                +{candidate.skills.length - 2}
+              </Badge>
+            )}
+          </div>
         )}
       </div>
-      {candidate.skills && candidate.skills.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {candidate.skills.slice(0, 2).map((skill, idx) => (
-            <Badge
-              key={idx}
-              variant="secondary"
-              className="text-xs px-1.5 py-0.5"
-            >
-              {skill}
-            </Badge>
-          ))}
-          {candidate.skills.length > 2 && (
-            <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-              +{candidate.skills.length - 2}
-            </Badge>
-          )}
-        </div>
-      )}
-      {candidate.notes && candidate.notes.length > 0 && (
-        <div className="mt-2">
-          <Badge variant="outline" className="text-xs">
-            {candidate.notes.length} note
-            {candidate.notes.length > 1 ? "s" : ""}
-          </Badge>
+
+      {/* Score positioned at bottom right */}
+      {candidate.ai_score && (
+        <div className="absolute bottom-3.5 right-3.5">
+          <div className="w-10 h-10">
+            <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
+              {/* Background circle */}
+              <path
+                d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="text-slate-200 dark:text-slate-700"
+              />
+              {/* Progress circle */}
+              <path
+                d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeDasharray={`${(candidate.ai_score / 10) * 100}, 100`}
+                strokeLinecap="round"
+                className={
+                  candidate.ai_score >= 8
+                    ? "text-emerald-500"
+                    : candidate.ai_score >= 6
+                    ? "text-amber-500"
+                    : "text-rose-500"
+                }
+              />
+            </svg>
+            {/* Score text */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span
+                className={`text-sm font-bold tracking-tight ${
+                  candidate.ai_score >= 8
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : candidate.ai_score >= 6
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {candidate.ai_score}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -297,40 +315,81 @@ const PipelineColumn: React.FC<{
   onSelect: (candidate: Candidate, isSelected: boolean) => void;
   selectedCandidates: Set<string>;
   onAddRound?: () => void;
+  onRemoveRound?: (stageId: string) => void;
   onMove: (candidate: Candidate, direction: "next" | "prev") => void;
   isDragDropReady?: boolean;
+  pendingChanges: PendingChange[];
+  isNewStage?: boolean;
+  isRemovedStage?: boolean;
+  canRemove?: boolean;
 }> = ({
   stage,
   onQuickAction,
   onSelect,
   selectedCandidates,
   onAddRound,
+  onRemoveRound,
   onMove,
   isDragDropReady = false,
+  pendingChanges,
+  isNewStage = false,
+  isRemovedStage = false,
+  canRemove = false,
 }) => {
+  // Check if this stage has any pending changes
+  const hasStageChanges = pendingChanges.some(
+    (change) =>
+      change.type === "add_round" ||
+      change.type === "remove_round" ||
+      change.destinationStageId === stage.id ||
+      change.sourceStageId === stage.id
+  );
+
   return (
-    <div className="flex flex-col h-full min-w-[280px] max-w-[300px]">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <div
+      className={`flex flex-col h-full w-full min-w-[350px] border-r border-gray-200 dark:border-gray-700`}
+    >
+      <div
+        className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 ${
+          hasStageChanges ? "bg-orange-50 dark:bg-orange-900/20" : ""
+        }`}
+      >
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white whitespace-pre-line">
-            {stage.title}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h3 className="font-semibold text-sm">{stage.title}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {stage.candidates.length} candidate
             {stage.candidates.length !== 1 ? "s" : ""}
           </p>
         </div>
-        {stage.type === "human_interview" && onAddRound && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onAddRound}
-            className="h-8 w-8 p-0"
-            title="Add another human interview round"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {stage.type === "human_interview" &&
+            onAddRound &&
+            !isRemovedStage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onAddRound}
+                className="cursor-pointer text-xs"
+                title="Add another human interview round"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          {stage.type === "human_interview" &&
+            canRemove &&
+            onRemoveRound &&
+            !isRemovedStage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRemoveRound(stage.id)}
+                className="cursor-pointer text-xs"
+                title="Remove this interview round"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+        </div>
       </div>
       {isDragDropReady ? (
         <Droppable droppableId={stage.id}>
@@ -345,25 +404,30 @@ const PipelineColumn: React.FC<{
               }`}
             >
               {stage.candidates.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500">
-                  <div className="text-center">
-                    <Users className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm">No candidates</p>
-                  </div>
+                <div className="flex items-center justify-center h-20 text-xs text-gray-400 dark:text-gray-500">
+                  Empty
                 </div>
               ) : (
-                stage.candidates.map((candidate, index) => (
-                  <CandidateCard
-                    key={candidate.id}
-                    candidate={candidate}
-                    index={index}
-                    onQuickAction={onQuickAction}
-                    onSelect={onSelect}
-                    isSelected={selectedCandidates.has(candidate.id)}
-                    onMove={onMove}
-                    isDragDropReady={isDragDropReady}
-                  />
-                ))
+                stage.candidates.map((candidate, index) => {
+                  // Check if this candidate has pending changes
+                  const candidateHasChanges = pendingChanges.some(
+                    (change) => change.candidateId === candidate.id
+                  );
+
+                  return (
+                    <CandidateCard
+                      key={candidate.id}
+                      candidate={candidate}
+                      index={index}
+                      onQuickAction={onQuickAction}
+                      onSelect={onSelect}
+                      isSelected={selectedCandidates.has(candidate.id)}
+                      onMove={onMove}
+                      isDragDropReady={isDragDropReady}
+                      hasChanges={candidateHasChanges}
+                    />
+                  );
+                })
               )}
               {provided.placeholder}
             </div>
@@ -372,25 +436,30 @@ const PipelineColumn: React.FC<{
       ) : (
         <div className="flex-1 p-3 bg-gray-50 dark:bg-gray-800 overflow-y-auto">
           {stage.candidates.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500">
-              <div className="text-center">
-                <Users className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">No candidates</p>
-              </div>
+            <div className="flex items-center justify-center h-20 text-xs text-gray-400 dark:text-gray-500">
+              Empty
             </div>
           ) : (
-            stage.candidates.map((candidate, index) => (
-              <CandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                index={index}
-                onQuickAction={onQuickAction}
-                onSelect={onSelect}
-                isSelected={selectedCandidates.has(candidate.id)}
-                onMove={onMove}
-                isDragDropReady={isDragDropReady}
-              />
-            ))
+            stage.candidates.map((candidate, index) => {
+              // Check if this candidate has pending changes
+              const candidateHasChanges = pendingChanges.some(
+                (change) => change.candidateId === candidate.id
+              );
+
+              return (
+                <CandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  index={index}
+                  onQuickAction={onQuickAction}
+                  onSelect={onSelect}
+                  isSelected={selectedCandidates.has(candidate.id)}
+                  onMove={onMove}
+                  isDragDropReady={isDragDropReady}
+                  hasChanges={candidateHasChanges}
+                />
+              );
+            })
           )}
         </div>
       )}
@@ -405,19 +474,19 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
   onClose,
 }) => {
   const { toast } = useToast();
+  const [originalStages, setOriginalStages] = useState<PipelineStage[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(
     new Set()
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [scoreFilter, setScoreFilter] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [history, setHistory] = useState<HistoryAction[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const [noteDialog, setNoteDialog] = useState<{
     open: boolean;
     candidate?: Candidate;
   }>({ open: false });
+
   const [newNote, setNewNote] = useState("");
   const [isDragDropReady, setIsDragDropReady] = useState(false);
 
@@ -440,13 +509,12 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
           ...c,
           ai_score: Math.floor(Math.random() * 4) + 7, // Mock scores 7-10
           skills: ["React", "TypeScript", "Node.js"], // Mock skills
-          experience_years: Math.floor(Math.random() * 10) + 2, // Mock experience
           pipeline_stage: "ai_interview",
         })),
       },
       {
         id: "human_interview_1",
-        title: "Human Interview\nround 1",
+        title: "Interview Round 1",
         type: "human_interview",
         round: 1,
         candidates: [],
@@ -465,6 +533,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
       },
     ];
     setStages(initialStages);
+    setOriginalStages(JSON.parse(JSON.stringify(initialStages))); // Deep copy for original state
   }, [interviewedCandidates]);
 
   const filteredStages = stages.map((stage) => ({
@@ -480,41 +549,37 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     }),
   }));
 
-  const addHistoryAction = useCallback(
-    (action: HistoryAction) => {
-      setHistory((prev) => {
-        const newHistory = prev.slice(0, historyIndex + 1);
-        newHistory.push(action);
-        return newHistory;
-      });
-      setHistoryIndex((prev) => prev + 1);
-    },
-    [historyIndex]
-  );
+  const addPendingChange = useCallback((change: PendingChange) => {
+    setPendingChanges((prev) => [...prev, change]);
+  }, []);
 
-  const moveCandidate = (
+  const stageMoveCandidate = (
     candidate: Candidate,
     sourceStageId: string,
     destinationStageId: string
   ) => {
-    setIsLoading(true);
-
-    addHistoryAction({
+    // Add to pending changes
+    addPendingChange({
       type: "move",
+      candidateId: candidate.id,
       sourceStageId,
       destinationStageId,
-      candidateIds: [candidate.id],
       timestamp: Date.now(),
     });
 
+    // Update visual state immediately for preview
     setStages((prev) => {
-      const newStages = [...prev];
-      const sourceStage = newStages.find((s) => s.id === sourceStageId);
-      const destStage = newStages.find((s) => s.id === destinationStageId);
+      const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+      const sourceStage = newStages.find(
+        (s: PipelineStage) => s.id === sourceStageId
+      );
+      const destStage = newStages.find(
+        (s: PipelineStage) => s.id === destinationStageId
+      );
 
       if (sourceStage && destStage) {
         const candidateIndex = sourceStage.candidates.findIndex(
-          (c) => c.id === candidate.id
+          (c: Candidate) => c.id === candidate.id
         );
         if (candidateIndex >= 0) {
           const [moved] = sourceStage.candidates.splice(candidateIndex, 1);
@@ -526,14 +591,6 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
       }
 
       return newStages;
-    });
-
-    setTimeout(() => setIsLoading(false), 300);
-
-    const destStage = stages.find((s) => s.id === destinationStageId);
-    toast({
-      title: "Candidate moved",
-      description: `${candidate.name} moved to ${destStage?.title}`,
     });
   };
 
@@ -547,87 +604,22 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     const targetIndex =
       direction === "next" ? currentStageIndex + 1 : currentStageIndex - 1;
 
-    if (targetIndex < 0 || targetIndex >= stages.length) return;
+    if (targetIndex < 0 || targetIndex >= stages.length) {
+      toast({
+        title: "Cannot move",
+        description: `Cannot move ${
+          direction === "next" ? "forward" : "backward"
+        } from this stage`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     const sourceStageId = stages[currentStageIndex].id;
     const destinationStageId = stages[targetIndex].id;
 
-    moveCandidate(candidate, sourceStageId, destinationStageId);
+    stageMoveCandidate(candidate, sourceStageId, destinationStageId);
   };
-
-  const undo = useCallback(() => {
-    if (historyIndex >= 0) {
-      const action = history[historyIndex];
-      // Reverse the action
-      setStages((prev) => {
-        const newStages = [...prev];
-        const sourceStage = newStages.find(
-          (s) => s.id === action.destinationStageId
-        );
-        const destStage = newStages.find((s) => s.id === action.sourceStageId);
-
-        if (sourceStage && destStage) {
-          action.candidateIds.forEach((candidateId) => {
-            const candidateIndex = sourceStage.candidates.findIndex(
-              (c) => c.id === candidateId
-            );
-            if (candidateIndex >= 0) {
-              const candidate = sourceStage.candidates[candidateIndex];
-              sourceStage.candidates.splice(candidateIndex, 1);
-              destStage.candidates.push({
-                ...candidate,
-                pipeline_stage: destStage.id,
-              });
-            }
-          });
-        }
-        return newStages;
-      });
-      setHistoryIndex((prev) => prev - 1);
-      toast({
-        title: "Action undone",
-        description: "Last action has been undone",
-      });
-    }
-  }, [history, historyIndex, toast]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const action = history[historyIndex + 1];
-      // Reapply the action
-      setStages((prev) => {
-        const newStages = [...prev];
-        const sourceStage = newStages.find(
-          (s) => s.id === action.sourceStageId
-        );
-        const destStage = newStages.find(
-          (s) => s.id === action.destinationStageId
-        );
-
-        if (sourceStage && destStage) {
-          action.candidateIds.forEach((candidateId) => {
-            const candidateIndex = sourceStage.candidates.findIndex(
-              (c) => c.id === candidateId
-            );
-            if (candidateIndex >= 0) {
-              const candidate = sourceStage.candidates[candidateIndex];
-              sourceStage.candidates.splice(candidateIndex, 1);
-              destStage.candidates.push({
-                ...candidate,
-                pipeline_stage: destStage.id,
-              });
-            }
-          });
-        }
-        return newStages;
-      });
-      setHistoryIndex((prev) => prev + 1);
-      toast({
-        title: "Action redone",
-        description: "Action has been redone",
-      });
-    }
-  }, [history, historyIndex, toast]);
 
   const handleSelect = (candidate: Candidate, isSelected: boolean) => {
     setSelectedCandidates((prev) => {
@@ -669,7 +661,13 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
           );
           const nextStage = stages[currentIndex + 1];
           if (nextStage) {
-            moveCandidate(candidate, currentStage.id, nextStage.id);
+            stageMoveCandidate(candidate, currentStage.id, nextStage.id);
+          } else {
+            toast({
+              title: "Cannot move",
+              description: "No next stage available",
+              variant: "destructive",
+            });
           }
         }
         break;
@@ -680,6 +678,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
         });
         break;
       case "add_note":
+        setNewNote(candidate.notes || ""); // Pre-populate with existing notes if any
         setNoteDialog({ open: true, candidate });
         break;
     }
@@ -689,27 +688,119 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     const humanInterviewStages = stages.filter(
       (s) => s.type === "human_interview"
     );
-    const nextRound = humanInterviewStages.length + 1;
 
-    setStages((prev) => {
-      const newStages = [...prev];
-      const insertIndex = newStages.findIndex((s) => s.id === "accepted");
+    // Find the next available round number
+    const existingRounds = humanInterviewStages
+      .map((s) => s.round || 0)
+      .filter((r) => r > 0)
+      .sort((a, b) => a - b);
 
-      newStages.splice(insertIndex, 0, {
-        id: `human_interview_${nextRound}`,
-        title: `Human Interview\nround ${nextRound}`,
-        type: "human_interview",
-        round: nextRound,
-        candidates: [],
+    let nextRound = 1;
+    for (const round of existingRounds) {
+      if (round === nextRound) {
+        nextRound++;
+      } else {
+        break;
+      }
+    }
+
+    const newStageId = `human_interview_${nextRound}`;
+
+    // Check if this stage was previously removed - if so, just remove the remove change
+    const existingRemoveChange = pendingChanges.find(
+      (change) =>
+        change.type === "remove_round" && change.stageId === newStageId
+    );
+
+    if (existingRemoveChange) {
+      // Cancel out the remove by removing it from pending changes
+      setPendingChanges((prev) =>
+        prev.filter((c) => c !== existingRemoveChange)
+      );
+
+      // Add the stage back to visual state if it's not already there
+      const stageExists = stages.some((s) => s.id === newStageId);
+      if (!stageExists) {
+        setStages((prev) => {
+          const newStages = [...prev];
+          const insertIndex = newStages.findIndex((s) => s.id === "accepted");
+
+          newStages.splice(insertIndex, 0, {
+            id: newStageId,
+            title: `Human Interview\nround ${nextRound}`,
+            type: "human_interview",
+            round: nextRound,
+            candidates: [],
+          });
+
+          return newStages;
+        });
+      }
+    } else {
+      // Add new stage
+      addPendingChange({
+        type: "add_round",
+        stageId: newStageId,
+        roundNumber: nextRound,
+        timestamp: Date.now(),
       });
 
-      return newStages;
-    });
+      setStages((prev) => {
+        const newStages = [...prev];
+        const insertIndex = newStages.findIndex((s) => s.id === "accepted");
 
-    toast({
-      title: "Round added",
-      description: `Added Human Interview Round ${nextRound}`,
-    });
+        newStages.splice(insertIndex, 0, {
+          id: newStageId,
+          title: `Interview Round ${nextRound}`,
+          type: "human_interview",
+          round: nextRound,
+          candidates: [],
+        });
+
+        return newStages;
+      });
+    }
+  };
+
+  const removeHumanInterviewRound = (stageId: string) => {
+    const stageToRemove = stages.find((s) => s.id === stageId);
+
+    if (!stageToRemove) return;
+
+    // Check if there are candidates in this stage
+    if (stageToRemove.candidates.length > 0) {
+      toast({
+        title: "Cannot remove round",
+        description: `Cannot remove round with ${
+          stageToRemove.candidates.length
+        } candidate${
+          stageToRemove.candidates.length !== 1 ? "s" : ""
+        }. Move candidates first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if this stage was previously added - if so, just remove the add change
+    const existingAddChange = pendingChanges.find(
+      (change) => change.type === "add_round" && change.stageId === stageId
+    );
+
+    if (existingAddChange) {
+      // Cancel out the add by removing it from pending changes
+      setPendingChanges((prev) => prev.filter((c) => c !== existingAddChange));
+    } else {
+      // Mark existing stage for removal
+      addPendingChange({
+        type: "remove_round",
+        stageId: stageId,
+        roundNumber: stageToRemove.round,
+        timestamp: Date.now(),
+      });
+    }
+
+    // Remove the stage from visual state
+    setStages((prev) => prev.filter((s) => s.id !== stageId));
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -732,31 +823,39 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     const candidate = sourceStage?.candidates.find((c) => c.id === draggableId);
 
     if (candidate) {
-      moveCandidate(candidate, source.droppableId, destination.droppableId);
+      stageMoveCandidate(
+        candidate,
+        source.droppableId,
+        destination.droppableId
+      );
     }
   };
 
   const saveNote = () => {
     if (noteDialog.candidate && newNote.trim()) {
+      addPendingChange({
+        type: "add_note",
+        candidateId: noteDialog.candidate.id,
+        note: newNote.trim(),
+        timestamp: Date.now(),
+      });
+
+      // Update visual state immediately
       setStages((prev) => {
-        const newStages = [...prev];
-        const stageIndex = newStages.findIndex((s) =>
-          s.candidates.some((c) => c.id === noteDialog.candidate?.id)
+        const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+        const stageIndex = newStages.findIndex((s: PipelineStage) =>
+          s.candidates.some((c: Candidate) => c.id === noteDialog.candidate?.id)
         );
 
         if (stageIndex >= 0) {
           const candidateIndex = newStages[stageIndex].candidates.findIndex(
-            (c) => c.id === noteDialog.candidate?.id
+            (c: Candidate) => c.id === noteDialog.candidate?.id
           );
 
           if (candidateIndex >= 0) {
             newStages[stageIndex].candidates[candidateIndex] = {
               ...newStages[stageIndex].candidates[candidateIndex],
-              notes: [
-                ...(newStages[stageIndex].candidates[candidateIndex].notes ||
-                  []),
-                newNote.trim(),
-              ],
+              notes: newNote.trim(),
             };
           }
         }
@@ -764,165 +863,266 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
         return newStages;
       });
 
-      toast({
-        title: "Note added",
-        description: `Note added for ${noteDialog.candidate.name}`,
-      });
-
       setNoteDialog({ open: false });
       setNewNote("");
     }
   };
 
+  const saveAllChanges = async () => {
+    if (pendingChanges.length === 0) {
+      toast({
+        title: "No changes",
+        description: "No changes to save",
+      });
+      return;
+    }
+
+    // Here you would make API calls to save the changes
+    // For now, we'll just simulate the save and update the original state
+    setOriginalStages(JSON.parse(JSON.stringify(stages)));
+    setPendingChanges([]);
+
+    const addedRounds = pendingChanges.filter(
+      (c) => c.type === "add_round"
+    ).length;
+    const removedRounds = pendingChanges.filter(
+      (c) => c.type === "remove_round"
+    ).length;
+    const movedCandidates = pendingChanges.filter(
+      (c) => c.type === "move"
+    ).length;
+    const addedNotes = pendingChanges.filter(
+      (c) => c.type === "add_note"
+    ).length;
+
+    let description = `${pendingChanges.length} changes saved`;
+    const details = [];
+    if (addedRounds > 0)
+      details.push(`${addedRounds} round${addedRounds !== 1 ? "s" : ""} added`);
+    if (removedRounds > 0)
+      details.push(
+        `${removedRounds} round${removedRounds !== 1 ? "s" : ""} removed`
+      );
+    if (movedCandidates > 0)
+      details.push(
+        `${movedCandidates} candidate${movedCandidates !== 1 ? "s" : ""} moved`
+      );
+    if (addedNotes > 0)
+      details.push(`${addedNotes} note${addedNotes !== 1 ? "s" : ""} added`);
+
+    if (details.length > 0) {
+      description = details.join(", ");
+    }
+
+    toast({
+      title: "Changes saved",
+      description: description,
+    });
+  };
+
+  const discardChanges = () => {
+    // Reset to original state
+    setStages(JSON.parse(JSON.stringify(originalStages)));
+    setPendingChanges([]);
+    setSelectedCandidates(new Set());
+
+    toast({
+      title: "Changes discarded",
+      description: "All pending changes have been discarded",
+    });
+  };
+
+  const hasUnsavedChanges = pendingChanges.length > 0;
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Candidate Pipeline
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {jobTitle} •{" "}
-            {stages.reduce((acc, stage) => acc + stage.candidates.length, 0)}{" "}
-            total candidates
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={undo}
-            disabled={historyIndex < 0}
-          >
-            <Undo className="h-4 w-4 mr-1" />
-            Undo
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={redo}
-            disabled={historyIndex >= history.length - 1}
-          >
-            <Redo className="h-4 w-4 mr-1" />
-            Redo
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+      <div className="flex flex-col gap-2 mx-2">
+        <DrawerHeader className="flex flex-row justify-between items-center w-full p-5 py-0">
+          <div className="flex flex-col gap-2 items-start">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Candidate Pipeline
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {jobTitle}
+              <span className="mx-2">•</span>
+              {stages.reduce(
+                (acc, stage) => acc + stage.candidates.length,
+                0
+              )}{" "}
+              total candidates
+              {selectedCandidates.size > 0 && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span className="text-app-blue-600 font-medium">
+                    {selectedCandidates.size} selected
+                  </span>
+                </>
+              )}
+              {hasUnsavedChanges && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span className="text-app-blue-600 font-medium">
+                    {pendingChanges.length} unsaved change
+                    {pendingChanges.length !== 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={discardChanges}
+                  className="cursor-pointer text-xs"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Discard
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={saveAllChanges}
+                  className="cursor-pointer text-xs"
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Save Changes
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              className="cursor-pointer text-xs"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </DrawerHeader>
+        <div className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search candidates by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {scoreFilter && (
+                  <Badge variant="secondary" className="ml-2">
+                    ≥{scoreFilter}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setScoreFilter(null)}>
+                All Scores
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setScoreFilter(8)}>
+                Score ≥ 8
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setScoreFilter(6)}>
+                Score ≥ 6
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Bulk Select
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleBulkSelection(8)}>
+                Select all with score ≥ 8
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleBulkSelection(6)}>
+                Select all with score ≥ 6
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setSelectedCandidates(new Set())}
+              >
+                Clear selection
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search candidates by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-              {scoreFilter && (
-                <Badge variant="secondary" className="ml-2">
-                  ≥{scoreFilter}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setScoreFilter(null)}>
-              All Scores
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setScoreFilter(8)}>
-              Score ≥ 8
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScoreFilter(6)}>
-              Score ≥ 6
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <CheckSquare className="mr-2 h-4 w-4" />
-              Bulk Select
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleBulkSelection(8)}>
-              Select all with score ≥ 8
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkSelection(6)}>
-              Select all with score ≥ 6
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSelectedCandidates(new Set())}>
-              Clear selection
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {selectedCandidates.size > 0 && (
-          <Badge variant="secondary">{selectedCandidates.size} selected</Badge>
-        )}
-      </div>
-
-      {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 p-3">
-        <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
-          <Move className="h-4 w-4" />
-          Drag and drop candidates between stages or use the arrow buttons on
-          cards.
-          <span className="text-xs opacity-75">
-            (Multi-select with Ctrl/Cmd + click)
-          </span>
-        </p>
-      </div>
 
       {/* Pipeline Board */}
       {isDragDropReady ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-hidden">
-            {isLoading && (
-              <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Moving candidate...</span>
-                </div>
-              </div>
-            )}
-
             <div className="flex h-full overflow-x-auto">
-              {filteredStages.map((stage) => (
-                <PipelineColumn
-                  key={stage.id}
-                  stage={stage}
-                  onQuickAction={handleQuickAction}
-                  onSelect={handleSelect}
-                  selectedCandidates={selectedCandidates}
-                  onMove={handleMove}
-                  isDragDropReady={isDragDropReady}
-                  onAddRound={
-                    stage.type === "human_interview" &&
-                    stage.id ===
-                      filteredStages
-                        .filter((s) => s.type === "human_interview")
-                        .slice(-1)[0]?.id
-                      ? addHumanInterviewRound
-                      : undefined
-                  }
-                />
-              ))}
+              {filteredStages.map((stage) => {
+                // Check the pending changes for this specific stage
+                const addChange = pendingChanges.find(
+                  (change) =>
+                    change.type === "add_round" && change.stageId === stage.id
+                );
+
+                const removeChange = pendingChanges.find(
+                  (change) =>
+                    change.type === "remove_round" &&
+                    change.stageId === stage.id
+                );
+
+                const isNewStage = !!addChange && !removeChange;
+                const isRemovedStage = !!removeChange && !addChange;
+
+                // Check if this stage can be removed (only the highest round)
+                const humanStages = filteredStages.filter(
+                  (s) => s.type === "human_interview"
+                );
+                const highestRoundStage = humanStages.sort(
+                  (a, b) => (b.round || 0) - (a.round || 0)
+                )[0];
+                const canRemove =
+                  stage.type === "human_interview" &&
+                  typeof stage.round === "number" &&
+                  stage.round > 1 &&
+                  stage.id === highestRoundStage?.id;
+
+                return (
+                  <PipelineColumn
+                    key={stage.id}
+                    stage={stage}
+                    onQuickAction={handleQuickAction}
+                    onSelect={handleSelect}
+                    selectedCandidates={selectedCandidates}
+                    onMove={handleMove}
+                    isDragDropReady={isDragDropReady}
+                    pendingChanges={pendingChanges}
+                    isNewStage={isNewStage}
+                    isRemovedStage={isRemovedStage}
+                    canRemove={canRemove}
+                    onAddRound={
+                      stage.type === "human_interview" &&
+                      stage.id === highestRoundStage?.id
+                        ? addHumanInterviewRound
+                        : undefined
+                    }
+                    onRemoveRound={
+                      canRemove ? removeHumanInterviewRound : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         </DragDropContext>
@@ -943,10 +1143,17 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
         onOpenChange={(open) => setNoteDialog({ open })}
       >
         <DialogContent>
-          <DialogTitle>Add Note</DialogTitle>
-          <DialogDescription>
-            Add a note for {noteDialog.candidate?.name}
-          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle>
+              {noteDialog.candidate?.notes ? "Edit Note" : "Add Note"}
+            </DialogTitle>
+            <DialogDescription>
+              {noteDialog.candidate?.notes
+                ? "Edit the note for"
+                : "Add a note for"}{" "}
+              {noteDialog.candidate?.name}
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <Textarea
               placeholder="Enter your note..."
@@ -959,11 +1166,17 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
             <Button
               variant="outline"
               onClick={() => setNoteDialog({ open: false })}
+              className="cursor-pointer text-xs"
             >
               Cancel
             </Button>
-            <Button onClick={saveNote} disabled={!newNote.trim()}>
-              Save Note
+            <Button
+              variant="outline"
+              onClick={saveNote}
+              disabled={!newNote.trim()}
+              className="cursor-pointer text-xs"
+            >
+              {noteDialog.candidate?.notes ? "Update Note" : "Add Note"}
             </Button>
           </DialogFooter>
         </DialogContent>

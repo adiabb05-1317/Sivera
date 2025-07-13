@@ -1,8 +1,24 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
+// Dynamically import drag and drop components to avoid SSR issues
+const DragDropContext = dynamic(
+  () => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext),
+  { ssr: false }
+);
+const Droppable = dynamic(
+  () => import("@hello-pangea/dnd").then((mod) => mod.Droppable),
+  { ssr: false }
+);
+const Draggable = dynamic(
+  () => import("@hello-pangea/dnd").then((mod) => mod.Draggable),
+  { ssr: false }
+);
+
+import type { DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -24,6 +40,12 @@ import {
   ArrowRight,
   GitBranch,
   Kanban,
+  Search,
+  Filter,
+  MessageSquare,
+  CheckSquare,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,7 +58,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import {
   Select,
   SelectTrigger,
@@ -61,11 +82,17 @@ import {
   getCookie,
   getUserContext,
 } from "@/lib/auth-client";
-import { Label } from "recharts";
 import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
-import { PhoneScreenStatus } from "@/components/ui/phone-screen-status";
 import { InterviewAnalytics } from "@/components/ui/interview-analytics";
-import { CandidatePipeline } from "@/components/ui/candidate-pipeline";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Status badge color mapping using only app colors
 const getCandidateStatusBadgeClass = (status: string) => {
@@ -433,6 +460,30 @@ interface Candidate {
   completed_at?: string;
   created_at?: string;
   resume_url?: string;
+  ai_score?: number;
+  skills?: string[];
+  experience_years?: number;
+  notes?: string;
+  pipeline_stage?: string;
+}
+
+interface PipelineStage {
+  id: string;
+  title: string;
+  type: "ai_interview" | "human_interview" | "accepted" | "rejected";
+  candidates: Candidate[];
+  round?: number;
+}
+
+interface PendingChange {
+  type: "move" | "add_note" | "add_round" | "remove_round";
+  candidateId?: string;
+  sourceStageId?: string;
+  destinationStageId?: string;
+  note?: string;
+  roundNumber?: number;
+  stageId?: string;
+  timestamp: number;
 }
 
 interface Job {
@@ -484,7 +535,6 @@ export default function InterviewDetailsPage() {
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
     []
   );
-  const [showAllCandidates, setShowAllCandidates] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
   const [bulkPhoneScreenOpen, setBulkPhoneScreenOpen] = useState(false);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
@@ -492,7 +542,6 @@ export default function InterviewDetailsPage() {
     "draft" | "active" | "completed"
   >("draft");
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
-  const [pipelineOpen, setPipelineOpen] = useState(false);
 
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -515,6 +564,22 @@ export default function InterviewDetailsPage() {
     []
   );
   const [newQuestion, setNewQuestion] = useState("");
+
+  // Pipeline state
+  const [originalStages, setOriginalStages] = useState<PipelineStage[]>([]);
+  const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(
+    new Set()
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [scoreFilter, setScoreFilter] = useState<number | null>(null);
+  const [noteDialog, setNoteDialog] = useState<{
+    open: boolean;
+    candidate?: Candidate;
+  }>({ open: false });
+  const [newNote, setNewNote] = useState("");
+  const [isDragDropReady, setIsDragDropReady] = useState(false);
 
   const { toast } = useToast();
 
@@ -547,6 +612,121 @@ export default function InterviewDetailsPage() {
       setSelectedTimer(10);
     }
   }, [selectedSkills.length]);
+
+  // Check if drag and drop components are ready
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsDragDropReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Initialize pipeline stages
+  useEffect(() => {
+    if (invitedCandidates.length > 0) {
+      // Categorize candidates based on their status
+      const appliedCandidates: Candidate[] = [];
+      const aiInterviewCandidates: Candidate[] = [];
+      const humanInterviewCandidates: Candidate[] = [];
+      const acceptedCandidates: Candidate[] = [];
+      const rejectedCandidates: Candidate[] = [];
+
+      invitedCandidates.forEach((candidate) => {
+        const candidateWithExtras = {
+          ...candidate,
+          ai_score: Math.floor(Math.random() * 4) + 7, // Mock scores 7-10
+          skills: ["React", "TypeScript", "Node.js"], // Mock skills
+        };
+
+        // Determine stage based on interview_status or status
+        const status =
+          candidate.interview_status?.toLowerCase() ||
+          candidate.status?.toLowerCase();
+
+        switch (status) {
+          case "applied":
+          case "screening":
+          case "invited":
+            appliedCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "applied",
+            });
+            break;
+          case "interviewed":
+          case "completed":
+            aiInterviewCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "ai_interview",
+            });
+            break;
+          case "interview_scheduled":
+          case "scheduled":
+          case "started":
+            humanInterviewCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "human_interview_1",
+            });
+            break;
+          case "hired":
+            acceptedCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "accepted",
+            });
+            break;
+          case "rejected":
+          case "on_hold":
+            rejectedCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "rejected",
+            });
+            break;
+          default:
+            // Default to applied for unknown statuses
+            appliedCandidates.push({
+              ...candidateWithExtras,
+              pipeline_stage: "applied",
+            });
+            break;
+        }
+      });
+
+      const initialStages: PipelineStage[] = [
+        {
+          id: "applied",
+          title: "Applied",
+          type: "ai_interview", // Using ai_interview type but could be a new "applied" type
+          candidates: appliedCandidates,
+        },
+        {
+          id: "ai_interview",
+          title: "AI Interview",
+          type: "ai_interview",
+          candidates: aiInterviewCandidates,
+        },
+        {
+          id: "human_interview_1",
+          title: "Interview Round 1",
+          type: "human_interview",
+          round: 1,
+          candidates: humanInterviewCandidates,
+        },
+        {
+          id: "accepted",
+          title: "Accepted",
+          type: "accepted",
+          candidates: acceptedCandidates,
+        },
+        {
+          id: "rejected",
+          title: "Rejected",
+          type: "rejected",
+          candidates: rejectedCandidates,
+        },
+      ];
+      setStages(initialStages);
+      setOriginalStages(JSON.parse(JSON.stringify(initialStages))); // Deep copy for original state
+    }
+  }, [invitedCandidates]);
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) => {
@@ -617,6 +797,405 @@ export default function InterviewDetailsPage() {
       addPhoneScreenQuestion();
     }
   };
+
+  // Pipeline functions
+  const addPendingChange = useCallback((change: PendingChange) => {
+    setPendingChanges((prev) => [...prev, change]);
+  }, []);
+
+  const filteredStages = stages.map((stage) => ({
+    ...stage,
+    candidates: stage.candidates.filter((candidate) => {
+      const matchesSearch =
+        candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        candidate.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesScore =
+        scoreFilter === null ||
+        (candidate.ai_score && candidate.ai_score >= scoreFilter);
+      return matchesSearch && matchesScore;
+    }),
+  }));
+
+  const stageMoveCandidate = (
+    candidate: Candidate,
+    sourceStageId: string,
+    destinationStageId: string
+  ) => {
+    // Add to pending changes
+    addPendingChange({
+      type: "move",
+      candidateId: candidate.id,
+      sourceStageId,
+      destinationStageId,
+      timestamp: Date.now(),
+    });
+
+    // Update visual state immediately for preview
+    setStages((prev) => {
+      const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+      const sourceStage = newStages.find(
+        (s: PipelineStage) => s.id === sourceStageId
+      );
+      const destStage = newStages.find(
+        (s: PipelineStage) => s.id === destinationStageId
+      );
+
+      if (sourceStage && destStage) {
+        const candidateIndex = sourceStage.candidates.findIndex(
+          (c: Candidate) => c.id === candidate.id
+        );
+        if (candidateIndex >= 0) {
+          const [moved] = sourceStage.candidates.splice(candidateIndex, 1);
+          destStage.candidates.push({
+            ...moved,
+            pipeline_stage: destinationStageId,
+          });
+        }
+      }
+
+      return newStages;
+    });
+  };
+
+  const handleMove = (candidate: Candidate, direction: "next" | "prev") => {
+    const currentStageIndex = stages.findIndex((s) =>
+      s.candidates.some((c) => c.id === candidate.id)
+    );
+
+    if (currentStageIndex === -1) return;
+
+    const targetIndex =
+      direction === "next" ? currentStageIndex + 1 : currentStageIndex - 1;
+
+    if (targetIndex < 0 || targetIndex >= stages.length) {
+      toast({
+        title: "Cannot move",
+        description: `Cannot move ${
+          direction === "next" ? "forward" : "backward"
+        } from this stage`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const sourceStageId = stages[currentStageIndex].id;
+    const destinationStageId = stages[targetIndex].id;
+
+    stageMoveCandidate(candidate, sourceStageId, destinationStageId);
+  };
+
+  const handleSelect = (candidate: Candidate, isSelected: boolean) => {
+    setSelectedCandidates((prev) => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(candidate.id);
+      } else {
+        newSet.delete(candidate.id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkSelection = (scoreThreshold: number) => {
+    const candidatesAboveScore = stages
+      .flatMap((stage) => stage.candidates)
+      .filter(
+        (candidate) =>
+          candidate.ai_score && candidate.ai_score >= scoreThreshold
+      )
+      .map((candidate) => candidate.id);
+
+    setSelectedCandidates(new Set(candidatesAboveScore));
+    toast({
+      title: "Bulk selection",
+      description: `Selected ${candidatesAboveScore.length} candidates with score ≥ ${scoreThreshold}`,
+    });
+  };
+
+  const handleQuickAction = (action: string, candidate: Candidate) => {
+    switch (action) {
+      case "next_round":
+        const currentStage = stages.find((s) =>
+          s.candidates.some((c) => c.id === candidate.id)
+        );
+        if (currentStage) {
+          const currentIndex = stages.findIndex(
+            (s) => s.id === currentStage.id
+          );
+          const nextStage = stages[currentIndex + 1];
+          if (nextStage) {
+            stageMoveCandidate(candidate, currentStage.id, nextStage.id);
+          } else {
+            toast({
+              title: "Cannot move",
+              description: "No next stage available",
+              variant: "destructive",
+            });
+          }
+        }
+        break;
+      case "schedule":
+        toast({
+          title: "Schedule Interview",
+          description: `Scheduling interview for ${candidate.name}`,
+        });
+        break;
+      case "add_note":
+        setNewNote(candidate.notes || ""); // Pre-populate with existing notes if any
+        setNoteDialog({ open: true, candidate });
+        break;
+    }
+  };
+
+  const addHumanInterviewRound = () => {
+    const humanInterviewStages = stages.filter(
+      (s) => s.type === "human_interview"
+    );
+
+    // Find the next available round number
+    const existingRounds = humanInterviewStages
+      .map((s) => s.round || 0)
+      .filter((r) => r > 0)
+      .sort((a, b) => a - b);
+
+    let nextRound = 1;
+    for (const round of existingRounds) {
+      if (round === nextRound) {
+        nextRound++;
+      } else {
+        break;
+      }
+    }
+
+    const newStageId = `human_interview_${nextRound}`;
+
+    // Check if this stage was previously removed - if so, just remove the remove change
+    const existingRemoveChange = pendingChanges.find(
+      (change) =>
+        change.type === "remove_round" && change.stageId === newStageId
+    );
+
+    if (existingRemoveChange) {
+      // Cancel out the remove by removing it from pending changes
+      setPendingChanges((prev) =>
+        prev.filter((c) => c !== existingRemoveChange)
+      );
+
+      // Add the stage back to visual state if it's not already there
+      const stageExists = stages.some((s) => s.id === newStageId);
+      if (!stageExists) {
+        setStages((prev) => {
+          const newStages = [...prev];
+          const insertIndex = newStages.findIndex((s) => s.id === "accepted");
+
+          newStages.splice(insertIndex, 0, {
+            id: newStageId,
+            title: `Human Interview\nround ${nextRound}`,
+            type: "human_interview",
+            round: nextRound,
+            candidates: [],
+          });
+
+          return newStages;
+        });
+      }
+    } else {
+      // Add new stage
+      addPendingChange({
+        type: "add_round",
+        stageId: newStageId,
+        roundNumber: nextRound,
+        timestamp: Date.now(),
+      });
+
+      setStages((prev) => {
+        const newStages = [...prev];
+        const insertIndex = newStages.findIndex((s) => s.id === "accepted");
+
+        newStages.splice(insertIndex, 0, {
+          id: newStageId,
+          title: `Interview Round ${nextRound}`,
+          type: "human_interview",
+          round: nextRound,
+          candidates: [],
+        });
+
+        return newStages;
+      });
+    }
+  };
+
+  const removeHumanInterviewRound = (stageId: string) => {
+    const stageToRemove = stages.find((s) => s.id === stageId);
+
+    if (!stageToRemove) return;
+
+    // Check if there are candidates in this stage
+    if (stageToRemove.candidates.length > 0) {
+      toast({
+        title: "Cannot remove round",
+        description: `Cannot remove round with ${
+          stageToRemove.candidates.length
+        } candidate${
+          stageToRemove.candidates.length !== 1 ? "s" : ""
+        }. Move candidates first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if this stage was previously added - if so, just remove the add change
+    const existingAddChange = pendingChanges.find(
+      (change) => change.type === "add_round" && change.stageId === stageId
+    );
+
+    if (existingAddChange) {
+      // Cancel out the add by removing it from pending changes
+      setPendingChanges((prev) => prev.filter((c) => c !== existingAddChange));
+    } else {
+      // Mark existing stage for removal
+      addPendingChange({
+        type: "remove_round",
+        stageId: stageId,
+        roundNumber: stageToRemove.round,
+        timestamp: Date.now(),
+      });
+    }
+
+    // Remove the stage from visual state
+    setStages((prev) => prev.filter((s) => s.id !== stageId));
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    const { source, destination, draggableId } = result;
+
+    // If dropped in the same place, do nothing
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // Find the candidate
+    const sourceStage = stages.find((s) => s.id === source.droppableId);
+    const candidate = sourceStage?.candidates.find((c) => c.id === draggableId);
+
+    if (candidate) {
+      stageMoveCandidate(
+        candidate,
+        source.droppableId,
+        destination.droppableId
+      );
+    }
+  };
+
+  const saveNote = () => {
+    if (noteDialog.candidate && newNote.trim()) {
+      addPendingChange({
+        type: "add_note",
+        candidateId: noteDialog.candidate.id,
+        note: newNote.trim(),
+        timestamp: Date.now(),
+      });
+
+      // Update visual state immediately
+      setStages((prev) => {
+        const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+        const stageIndex = newStages.findIndex((s: PipelineStage) =>
+          s.candidates.some((c: Candidate) => c.id === noteDialog.candidate?.id)
+        );
+
+        if (stageIndex >= 0) {
+          const candidateIndex = newStages[stageIndex].candidates.findIndex(
+            (c: Candidate) => c.id === noteDialog.candidate?.id
+          );
+
+          if (candidateIndex >= 0) {
+            newStages[stageIndex].candidates[candidateIndex] = {
+              ...newStages[stageIndex].candidates[candidateIndex],
+              notes: newNote.trim(),
+            };
+          }
+        }
+
+        return newStages;
+      });
+
+      setNoteDialog({ open: false });
+      setNewNote("");
+    }
+  };
+
+  const saveAllChanges = async () => {
+    if (pendingChanges.length === 0) {
+      toast({
+        title: "No changes",
+        description: "No changes to save",
+      });
+      return;
+    }
+
+    // Here you would make API calls to save the changes
+    // For now, we'll just simulate the save and update the original state
+    setOriginalStages(JSON.parse(JSON.stringify(stages)));
+    setPendingChanges([]);
+
+    const addedRounds = pendingChanges.filter(
+      (c) => c.type === "add_round"
+    ).length;
+    const removedRounds = pendingChanges.filter(
+      (c) => c.type === "remove_round"
+    ).length;
+    const movedCandidates = pendingChanges.filter(
+      (c) => c.type === "move"
+    ).length;
+    const addedNotes = pendingChanges.filter(
+      (c) => c.type === "add_note"
+    ).length;
+
+    let description = `${pendingChanges.length} changes saved`;
+    const details = [];
+    if (addedRounds > 0)
+      details.push(`${addedRounds} round${addedRounds !== 1 ? "s" : ""} added`);
+    if (removedRounds > 0)
+      details.push(
+        `${removedRounds} round${removedRounds !== 1 ? "s" : ""} removed`
+      );
+    if (movedCandidates > 0)
+      details.push(
+        `${movedCandidates} candidate${movedCandidates !== 1 ? "s" : ""} moved`
+      );
+    if (addedNotes > 0)
+      details.push(`${addedNotes} note${addedNotes !== 1 ? "s" : ""} added`);
+
+    if (details.length > 0) {
+      description = details.join(", ");
+    }
+
+    toast({
+      title: "Changes saved",
+      description: description,
+    });
+  };
+
+  const discardChanges = () => {
+    // Reset to original state
+    setStages(JSON.parse(JSON.stringify(originalStages)));
+    setPendingChanges([]);
+    setSelectedCandidates(new Set());
+
+    toast({
+      title: "Changes discarded",
+      description: "All pending changes have been discarded",
+    });
+  };
+
+  const hasUnsavedChanges = pendingChanges.length > 0;
 
   // Update local state when store data changes
   useEffect(() => {
@@ -914,8 +1493,364 @@ export default function InterviewDetailsPage() {
     }
   };
 
+  // CandidateCard Component
+  const CandidateCard: React.FC<{
+    candidate: Candidate;
+    index: number;
+    onQuickAction: (action: string, candidate: Candidate) => void;
+    onSelect: (candidate: Candidate, isSelected: boolean) => void;
+    isSelected: boolean;
+    onMove: (candidate: Candidate, direction: "next" | "prev") => void;
+    isDragDropReady?: boolean;
+    hasChanges?: boolean;
+  }> = ({
+    candidate,
+    index,
+    onQuickAction,
+    onSelect,
+    isSelected,
+    onMove,
+    isDragDropReady = false,
+    hasChanges = false,
+  }) => {
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelect(candidate, !isSelected);
+      }
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+      // Don't toggle selection if clicking on action buttons or dropdown menus
+      const target = e.target as HTMLElement;
+      if (
+        target.closest("button:not([data-radix-collection-item])") ||
+        target.closest('[role="menuitem"]') ||
+        target.closest("[data-radix-dropdown-menu-content]")
+      ) {
+        return;
+      }
+      onSelect(candidate, !isSelected);
+    };
+
+    const cardContent = (
+      <div
+        className={`relative bg-white dark:bg-gray-900 rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 group select-none ${
+          hasChanges
+            ? "border-orange-400/60 bg-orange-50 dark:bg-orange-900/20"
+            : isSelected
+            ? "border-app-blue-500/60 bg-app-blue-50 dark:bg-app-blue-900/20"
+            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+        } shadow-sm hover:shadow-md`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+        aria-selected={isSelected}
+        title="Click to select candidate"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) =>
+                onSelect(candidate, checked as boolean)
+              }
+              className="cursor-pointer"
+            />
+            <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
+              {candidate.name.length > 15
+                ? candidate.name.slice(0, 15) + "..."
+                : candidate.name}
+            </h4>
+          </div>
+          <div className="flex items-center gap-3 min-w-[85px] justify-end">
+            <Badge
+              variant="outline"
+              className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickAction("add_note", candidate);
+              }}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {candidate.notes ? "Edit Note" : "Add Note"}
+            </Badge>
+            <div className="gap-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(candidate, "prev");
+                }}
+                title="Move to previous stage"
+              >
+                <ArrowLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(candidate, "next");
+                }}
+                title="Move to next stage"
+              >
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
+          {candidate.email}
+        </p>
+
+        {/* Content area with space for bottom-right score */}
+        <div className="pr-12">
+          {candidate.notes && (
+            <Badge variant="outline" className="my-1">
+              Has Notes
+            </Badge>
+          )}
+        </div>
+
+        {/* Score positioned at bottom right */}
+        {candidate.ai_score && (
+          <div className="absolute bottom-3.5 right-3.5">
+            <div className="w-10 h-10">
+              <svg
+                className="w-10 h-10 transform -rotate-90"
+                viewBox="0 0 36 36"
+              >
+                {/* Background circle */}
+                <path
+                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  className="text-slate-200 dark:text-slate-700"
+                />
+                {/* Progress circle */}
+                <path
+                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={`${(candidate.ai_score / 10) * 100}, 100`}
+                  strokeLinecap="round"
+                  className={
+                    candidate.ai_score >= 8
+                      ? "text-emerald-500/60"
+                      : candidate.ai_score >= 6
+                      ? "text-amber-500/60"
+                      : "text-rose-500/60"
+                  }
+                />
+              </svg>
+              {/* Score text */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  className={`text-sm font-bold tracking-tight ${
+                    candidate.ai_score >= 8
+                      ? "text-emerald-600/60 dark:text-emerald-400/60"
+                      : candidate.ai_score >= 6
+                      ? "text-amber-600/60 dark:text-amber-400/60"
+                      : "text-rose-600/60 dark:text-rose-400/60"
+                  }`}
+                >
+                  {candidate.ai_score}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+
+    if (isDragDropReady) {
+      return (
+        <Draggable draggableId={candidate.id} index={index}>
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.draggableProps}
+              {...provided.dragHandleProps}
+              className={snapshot.isDragging ? "rotate-2 scale-105" : ""}
+            >
+              {cardContent}
+            </div>
+          )}
+        </Draggable>
+      );
+    }
+
+    return cardContent;
+  };
+
+  // PipelineColumn Component
+  const PipelineColumn: React.FC<{
+    stage: PipelineStage;
+    onQuickAction: (action: string, candidate: Candidate) => void;
+    onSelect: (candidate: Candidate, isSelected: boolean) => void;
+    selectedCandidates: Set<string>;
+    onAddRound?: () => void;
+    onRemoveRound?: (stageId: string) => void;
+    onMove: (candidate: Candidate, direction: "next" | "prev") => void;
+    isDragDropReady?: boolean;
+    pendingChanges: PendingChange[];
+    isNewStage?: boolean;
+    isRemovedStage?: boolean;
+    canRemove?: boolean;
+  }> = ({
+    stage,
+    onQuickAction,
+    onSelect,
+    selectedCandidates,
+    onAddRound,
+    onRemoveRound,
+    onMove,
+    isDragDropReady = false,
+    pendingChanges,
+    isNewStage = false,
+    isRemovedStage = false,
+    canRemove = false,
+  }) => {
+    // Check if this stage has any pending changes
+    const hasStageChanges = pendingChanges.some(
+      (change) =>
+        change.type === "add_round" ||
+        change.type === "remove_round" ||
+        change.destinationStageId === stage.id ||
+        change.sourceStageId === stage.id
+    );
+
+    return (
+      <div
+        className={`flex flex-col h-full min-w-[280px] flex-1 max-w-[400px] border-r border-gray-200 dark:border-gray-700`}
+      >
+        <div
+          className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 ${
+            hasStageChanges ? "bg-orange-50 dark:bg-orange-900/20" : ""
+          }`}
+        >
+          <div>
+            <h3 className="font-semibold text-sm">{stage.title}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {stage.candidates.length} candidate
+              {stage.candidates.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {stage.type === "human_interview" &&
+              onAddRound &&
+              !isRemovedStage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onAddRound}
+                  className="cursor-pointer text-xs"
+                  title="Add another human interview round"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            {stage.type === "human_interview" &&
+              canRemove &&
+              onRemoveRound &&
+              !isRemovedStage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRemoveRound(stage.id)}
+                  className="cursor-pointer text-xs"
+                  title="Remove this interview round"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+          </div>
+        </div>
+        {isDragDropReady ? (
+          <Droppable droppableId={stage.id}>
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={`flex-1 p-3 overflow-y-auto transition-colors min-h-0 ${
+                  snapshot.isDraggingOver
+                    ? "bg-app-blue-50 dark:bg-app-blue-900/20"
+                    : "bg-gray-50 dark:bg-gray-800"
+                }`}
+              >
+                {stage.candidates.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 dark:text-gray-500">
+                    Empty
+                  </div>
+                ) : (
+                  stage.candidates.map((candidate, index) => {
+                    // Check if this candidate has pending changes
+                    const candidateHasChanges = pendingChanges.some(
+                      (change) => change.candidateId === candidate.id
+                    );
+
+                    return (
+                      <CandidateCard
+                        key={candidate.id}
+                        candidate={candidate}
+                        index={index}
+                        onQuickAction={onQuickAction}
+                        onSelect={onSelect}
+                        isSelected={selectedCandidates.has(candidate.id)}
+                        onMove={onMove}
+                        isDragDropReady={isDragDropReady}
+                        hasChanges={candidateHasChanges}
+                      />
+                    );
+                  })
+                )}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        ) : (
+          <div className="flex-1 p-3 bg-gray-50 dark:bg-gray-800 overflow-y-auto min-h-0">
+            {stage.candidates.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-xs text-gray-400 dark:text-gray-500">
+                Empty
+              </div>
+            ) : (
+              stage.candidates.map((candidate, index) => {
+                // Check if this candidate has pending changes
+                const candidateHasChanges = pendingChanges.some(
+                  (change) => change.candidateId === candidate.id
+                );
+
+                return (
+                  <CandidateCard
+                    key={candidate.id}
+                    candidate={candidate}
+                    index={index}
+                    onQuickAction={onQuickAction}
+                    onSelect={onSelect}
+                    isSelected={selectedCandidates.has(candidate.id)}
+                    onMove={onMove}
+                    isDragDropReady={isDragDropReady}
+                    hasChanges={candidateHasChanges}
+                  />
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-auto">
+    <div className="flex flex-col h-full overflow-auto max-w-full min-w-0">
       <div className="flex items-center m-3 ml-0">
         <Button
           onClick={() => router.push("/dashboard/interviews")}
@@ -949,7 +1884,7 @@ export default function InterviewDetailsPage() {
       ) : (
         <>
           <div
-            className="flex flex-col gap-6 px-4"
+            className="flex flex-col gap-6 px-4 max-w-full overflow-x-hidden min-w-0"
             style={{ minHeight: "calc(100vh - 100px)" }}
           >
             {/* Skills and Timer Configuration */}
@@ -1460,34 +2395,61 @@ export default function InterviewDetailsPage() {
               />
             )}
 
-            {/* Candidates Section */}
-            <Card className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-800 pb-6">
+            {/* Candidate Pipeline Section */}
+            <div className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800 max-w-full overflow-hidden">
+              <div className="border-b border-gray-200 dark:border-gray-800 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-base font-medium tracking-tight dark:text-white flex items-center gap-2">
-                      Candidates
+                      Candidate Pipeline
                     </CardTitle>
                     <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
-                      Manage and track candidate invitations and status.
+                      {job?.title}
+                      <span className="mx-2">•</span>
+                      {stages.reduce(
+                        (acc, stage) => acc + stage.candidates.length,
+                        0
+                      )}{" "}
+                      total candidates
+                      {selectedCandidates.size > 0 && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span className="text-app-blue-600 font-medium">
+                            {selectedCandidates.size} selected
+                          </span>
+                        </>
+                      )}
+                      {hasUnsavedChanges && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span className="text-app-blue-600 font-medium">
+                            {pendingChanges.length} unsaved change
+                            {pendingChanges.length !== 1 ? "s" : ""}
+                          </span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Candidate Pipeline - Show only if there are interviewed candidates */}
-                    {invitedCandidates.some(
-                      (candidate) =>
-                        candidate.interview_status?.toLowerCase() ===
-                          "completed" ||
-                        candidate.status?.toLowerCase() === "completed"
-                    ) && (
-                      <Button
-                        onClick={() => setPipelineOpen(true)}
-                        className="cursor-pointer text-xs"
-                        variant="outline"
-                      >
-                        <Kanban className="mr-2 h-4 w-4" />
-                        View Candidate Pipeline
-                      </Button>
+                    {hasUnsavedChanges && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={discardChanges}
+                          className="cursor-pointer text-xs"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Discard
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={saveAllChanges}
+                          className="cursor-pointer text-xs"
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Save Changes
+                        </Button>
+                      </>
                     )}
 
                     {/* Interview Invitations */}
@@ -1524,8 +2486,74 @@ export default function InterviewDetailsPage() {
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-6">
+                <div className="flex items-center gap-4 mt-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search candidates by name or email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="cursor-pointer text-xs"
+                      >
+                        <Filter className="mr-2 h-4 w-4" />
+                        Filters
+                        {scoreFilter && (
+                          <Badge variant="secondary" className="ml-2">
+                            ≥{scoreFilter}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setScoreFilter(null)}>
+                        All Scores
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setScoreFilter(8)}>
+                        Score ≥ 8
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setScoreFilter(6)}>
+                        Score ≥ 6
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="cursor-pointer text-xs"
+                      >
+                        <CheckSquare className="mr-2 h-4 w-4" />
+                        Bulk Select
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleBulkSelection(8)}>
+                        Select all with score ≥ 8
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleBulkSelection(6)}>
+                        Select all with score ≥ 6
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setSelectedCandidates(new Set())}
+                      >
+                        Clear selection
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="p-0 m-0">
                 {invitedCandidates.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-4" />
@@ -1537,86 +2565,85 @@ export default function InterviewDetailsPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table
-                      className="min-w-full rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-800 table-fixed"
-                      style={{ borderRadius: 12, overflow: "hidden" }}
-                    >
-                      <thead className="bg-gray-50 dark:bg-gray-800">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/4 max-w-[180px] truncate">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/3 max-w-[220px] truncate">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 w-1/5 max-w-[120px] truncate">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                        {(showAllCandidates
-                          ? invitedCandidates
-                          : invitedCandidates.slice(0, 3)
-                        ).map((candidate) => (
-                          <tr
-                            key={candidate.id}
-                            className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
-                            onClick={() => setSelectedCandidate(candidate)}
-                          >
-                            <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white max-w-[180px] truncate overflow-hidden">
-                              {candidate.name}
-                            </td>
-                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 max-w-[220px] truncate overflow-hidden">
-                              {candidate.email}
-                            </td>
-                            <td className="px-6 py-5 whitespace-nowrap text-sm max-w-[120px] truncate overflow-hidden">
-                              <Badge
-                                variant="outline"
-                                className={`${getCandidateStatusBadgeClass(
-                                  candidate.interview_status ||
-                                    candidate.status ||
-                                    "Applied"
-                                )} font-normal text-xs border-[0.5px] opacity-80 truncate inline-block max-w-[100px] overflow-hidden`}
-                              >
-                                {formatStatusText(
-                                  candidate.interview_status ||
-                                    candidate.status ||
-                                    "Applied"
-                                )}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {invitedCandidates.length > 3 && !showAllCandidates && (
-                      <div className="flex justify-center mt-2">
-                        <Button
-                          variant="outline"
-                          className="text-app-blue-6/00 dark:text-app-blue-3/00 border-app-blue-400/80 hover:bg-app-blue-50/40 dark:hover:bg-app-blue-900/40 cursor-pointer text-xs"
-                          onClick={() => setShowAllCandidates(true)}
-                        >
-                          View all
-                        </Button>
-                      </div>
-                    )}
-                    {invitedCandidates.length > 3 && showAllCandidates && (
-                      <div className="flex justify-center mt-2">
-                        <Button
-                          variant="ghost"
-                          className="text-gray-500 dark:text-gray-300 cursor-pointer"
-                          onClick={() => setShowAllCandidates(false)}
-                        >
-                          Show less
-                        </Button>
-                      </div>
-                    )}
+                  <div className="w-full max-w-full overflow-hidden min-w-0">
+                    <div className="h-[700px] w-full overflow-hidden relative">
+                      {/* Pipeline Board */}
+                      {isDragDropReady ? (
+                        <DragDropContext onDragEnd={handleDragEnd}>
+                          <div className="flex h-full w-full overflow-x-auto overflow-y-hidden absolute inset-0 bg-gray-100 dark:bg-gray-950">
+                            {filteredStages.map((stage) => {
+                              // Check the pending changes for this specific stage
+                              const addChange = pendingChanges.find(
+                                (change) =>
+                                  change.type === "add_round" &&
+                                  change.stageId === stage.id
+                              );
+
+                              const removeChange = pendingChanges.find(
+                                (change) =>
+                                  change.type === "remove_round" &&
+                                  change.stageId === stage.id
+                              );
+
+                              const isNewStage = !!addChange && !removeChange;
+                              const isRemovedStage =
+                                !!removeChange && !addChange;
+
+                              // Check if this stage can be removed (only the highest round)
+                              const humanStages = filteredStages.filter(
+                                (s) => s.type === "human_interview"
+                              );
+                              const highestRoundStage = humanStages.sort(
+                                (a, b) => (b.round || 0) - (a.round || 0)
+                              )[0];
+                              const canRemove =
+                                stage.type === "human_interview" &&
+                                typeof stage.round === "number" &&
+                                stage.round > 1 &&
+                                stage.id === highestRoundStage?.id;
+
+                              return (
+                                <PipelineColumn
+                                  key={stage.id}
+                                  stage={stage}
+                                  onQuickAction={handleQuickAction}
+                                  onSelect={handleSelect}
+                                  selectedCandidates={selectedCandidates}
+                                  onMove={handleMove}
+                                  isDragDropReady={isDragDropReady}
+                                  pendingChanges={pendingChanges}
+                                  isNewStage={isNewStage}
+                                  isRemovedStage={isRemovedStage}
+                                  canRemove={canRemove}
+                                  onAddRound={
+                                    stage.type === "human_interview" &&
+                                    stage.id === highestRoundStage?.id
+                                      ? addHumanInterviewRound
+                                      : undefined
+                                  }
+                                  onRemoveRound={
+                                    canRemove
+                                      ? removeHumanInterviewRound
+                                      : undefined
+                                  }
+                                />
+                              );
+                            })}
+                          </div>
+                        </DragDropContext>
+                      ) : (
+                        <div className="flex items-center justify-center h-32">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <span className="ml-2 text-sm text-gray-500">
+                            Loading pipeline...
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Bulk Phone Screen Scheduler */}
@@ -1653,21 +2680,50 @@ export default function InterviewDetailsPage() {
             />
           )}
 
-          {/* Candidate Pipeline Drawer */}
-          <Drawer open={pipelineOpen} onOpenChange={setPipelineOpen}>
-            <DrawerContent className="h-[95vh] p-0">
-              <CandidatePipeline
-                interviewedCandidates={invitedCandidates.filter(
-                  (candidate) =>
-                    candidate.interview_status?.toLowerCase() === "completed" ||
-                    candidate.status?.toLowerCase() === "completed"
-                )}
-                interviewId={id as string}
-                jobTitle={job?.title || "Interview"}
-                onClose={() => setPipelineOpen(false)}
-              />
-            </DrawerContent>
-          </Drawer>
+          {/* Note Dialog */}
+          <Dialog
+            open={noteDialog.open}
+            onOpenChange={(open) => setNoteDialog({ open })}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {noteDialog.candidate?.notes ? "Edit Note" : "Add Note"}
+                </DialogTitle>
+                <DialogDescription>
+                  {noteDialog.candidate?.notes
+                    ? "Edit the note for"
+                    : "Add a note for"}{" "}
+                  {noteDialog.candidate?.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <Textarea
+                  placeholder="Enter your note..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setNoteDialog({ open: false })}
+                  className="cursor-pointer text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={saveNote}
+                  disabled={!newNote.trim()}
+                  className="cursor-pointer text-xs"
+                >
+                  {noteDialog.candidate?.notes ? "Update Note" : "Add Note"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
