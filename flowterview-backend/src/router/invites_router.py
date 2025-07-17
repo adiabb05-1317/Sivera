@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 import secrets
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -28,6 +28,9 @@ class BulkInviteRequest(BaseModel):
     names: List[str] = Field(..., description="List of candidate names")
     job_title: str = Field(..., description="Job title for the interview")
     organization_id: str = Field(..., description="Organization ID")
+    email_type: str = Field(default="interview", description="Type of email: 'interview', 'acceptance', or 'rejection'")
+    stage_type: str = Field(default="ai_interview", description="Stage type: 'ai_interview' or 'human_interview'")
+    round_number: Optional[int] = Field(None, description="Round number for human interviews")
 
 
 class BulkInviteResponse(BaseModel):
@@ -96,10 +99,26 @@ async def create_single_room_and_token(
 
 
 async def create_verification_token_and_send_email(
-    email: str, name: str, job_title: str, interview_id: str, organization_id: str
+    email: str, 
+    name: str, 
+    job_title: str, 
+    interview_id: str, 
+    organization_id: str,
+    email_type: str = "interview",
+    stage_type: str = "ai_interview",
+    round_number: int = None
 ) -> Dict[str, Any]:
     """Create verification token and send email to candidate (same as single invite flow)"""
     try:
+        # For acceptance and rejection emails, we don't need token generation
+        if email_type in ["acceptance", "rejection"]:
+            # Send the email directly without token
+            await send_interview_invite_email(
+                email, name, job_title, "", False, "Sivera", email_type, stage_type, round_number
+            )
+            logger.info(f"{email_type.title()} email sent successfully to {email}")
+            return {"success": True, "email": email, "name": name, "token": ""}
+
         # Generate secure token (same as single invite verification)
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now() + timedelta(days=7)
@@ -120,7 +139,9 @@ async def create_verification_token_and_send_email(
         logger.info(f"Verification token created for {email}")
 
         # Send verification email using the exact same function as single invites
-        await send_interview_invite_email(email, name, job_title, token, False)
+        await send_interview_invite_email(
+            email, name, job_title, token, False, "Sivera", email_type, stage_type, round_number
+        )
 
         logger.info(f"Verification email sent successfully to {email}")
 
@@ -139,9 +160,12 @@ async def process_bulk_invites_background(
     names: List[str],
     job_title: str,
     organization_id: str,
+    email_type: str = "interview",
+    stage_type: str = "ai_interview",
+    round_number: int = None,
 ):
     """Background task to process bulk invites"""
-    logger.info(f"Starting bulk invite processing for {len(candidate_ids)} candidates")
+    logger.info(f"Starting bulk invite processing for {len(candidate_ids)} candidates with email type: {email_type}")
 
     # Phase 1: Create rooms and tokens concurrently
     logger.info("Phase 1: Creating rooms and tokens...")
@@ -159,48 +183,34 @@ async def process_bulk_invites_background(
     for i, result in enumerate(room_results):
         if isinstance(result, Exception):
             logger.error(f"Room creation failed for candidate {candidate_ids[i]}: {result}")
-            failed_rooms.append(
-                {
-                    "candidate_id": candidate_ids[i],
-                    "email": emails[i],
-                    "name": names[i],
-                    "error": str(result),
-                }
-            )
+            failed_rooms.append({"candidate_id": candidate_ids[i], "error": str(result)})
         elif result.get("success"):
-            successful_rooms.append(
-                {
-                    "candidate_id": result["candidate_id"],
-                    "email": emails[i],
-                    "name": names[i],
-                    "candidate_interview_id": result["candidate_interview_id"],
-                    "already_existed": result.get("already_existed", False),
-                }
-            )
+            successful_rooms.append({
+                "candidate_id": result["candidate_id"],
+                "email": emails[i],
+                "name": names[i],
+                "room_url": result["room_url"],
+                "bot_token": result["bot_token"],
+            })
         else:
-            failed_rooms.append(
-                {
-                    "candidate_id": candidate_ids[i],
-                    "email": emails[i],
-                    "name": names[i],
-                    "error": result.get("error", "Unknown error"),
-                }
-            )
+            logger.error(f"Room creation failed for candidate {candidate_ids[i]}: Unknown error")
+            failed_rooms.append({"candidate_id": candidate_ids[i], "error": "Unknown error"})
 
-    # Count new vs existing
-    new_rooms = [r for r in successful_rooms if not r.get("already_existed")]
-    existing_rooms = [r for r in successful_rooms if r.get("already_existed")]
-
-    logger.info(
-        f"Phase 1 complete: {len(new_rooms)} new rooms, {len(existing_rooms)} existing rooms, {len(failed_rooms)} failed"
-    )
+    logger.info(f"Phase 1 complete: {len(successful_rooms)} rooms created, {len(failed_rooms)} failed")
 
     # Phase 2: Create verification tokens and send emails for all successful rooms
     if successful_rooms:
         logger.info("Phase 2: Creating verification tokens and sending emails...")
         email_tasks = [
             create_verification_token_and_send_email(
-                room_data["email"], room_data["name"], job_title, interview_id, organization_id
+                room_data["email"], 
+                room_data["name"], 
+                job_title, 
+                interview_id, 
+                organization_id,
+                email_type,
+                stage_type,
+                round_number
             )
             for room_data in successful_rooms
         ]
@@ -299,6 +309,9 @@ async def bulk_invite_candidates(
             request.names,
             request.job_title,
             request.organization_id,
+            request.email_type,
+            request.stage_type,
+            request.round_number,
         )
 
         return BulkInviteResponse(

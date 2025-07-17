@@ -195,7 +195,7 @@ export default function InterviewsPage() {
           {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm cursor-pointer">
+              <Button variant="outline" className="text-xs cursor-pointer">
                 Sort: {sortBy === "name" ? "Name" : "Date"} (
                 {sortBy === "name"
                   ? sortOrder === "asc"
@@ -209,7 +209,7 @@ export default function InterviewsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-46">
-              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
@@ -227,6 +227,7 @@ export default function InterviewsPage() {
                 Name (A-Z)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("name");
                   setSortOrder("desc");
@@ -242,21 +243,7 @@ export default function InterviewsPage() {
                 Name (Z-A)
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => {
-                  setSortBy("date");
-                  setSortOrder("desc");
-                }}
-              >
-                <Check
-                  className={`mr-2 h-4 w-4 ${
-                    sortBy === "date" && sortOrder === "desc"
-                      ? "opacity-100"
-                      : "opacity-0"
-                  }`}
-                />
-                Date (Newest)
-              </DropdownMenuItem>
-              <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("date");
                   setSortOrder("asc");
@@ -277,18 +264,21 @@ export default function InterviewsPage() {
           {/* Status Filter Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm">
+              <Button variant="outline" className="text-xs">
                 Status{" "}
                 {selectedStatuses.length > 0 && `(${selectedStatuses.length})`}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">
+                Filter by Status
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {uniqueStatuses.map((status) => (
                 <DropdownMenuItem
                   key={status}
+                  className="text-xs"
                   onClick={() => {
                     setSelectedStatuses((prev) =>
                       prev.includes(status)
@@ -310,7 +300,10 @@ export default function InterviewsPage() {
               {selectedStatuses.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setSelectedStatuses([])}>
+                  <DropdownMenuItem
+                    className="text-xs"
+                    onClick={() => setSelectedStatuses([])}
+                  >
                     Clear Status Filters
                   </DropdownMenuItem>
                 </>
@@ -321,17 +314,20 @@ export default function InterviewsPage() {
           {/* User Filter Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm">
+              <Button variant="outline" className="text-xs">
                 User {selectedUsers.length > 0 && `(${selectedUsers.length})`}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filter by User</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">
+                Filter by User
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {uniqueUsers.map((user) => (
                 <DropdownMenuItem
                   key={user}
+                  className="text-xs"
                   onClick={() => {
                     setSelectedUsers((prev) =>
                       prev.includes(user)
@@ -351,7 +347,10 @@ export default function InterviewsPage() {
               {selectedUsers.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setSelectedUsers([])}>
+                  <DropdownMenuItem
+                    className="text-xs"
+                    onClick={() => setSelectedUsers([])}
+                  >
                     Clear User Filters
                   </DropdownMenuItem>
                 </>
@@ -363,7 +362,6 @@ export default function InterviewsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={clearFilters}
               className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >

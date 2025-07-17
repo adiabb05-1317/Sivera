@@ -518,7 +518,7 @@ export default function CandidatesPage() {
           {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm cursor-pointer">
+              <Button variant="outline" className="text-xs cursor-pointer">
                 Sort:{" "}
                 {sortBy === "name"
                   ? "Name"
@@ -538,9 +538,10 @@ export default function CandidatesPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("name");
                   setSortOrder("asc");
@@ -556,6 +557,7 @@ export default function CandidatesPage() {
                 Name (A-Z)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("name");
                   setSortOrder("desc");
@@ -571,6 +573,7 @@ export default function CandidatesPage() {
                 Name (Z-A)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("job");
                   setSortOrder("asc");
@@ -586,6 +589,7 @@ export default function CandidatesPage() {
                 Job Role (A-Z)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("job");
                   setSortOrder("desc");
@@ -601,6 +605,7 @@ export default function CandidatesPage() {
                 Job Role (Z-A)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("date");
                   setSortOrder("desc");
@@ -616,6 +621,7 @@ export default function CandidatesPage() {
                 Date (Newest)
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="text-xs"
                 onClick={() => {
                   setSortBy("date");
                   setSortOrder("asc");
@@ -636,18 +642,21 @@ export default function CandidatesPage() {
           {/* Status Filter Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm cursor-pointer">
+              <Button variant="outline" className="text-xs cursor-pointer">
                 Status{" "}
                 {selectedStatuses.length > 0 && `(${selectedStatuses.length})`}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">
+                Filter by Status
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {uniqueStatuses.map((status) => (
                 <DropdownMenuItem
                   key={status}
+                  className="text-xs"
                   onClick={() => {
                     setSelectedStatuses((prev) =>
                       prev.includes(status)
@@ -669,7 +678,10 @@ export default function CandidatesPage() {
               {selectedStatuses.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setSelectedStatuses([])}>
+                  <DropdownMenuItem
+                    className="text-xs"
+                    onClick={() => setSelectedStatuses([])}
+                  >
                     Clear Status Filters
                   </DropdownMenuItem>
                 </>
@@ -680,18 +692,21 @@ export default function CandidatesPage() {
           {/* Job Role Filter Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm cursor-pointer">
+              <Button variant="outline" className="text-xs cursor-pointer">
                 Job Role{" "}
                 {selectedJobIds.length > 0 && `(${selectedJobIds.length})`}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filter by Job Role</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">
+                Filter by Job Role
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {uniqueJobRoles.map((job) => (
                 <DropdownMenuItem
                   key={job.id}
+                  className="text-xs"
                   onClick={() => {
                     setSelectedJobIds((prev) =>
                       prev.includes(job.id)
@@ -713,7 +728,10 @@ export default function CandidatesPage() {
               {selectedJobIds.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setSelectedJobIds([])}>
+                  <DropdownMenuItem
+                    className="text-xs"
+                    onClick={() => setSelectedJobIds([])}
+                  >
                     Clear Job Role Filters
                   </DropdownMenuItem>
                 </>
@@ -725,7 +743,6 @@ export default function CandidatesPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={clearFilters}
               className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
             >

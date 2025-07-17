@@ -537,7 +537,7 @@ class InterviewFlow:
                                     "organization_id": self.job.get("organization_id"),
                                     "candidate_id": self.candidate_id,
                                     "candidate_interview_id": candidate_interview_id.get("id"),
-                                    "data": json.dumps(analytics),
+                                    "data": analytics,
                                 })
 
                                 self.db.execute_query(

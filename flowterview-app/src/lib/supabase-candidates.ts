@@ -86,7 +86,7 @@ export async function extractSkillsFromJobDetails(
     }
 
     // Call your backend service
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/extract-skills`,
       {
         method: "POST",
@@ -97,7 +97,8 @@ export async function extractSkillsFromJobDetails(
           role: role,
           job_description: jobDescription,
         }),
-      }
+      },
+      false
     );
 
     const data = await response.json();

@@ -55,6 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { DrawerHeader } from "./drawer";
 import { Checkbox } from "./checkbox";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 interface Candidate {
   id: string;
@@ -240,7 +241,7 @@ const CandidateCard: React.FC<{
       </div>
 
       {/* Score positioned at bottom right */}
-      {candidate.ai_score && (
+      {candidate.ai_score && candidate.status === "Interviewed" && (
         <div className="absolute bottom-3.5 right-3.5">
           <div className="w-10 h-10">
             <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
@@ -370,7 +371,7 @@ const PipelineColumn: React.FC<{
                 size="sm"
                 onClick={onAddRound}
                 className="cursor-pointer text-xs"
-                title="Add another human interview round"
+                title="Add another interview round"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -498,6 +499,66 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  // Fetch AI scores for interviewed candidates
+  useEffect(() => {
+    const fetchAIScores = async () => {
+      try {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+
+        // Get candidates with status "Interviewed"
+        const interviewedCandidateIds = interviewedCandidates
+          .filter((c) => c.status === "Interviewed")
+          .map((c) => c.id);
+
+        if (interviewedCandidateIds.length === 0) return;
+
+        // Fetch analytics data for these candidates
+        const response = await authenticatedFetch(
+          `${backendUrl}/api/v1/analytics/interview/${interviewId}/candidates`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              candidate_ids: interviewedCandidateIds,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const analyticsData = await response.json();
+
+          // Update stages with actual AI scores
+          setStages((currentStages) =>
+            currentStages.map((stage) => ({
+              ...stage,
+              candidates: stage.candidates.map((candidate) => {
+                const analytics = analyticsData.find(
+                  (a: any) => a.candidate_id === candidate.id
+                );
+
+                if (analytics && analytics.data?.overall_score) {
+                  return {
+                    ...candidate,
+                    ai_score: analytics.data.overall_score,
+                  };
+                }
+
+                return candidate;
+              }),
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching AI scores:", error);
+      }
+    };
+
+    fetchAIScores();
+  }, [interviewId, interviewedCandidates]);
+
   // Initialize stages
   useEffect(() => {
     const initialStages: PipelineStage[] = [
@@ -507,7 +568,6 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
         type: "ai_interview",
         candidates: interviewedCandidates.map((c) => ({
           ...c,
-          ai_score: Math.floor(Math.random() * 4) + 7, // Mock scores 7-10
           skills: ["React", "TypeScript", "Node.js"], // Mock skills
           pipeline_stage: "ai_interview",
         })),
@@ -727,7 +787,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
 
           newStages.splice(insertIndex, 0, {
             id: newStageId,
-            title: `Human Interview\nround ${nextRound}`,
+            title: `Interview Round ${nextRound}`,
             type: "human_interview",
             round: nextRound,
             candidates: [],

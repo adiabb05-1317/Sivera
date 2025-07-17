@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request
@@ -44,6 +44,14 @@ class BulkCandidateResponse(BaseModel):
     created_count: int
     candidates: List[CandidateOut]
     failed_candidates: List[dict] = []
+
+
+class CandidateUpdate(BaseModel):
+    status: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    resume_url: Optional[str] = None
 
 
 @router.get("/", response_model=List[CandidateOut])
@@ -118,6 +126,40 @@ async def get_candidates_by_job(job_id: str, request: Request):
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{candidate_id}", response_model=CandidateOut)
+async def update_candidate(candidate_id: str, updates: CandidateUpdate, request: Request):
+    try:
+        # Verify organization access
+        organization_id = require_organization(request).organization_id
+        
+        # Fetch the current candidate record
+        current = db.fetch_one("candidates", {"id": candidate_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+            
+        # Verify the candidate belongs to the requesting organization
+        if current.get("organization_id") != organization_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Build update dictionary with only non-None values
+        update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+        
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No valid updates provided")
+            
+        # Add updated timestamp
+        update_dict["updated_at"] = datetime.now().isoformat()
+
+        # Update the candidate
+        db.update("candidates", update_dict, {"id": candidate_id})
+
+        # Fetch and return the updated record
+        updated = db.fetch_one("candidates", {"id": candidate_id})
+        return updated
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/bulk", response_model=BulkCandidateResponse)

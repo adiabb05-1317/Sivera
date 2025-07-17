@@ -46,6 +46,7 @@ import {
   CheckSquare,
   RotateCcw,
   Trash2,
+  MoreVertical,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,6 +77,7 @@ import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { BulkPhoneScreenScheduler } from "@/components/ui/bulk-phone-screen-scheduler";
+import { BulkSelectDialog } from "@/components/ui/bulk-select-dialog";
 import { useInterviewDetails, useCandidates } from "@/hooks/useStores";
 import {
   authenticatedFetch,
@@ -390,10 +392,10 @@ const CandidateViewDialog = ({
                   <Button
                     onClick={() => handleSendInvite(candidate)}
                     variant="outline"
-                    className="cursor-pointer border border-app-blue-500/80 hover:bg-app-blue-500/10 text-app-blue-5/00 hover:text-app-blue-6/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50"
+                    className="cursor-pointer text-xs"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    Invite for Interview
+                    Move to Next Stage
                   </Button>
                 </>
               )}
@@ -433,7 +435,7 @@ const CandidateViewDialog = ({
                     className="cursor-pointer text-xs"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    Invite for Interview
+                    Move to Next Stage
                   </Button>
                 </>
               )}
@@ -476,7 +478,13 @@ interface PipelineStage {
 }
 
 interface PendingChange {
-  type: "move" | "add_note" | "add_round" | "remove_round";
+  type:
+    | "move"
+    | "add_note"
+    | "add_round"
+    | "remove_round"
+    | "send_email"
+    | "update_status";
   candidateId?: string;
   sourceStageId?: string;
   destinationStageId?: string;
@@ -484,6 +492,13 @@ interface PendingChange {
   roundNumber?: number;
   stageId?: string;
   timestamp: number;
+  // Email-specific fields
+  email?: string;
+  name?: string;
+  emailType?: "ai_interview" | "human_interview" | "acceptance" | "rejection";
+  stageType?: "ai_interview" | "human_interview" | "acceptance" | "rejection";
+  // Status update fields
+  newStatus?: string;
 }
 
 interface Job {
@@ -535,8 +550,21 @@ export default function InterviewDetailsPage() {
   const [availableCandidates, setAvailableCandidates] = useState<Candidate[]>(
     []
   );
+  const [hasReadWarning, setHasReadWarning] = useState(false);
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
   const [bulkPhoneScreenOpen, setBulkPhoneScreenOpen] = useState(false);
+  const [bulkSelectOpen, setBulkSelectOpen] = useState(false);
+  const [nextStageInfo, setNextStageInfo] = useState<{
+    title: string;
+    id: string;
+  } | null>(null);
+  const [candidateGroups, setCandidateGroups] = useState<
+    Array<{
+      nextStage: { id: string; title: string };
+      candidates: Candidate[];
+      currentStage: string;
+    }>
+  >([]);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [interviewStatus, setInterviewStatus] = useState<
     "draft" | "active" | "completed"
@@ -580,6 +608,7 @@ export default function InterviewDetailsPage() {
   }>({ open: false });
   const [newNote, setNewNote] = useState("");
   const [isDragDropReady, setIsDragDropReady] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -621,80 +650,143 @@ export default function InterviewDetailsPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Fetch AI scores for interviewed candidates
+  useEffect(() => {
+    const fetchAIScores = async () => {
+      try {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+
+        // Get candidates with status "Interviewed"
+        const interviewedCandidateIds = invitedCandidates
+          .filter(
+            (c) =>
+              c.status === "Interviewed" || c.interview_status === "completed"
+          )
+          .map((c) => c.id);
+
+        if (interviewedCandidateIds.length === 0) return;
+
+        // Fetch analytics data for these candidates
+        const response = await authenticatedFetch(
+          `${backendUrl}/api/v1/analytics/interview/${id}/candidates`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              candidate_ids: interviewedCandidateIds,
+            }),
+          },
+          false
+        );
+
+        if (response.ok) {
+          const analyticsData = await response.json();
+
+          // Update stages with actual AI scores
+          setStages((currentStages) =>
+            currentStages.map((stage) => ({
+              ...stage,
+              candidates: stage.candidates.map((candidate) => {
+                const analytics = analyticsData.find(
+                  (a: any) => a.candidate_id === candidate.id
+                );
+
+                if (analytics && analytics.data?.overall_score) {
+                  return {
+                    ...candidate,
+                    ai_score: analytics.data.overall_score,
+                  };
+                }
+
+                return candidate;
+              }),
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching AI scores:", error);
+      }
+    };
+
+    if (invitedCandidates.length > 0) {
+      fetchAIScores();
+    }
+  }, [id, invitedCandidates]);
+
   // Initialize pipeline stages
   useEffect(() => {
     if (invitedCandidates.length > 0) {
       // Categorize candidates based on their status
       const appliedCandidates: Candidate[] = [];
       const aiInterviewCandidates: Candidate[] = [];
-      const humanInterviewCandidates: Candidate[] = [];
+      const humanInterviewCandidates: { [key: string]: Candidate[] } = {};
       const acceptedCandidates: Candidate[] = [];
       const rejectedCandidates: Candidate[] = [];
 
       invitedCandidates.forEach((candidate) => {
         const candidateWithExtras = {
           ...candidate,
-          ai_score: Math.floor(Math.random() * 4) + 7, // Mock scores 7-10
           skills: ["React", "TypeScript", "Node.js"], // Mock skills
         };
 
-        // Determine stage based on interview_status or status
-        const status =
-          candidate.interview_status?.toLowerCase() ||
-          candidate.status?.toLowerCase();
+        // Use the actual status from backend
+        const status = candidate.status;
 
-        switch (status) {
-          case "applied":
-          case "screening":
-          case "invited":
-            appliedCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "applied",
-            });
-            break;
-          case "interviewed":
-          case "completed":
-            aiInterviewCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "ai_interview",
-            });
-            break;
-          case "interview_scheduled":
-          case "scheduled":
-          case "started":
-            humanInterviewCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "human_interview_1",
-            });
-            break;
-          case "hired":
-            acceptedCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "accepted",
-            });
-            break;
-          case "rejected":
-          case "on_hold":
-            rejectedCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "rejected",
-            });
-            break;
-          default:
-            // Default to applied for unknown statuses
-            appliedCandidates.push({
-              ...candidateWithExtras,
-              pipeline_stage: "applied",
-            });
-            break;
+        // Map backend statuses to pipeline stages
+        if (status === "Applied") {
+          appliedCandidates.push({
+            ...candidateWithExtras,
+            pipeline_stage: "applied",
+          });
+        } else if (status === "Invited" || status === "Interviewed") {
+          aiInterviewCandidates.push({
+            ...candidateWithExtras,
+            pipeline_stage: "ai_interview",
+          });
+        } else if (
+          status?.startsWith("Invited_Meeting_") ||
+          status?.startsWith("Interviewed_Meeting_")
+        ) {
+          // Extract round number from status like "Invited_Meeting_1" or "Interviewed_Meeting_2"
+          const roundMatch = status.match(/_(Meeting_)?(\d+)$/);
+          const roundNumber = roundMatch ? parseInt(roundMatch[2]) : 1;
+          const stageId = `human_interview_${roundNumber}`;
+
+          if (!humanInterviewCandidates[stageId]) {
+            humanInterviewCandidates[stageId] = [];
+          }
+          humanInterviewCandidates[stageId].push({
+            ...candidateWithExtras,
+            pipeline_stage: stageId,
+          });
+        } else if (status === "Accepted") {
+          acceptedCandidates.push({
+            ...candidateWithExtras,
+            pipeline_stage: "accepted",
+          });
+        } else if (status === "Rejected") {
+          rejectedCandidates.push({
+            ...candidateWithExtras,
+            pipeline_stage: "rejected",
+          });
+        } else {
+          // Default to applied for unknown statuses
+          appliedCandidates.push({
+            ...candidateWithExtras,
+            pipeline_stage: "applied",
+          });
         }
       });
 
+      // Create initial stages
       const initialStages: PipelineStage[] = [
         {
           id: "applied",
           title: "Applied",
-          type: "ai_interview", // Using ai_interview type but could be a new "applied" type
+          type: "ai_interview",
           candidates: appliedCandidates,
         },
         {
@@ -703,13 +795,29 @@ export default function InterviewDetailsPage() {
           type: "ai_interview",
           candidates: aiInterviewCandidates,
         },
-        {
-          id: "human_interview_1",
-          title: "Interview Round 1",
+      ];
+
+      // Add human interview stages - always include at least Round 1
+      const humanStageIds = Object.keys(humanInterviewCandidates).sort();
+      const maxRound = Math.max(
+        1, // Always have at least round 1
+        ...humanStageIds.map((stageId) => parseInt(stageId.split("_")[2]) || 1)
+      );
+
+      // Create human interview stages from 1 to maxRound
+      for (let round = 1; round <= maxRound; round++) {
+        const stageId = `human_interview_${round}`;
+        initialStages.push({
+          id: stageId,
+          title: `Interview Round ${round}`,
           type: "human_interview",
-          round: 1,
-          candidates: humanInterviewCandidates,
-        },
+          round: round,
+          candidates: humanInterviewCandidates[stageId] || [], // Use existing candidates or empty array
+        });
+      }
+
+      // Add final stages
+      initialStages.push(
         {
           id: "accepted",
           title: "Accepted",
@@ -721,8 +829,9 @@ export default function InterviewDetailsPage() {
           title: "Rejected",
           type: "rejected",
           candidates: rejectedCandidates,
-        },
-      ];
+        }
+      );
+
       setStages(initialStages);
       setOriginalStages(JSON.parse(JSON.stringify(initialStages))); // Deep copy for original state
     }
@@ -798,9 +907,53 @@ export default function InterviewDetailsPage() {
     }
   };
 
+  // Helper function to map stage IDs to backend statuses
+  const getBackendStatusFromStageId = (stageId: string): string => {
+    if (stageId === "applied") {
+      return "Applied";
+    } else if (stageId === "ai_interview") {
+      return "Invited"; // Start with Invited, will become Interviewed after completion
+    } else if (stageId.startsWith("human_interview_")) {
+      const roundNumber = parseInt(stageId.split("_")[2]);
+      return `Invited_Meeting_${roundNumber}`; // Start with Invited_Meeting_X, will become Interviewed_Meeting_X after completion
+    } else if (stageId === "accepted") {
+      return "Accepted";
+    } else if (stageId === "rejected") {
+      return "Rejected";
+    }
+    return "Applied"; // Default fallback
+  };
+
   // Pipeline functions
   const addPendingChange = useCallback((change: PendingChange) => {
-    setPendingChanges((prev) => [...prev, change]);
+    setPendingChanges((prev) => {
+      // If this is an email action, remove any existing email actions for the same candidate
+      if (change.type === "send_email") {
+        const filtered = prev.filter(
+          (existingChange) =>
+            !(
+              existingChange.type === "send_email" &&
+              existingChange.candidateId === change.candidateId
+            )
+        );
+        return [...filtered, change];
+      }
+
+      // If this is a status update, remove any existing status updates for the same candidate
+      if (change.type === "update_status") {
+        const filtered = prev.filter(
+          (existingChange) =>
+            !(
+              existingChange.type === "update_status" &&
+              existingChange.candidateId === change.candidateId
+            )
+        );
+        return [...filtered, change];
+      }
+
+      // For other types, just add normally
+      return [...prev, change];
+    });
   }, []);
 
   const filteredStages = stages.map((stage) => ({
@@ -830,6 +983,62 @@ export default function InterviewDetailsPage() {
       timestamp: Date.now(),
     });
 
+    // Add status update to pending changes
+    const newBackendStatus = getBackendStatusFromStageId(destinationStageId);
+    addPendingChange({
+      type: "update_status",
+      candidateId: candidate.id,
+      newStatus: newBackendStatus,
+      timestamp: Date.now(),
+    });
+
+    // Determine email type and stage based on destination stage
+    let emailType:
+      | "ai_interview"
+      | "human_interview"
+      | "acceptance"
+      | "rejection" = "ai_interview";
+    let stageType:
+      | "ai_interview"
+      | "human_interview"
+      | "acceptance"
+      | "rejection" = "ai_interview";
+    let roundNumber: number | undefined = undefined;
+
+    // Find the destination stage info
+    const destStage = stages.find((s) => s.id === destinationStageId);
+    if (destStage) {
+      if (destStage.id === "ai_interview") {
+        emailType = "ai_interview";
+        stageType = "ai_interview";
+      } else if (destStage.type === "human_interview") {
+        emailType = "human_interview";
+        stageType = "human_interview";
+        roundNumber = destStage.round || 1;
+      } else if (destStage.id === "accepted") {
+        emailType = "acceptance";
+        stageType = "acceptance";
+      } else if (destStage.id === "rejected") {
+        emailType = "rejection";
+        stageType = "rejection";
+      }
+
+      // Add email action to pending changes (only if not moving to applied stage)
+      // The addPendingChange function will automatically remove any existing email actions for this candidate
+      if (destinationStageId !== "applied") {
+        addPendingChange({
+          type: "send_email",
+          candidateId: candidate.id,
+          email: candidate.email,
+          name: candidate.name,
+          emailType,
+          stageType,
+          roundNumber,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
     // Update visual state immediately for preview
     setStages((prev) => {
       const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
@@ -849,6 +1058,7 @@ export default function InterviewDetailsPage() {
           destStage.candidates.push({
             ...moved,
             pipeline_stage: destinationStageId,
+            status: newBackendStatus, // Update the status in the visual state too
           });
         }
       }
@@ -896,19 +1106,16 @@ export default function InterviewDetailsPage() {
     });
   };
 
-  const handleBulkSelection = (scoreThreshold: number) => {
-    const candidatesAboveScore = stages
-      .flatMap((stage) => stage.candidates)
-      .filter(
-        (candidate) =>
-          candidate.ai_score && candidate.ai_score >= scoreThreshold
-      )
-      .map((candidate) => candidate.id);
+  const handleBulkSelection = (
+    candidateIds: string[],
+    stageTitle: string,
+    scoreThreshold: number
+  ) => {
+    setSelectedCandidates(new Set(candidateIds));
 
-    setSelectedCandidates(new Set(candidatesAboveScore));
     toast({
       title: "Bulk selection",
-      description: `Selected ${candidatesAboveScore.length} candidates with score ≥ ${scoreThreshold}`,
+      description: `Selected ${candidateIds.length} candidates with score ≥ ${scoreThreshold} from ${stageTitle}`,
     });
   };
 
@@ -990,7 +1197,7 @@ export default function InterviewDetailsPage() {
 
           newStages.splice(insertIndex, 0, {
             id: newStageId,
-            title: `Human Interview\nround ${nextRound}`,
+            title: `Interview Round ${nextRound}`,
             type: "human_interview",
             round: nextRound,
             candidates: [],
@@ -1140,47 +1347,155 @@ export default function InterviewDetailsPage() {
       return;
     }
 
-    // Here you would make API calls to save the changes
-    // For now, we'll just simulate the save and update the original state
-    setOriginalStages(JSON.parse(JSON.stringify(stages)));
-    setPendingChanges([]);
-
-    const addedRounds = pendingChanges.filter(
-      (c) => c.type === "add_round"
-    ).length;
-    const removedRounds = pendingChanges.filter(
-      (c) => c.type === "remove_round"
-    ).length;
-    const movedCandidates = pendingChanges.filter(
-      (c) => c.type === "move"
-    ).length;
-    const addedNotes = pendingChanges.filter(
-      (c) => c.type === "add_note"
-    ).length;
-
-    let description = `${pendingChanges.length} changes saved`;
-    const details = [];
-    if (addedRounds > 0)
-      details.push(`${addedRounds} round${addedRounds !== 1 ? "s" : ""} added`);
-    if (removedRounds > 0)
-      details.push(
-        `${removedRounds} round${removedRounds !== 1 ? "s" : ""} removed`
+    try {
+      // Process status updates first
+      const statusChanges = pendingChanges.filter(
+        (c) => c.type === "update_status"
       );
-    if (movedCandidates > 0)
-      details.push(
-        `${movedCandidates} candidate${movedCandidates !== 1 ? "s" : ""} moved`
-      );
-    if (addedNotes > 0)
-      details.push(`${addedNotes} note${addedNotes !== 1 ? "s" : ""} added`);
+      if (statusChanges.length > 0) {
+        toast({
+          title: "Processing changes...",
+          description: `Updating ${statusChanges.length} candidate statuses and sending emails...`,
+        });
 
-    if (details.length > 0) {
-      description = details.join(", ");
+        // Update candidate statuses
+        for (const statusChange of statusChanges) {
+          try {
+            await authenticatedFetch(
+              `${siveraBackendUrl}/api/v1/candidates/${statusChange.candidateId}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  status: statusChange.newStatus,
+                }),
+              }
+            );
+          } catch (error) {
+            console.error(
+              `Failed to update status for candidate ${statusChange.candidateId}:`,
+              error
+            );
+            // Continue with other updates even if one fails
+          }
+        }
+      }
+
+      // Process email actions
+      const emailChanges = pendingChanges.filter(
+        (c) => c.type === "send_email"
+      );
+      if (emailChanges.length > 0) {
+        if (statusChanges.length === 0) {
+          toast({
+            title: "Processing changes...",
+            description: `Sending ${emailChanges.length} emails...`,
+          });
+        }
+
+        // Send emails in batches
+        for (const emailChange of emailChanges) {
+          try {
+            const userContext = getUserContext();
+            const organizationId = userContext?.organization_id;
+
+            if (!organizationId) {
+              throw new Error("Organization ID not found");
+            }
+
+            await authenticatedFetch(
+              `${siveraBackendUrl}/api/v1/interviews/send-invite`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: emailChange.email,
+                  name: emailChange.name,
+                  job: job?.title || "",
+                  organization_id: organizationId,
+                  sender_id: userContext?.user_id || "system",
+                  email_type: emailChange.emailType,
+                  stage_type: emailChange.stageType,
+                  round_number: emailChange.roundNumber,
+                }),
+              }
+            );
+          } catch (error) {
+            console.error(
+              `Failed to send email to ${emailChange.email}:`,
+              error
+            );
+            // Continue with other emails even if one fails
+          }
+        }
+      }
+
+      // Update the original state and clear pending changes
+      setOriginalStages(JSON.parse(JSON.stringify(stages)));
+      setPendingChanges([]);
+
+      const addedRounds = pendingChanges.filter(
+        (c) => c.type === "add_round"
+      ).length;
+      const removedRounds = pendingChanges.filter(
+        (c) => c.type === "remove_round"
+      ).length;
+      const movedCandidates = pendingChanges.filter(
+        (c) => c.type === "move"
+      ).length;
+      const addedNotes = pendingChanges.filter(
+        (c) => c.type === "add_note"
+      ).length;
+      const sentEmails = pendingChanges.filter(
+        (c) => c.type === "send_email"
+      ).length;
+      const updatedStatuses = pendingChanges.filter(
+        (c) => c.type === "update_status"
+      ).length;
+
+      let description = `${pendingChanges.length} changes saved`;
+      const details = [];
+      if (addedRounds > 0)
+        details.push(
+          `${addedRounds} round${addedRounds !== 1 ? "s" : ""} added`
+        );
+      if (removedRounds > 0)
+        details.push(
+          `${removedRounds} round${removedRounds !== 1 ? "s" : ""} removed`
+        );
+      if (movedCandidates > 0)
+        details.push(
+          `${movedCandidates} candidate${
+            movedCandidates !== 1 ? "s" : ""
+          } moved`
+        );
+      if (addedNotes > 0)
+        details.push(`${addedNotes} note${addedNotes !== 1 ? "s" : ""} added`);
+      if (sentEmails > 0)
+        details.push(`${sentEmails} email${sentEmails !== 1 ? "s" : ""} sent`);
+      if (updatedStatuses > 0)
+        details.push(
+          `${updatedStatuses} status${
+            updatedStatuses !== 1 ? "es" : ""
+          } updated`
+        );
+
+      if (details.length > 0) {
+        description = details.join(", ");
+      }
+
+      toast({
+        title: "Changes saved",
+        description: description,
+      });
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save some changes. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    toast({
-      title: "Changes saved",
-      description: description,
-    });
   };
 
   const discardChanges = () => {
@@ -1378,51 +1693,140 @@ export default function InterviewDetailsPage() {
     window.location.reload();
   };
 
-  // Fetch available candidates for bulk invite
-  const fetchAvailableCandidates = async () => {
-    if (!job?.id) {
+  // Get the next stage for selected candidates - now handles multiple stages
+  const getNextStageForCandidates = (selectedCandidates: Set<string>) => {
+    if (selectedCandidates.size === 0) return null;
+
+    // Find unique next stages for all selected candidates
+    const nextStages = new Set<string>();
+
+    for (const candidateId of selectedCandidates) {
+      // Find current stage of this candidate
+      let currentStage = null;
+      for (const stage of stages) {
+        if (stage.candidates.some((c) => c.id === candidateId)) {
+          currentStage = stage;
+          break;
+        }
+      }
+
+      if (currentStage) {
+        const nextStage = getNextStageForStage(currentStage.id);
+        if (nextStage) {
+          nextStages.add(nextStage.title);
+        }
+      }
+    }
+
+    // If only one unique next stage, return it
+    if (nextStages.size === 1) {
+      return { title: Array.from(nextStages)[0] };
+    }
+
+    // If multiple next stages, return a generic label
+    if (nextStages.size > 1) {
+      return { title: "Next Stages" };
+    }
+
+    return null;
+  };
+
+  // Helper function to get next stage for a specific stage
+  const getNextStageForStage = (stageId: string) => {
+    // Find the current stage in the stages array
+    const currentStageIndex = stages.findIndex((s) => s.id === stageId);
+
+    if (currentStageIndex === -1 || currentStageIndex === stages.length - 1) {
+      return null; // Stage not found or already at the last stage
+    }
+
+    // Return the next stage
+    return {
+      id: stages[currentStageIndex + 1].id,
+      title: stages[currentStageIndex + 1].title,
+    };
+  };
+
+  // Prepare candidates for bulk invite based on selection
+  const prepareSelectedCandidatesForInvite = () => {
+    if (selectedCandidates.size === 0) {
       toast({
-        title: "Error",
-        description: "No job_id found for this interview",
+        title: "No candidates selected",
+        description: "Please select candidates to move.",
       });
       return;
     }
 
-    setLoadingCandidates(true);
-    try {
-      // Directly fetch candidates by job_id - much simpler approach
-      const candidatesResp = await authenticatedFetch(
-        `${siveraBackendUrl}/api/v1/candidates/by-job/${job.id}`
-      );
+    // Group candidates by their next stage
+    const candidatesByNextStage: Array<{
+      nextStage: { id: string; title: string };
+      candidates: Candidate[];
+      currentStage: string;
+    }> = [];
 
-      if (!candidatesResp.ok) {
-        if (candidatesResp.status === 404) {
-          // No candidates found for this job
-          setAvailableCandidates([]);
-          setBulkInviteOpen(true);
-          return;
+    for (const candidateId of selectedCandidates) {
+      // Find current stage of this candidate
+      let currentStage = null;
+      let candidate = null;
+
+      for (const stage of stages) {
+        const foundCandidate = stage.candidates.find(
+          (c) => c.id === candidateId
+        );
+        if (foundCandidate) {
+          currentStage = stage;
+          candidate = foundCandidate;
+          break;
         }
-        throw new Error(`Failed to fetch candidates: ${candidatesResp.status}`);
       }
 
-      const allCandidates = await candidatesResp.json();
-      const shouldSendInvites = allCandidates.filter(
-        (candidate: any) => candidate.status === "Applied"
-      );
-
-      setAvailableCandidates(shouldSendInvites || []);
-      setBulkInviteOpen(true);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch candidates";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCandidates(false);
+      if (currentStage && candidate) {
+        const nextStage = getNextStageForStage(currentStage.id);
+        if (nextStage) {
+          // Find existing group or create new one
+          let group = candidatesByNextStage.find(
+            (g) => g.nextStage.id === nextStage.id
+          );
+          if (!group) {
+            group = {
+              nextStage,
+              candidates: [],
+              currentStage: currentStage.title,
+            };
+            candidatesByNextStage.push(group);
+          }
+          group.candidates.push(candidate);
+        }
+      }
     }
+
+    if (candidatesByNextStage.length === 0) {
+      toast({
+        title: "No next stage",
+        description: "Selected candidates are already at the final stage.",
+      });
+      return;
+    }
+
+    // Flatten all candidates for the dialog
+    const allCandidates = candidatesByNextStage.flatMap(
+      (group) => group.candidates
+    );
+
+    // Set dialog data
+    setAvailableCandidates(allCandidates);
+    setCandidateGroups(candidatesByNextStage);
+    setNextStageInfo({
+      title:
+        candidatesByNextStage.length === 1
+          ? candidatesByNextStage[0].nextStage.title
+          : "Next Stages",
+      id:
+        candidatesByNextStage.length === 1
+          ? candidatesByNextStage[0].nextStage.id
+          : "multiple",
+    });
+    setBulkInviteOpen(true);
   };
 
   // Get candidates available for bulk invite (not already invited)
@@ -1432,63 +1836,47 @@ export default function InterviewDetailsPage() {
 
   // Handle sending interview invite to a candidate
   const handleSendInvite = async (candidate: any) => {
-    toast({
-      title: "Sending invitation...",
-      description: `Sending interview invitation to ${candidate.email}`,
-    });
-
     try {
-      // Get current user context from cookies
-      const userContext = getUserContext();
-      const organizationId =
-        candidate.organization_id || userContext?.organization_id;
-      const senderId = userContext?.user_id;
+      // Find the candidate's current stage
+      const currentStage = stages.find((stage) =>
+        stage.candidates.some((c) => c.id === candidate.id)
+      );
 
-      if (!organizationId) {
+      if (!currentStage) {
         toast({
-          title: "Organization not found",
-          description:
-            "Your organization information is missing. Please log in again.",
+          title: "Error",
+          description: "Could not find candidate's current stage",
+          variant: "destructive",
         });
         return;
       }
 
-      const res = await authenticatedFetch(
-        `${siveraBackendUrl}/api/v1/interviews/send-invite`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: candidate.email,
-            name: candidate.name,
-            job: job?.title || "",
-            organization_id: organizationId,
-            sender_id: senderId || "system",
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
+      // Get the next stage for this candidate
+      const nextStage = getNextStageForStage(currentStage.id);
+      if (!nextStage) {
         toast({
-          title: "Interview invitation sent",
-          description: `Interview invitation sent to ${candidate.email}`,
+          title: "No next stage",
+          description: "This candidate is already at the final stage",
+          variant: "destructive",
         });
-        // Close the dialog after successful invite
-        setSelectedCandidate(null);
-        // Refresh the data
-        window.location.reload();
-      } else {
-        toast({
-          title: "Failed to send invite",
-          description: data.error || "Unknown error",
-        });
+        return;
       }
+
+      // Move the candidate to the next stage (this will queue the email)
+      stageMoveCandidate(candidate, currentStage.id, nextStage.id);
+
+      toast({
+        title: "Candidate moved",
+        description: `${candidate.name} moved to ${nextStage.title}. Click 'Save Changes' to send email.`,
+      });
+
+      // Close the dialog
+      setSelectedCandidate(null);
     } catch (err: any) {
       toast({
-        title: "Failed to send invite",
+        title: "Failed to move candidate",
         description: err.message,
+        variant: "destructive",
       });
     }
   };
@@ -1503,6 +1891,7 @@ export default function InterviewDetailsPage() {
     onMove: (candidate: Candidate, direction: "next" | "prev") => void;
     isDragDropReady?: boolean;
     hasChanges?: boolean;
+    stageId?: string;
   }> = ({
     candidate,
     index,
@@ -1512,7 +1901,10 @@ export default function InterviewDetailsPage() {
     onMove,
     isDragDropReady = false,
     hasChanges = false,
+    stageId,
   }) => {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -1549,25 +1941,63 @@ export default function InterviewDetailsPage() {
         aria-selected={isSelected}
         title="Click to select candidate"
       >
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1">
+            <h4 className="font-semibold text-xs">{candidate.name}</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
+              {candidate.email}
+            </p>
+          </div>
+
+          {/* Three-dot menu */}
+          <DropdownMenu onOpenChange={setIsDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`h-6 w-6 p-0 text-xs cursor-pointer ${
+                  isDropdownOpen
+                    ? "opacity-100"
+                    : "opacity-0 group-hover:opacity-100"
+                } transition-opacity`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-xs cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickAction("view_resume", candidate);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Resume
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Content area with space for bottom-right score */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-[85px] justify-end">
             <Checkbox
               checked={isSelected}
-              onCheckedChange={(checked) =>
-                onSelect(candidate, checked as boolean)
-              }
-              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(candidate, !isSelected);
+              }}
             />
-            <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
-              {candidate.name.length > 15
-                ? candidate.name.slice(0, 15) + "..."
-                : candidate.name}
-            </h4>
-          </div>
-          <div className="flex items-center gap-3 min-w-[85px] justify-end">
             <Badge
               variant="outline"
-              className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+              className={`text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                candidate.notes
+                  ? "opacity-100"
+                  : isDropdownOpen
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100"
+              } transition-opacity`}
               onClick={(e) => {
                 e.stopPropagation();
                 onQuickAction("add_note", candidate);
@@ -1576,11 +2006,21 @@ export default function InterviewDetailsPage() {
               <MessageSquare className="h-4 w-4" />
               {candidate.notes ? "Edit Note" : "Add Note"}
             </Badge>
-            <div className="gap-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+              className={`gap-1 flex items-center ${
+                isDropdownOpen
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100"
+              } transition-opacity`}
+            >
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                className={`h-6 w-6 p-0 ${
+                  isDropdownOpen
+                    ? "opacity-100"
+                    : "opacity-0 group-hover:opacity-100"
+                } transition-opacity cursor-pointer`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onMove(candidate, "prev");
@@ -1592,7 +2032,11 @@ export default function InterviewDetailsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                className={`h-6 w-6 p-0 ${
+                  isDropdownOpen
+                    ? "opacity-100"
+                    : "opacity-0 group-hover:opacity-100"
+                } transition-opacity cursor-pointer`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onMove(candidate, "next");
@@ -1604,69 +2048,71 @@ export default function InterviewDetailsPage() {
             </div>
           </div>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
-          {candidate.email}
-        </p>
-
-        {/* Content area with space for bottom-right score */}
-        <div className="pr-12">
-          {candidate.notes && (
-            <Badge variant="outline" className="my-1">
-              Has Notes
-            </Badge>
-          )}
-        </div>
 
         {/* Score positioned at bottom right */}
-        {candidate.ai_score && (
-          <div className="absolute bottom-3.5 right-3.5">
-            <div className="w-10 h-10">
-              <svg
-                className="w-10 h-10 transform -rotate-90"
-                viewBox="0 0 36 36"
-              >
-                {/* Background circle */}
-                <path
-                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  className="text-slate-200 dark:text-slate-700"
-                />
-                {/* Progress circle */}
-                <path
-                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeDasharray={`${(candidate.ai_score / 10) * 100}, 100`}
-                  strokeLinecap="round"
-                  className={
-                    candidate.ai_score >= 8
-                      ? "text-emerald-500/60"
-                      : candidate.ai_score >= 6
-                      ? "text-amber-500/60"
-                      : "text-rose-500/60"
-                  }
-                />
-              </svg>
-              {/* Score text */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span
-                  className={`text-sm font-bold tracking-tight ${
-                    candidate.ai_score >= 8
-                      ? "text-emerald-600/60 dark:text-emerald-400/60"
-                      : candidate.ai_score >= 6
-                      ? "text-amber-600/60 dark:text-amber-400/60"
-                      : "text-rose-600/60 dark:text-rose-400/60"
-                  }`}
-                >
-                  {candidate.ai_score}
-                </span>
-              </div>
+        {stageId !== "applied" &&
+          stageId !== "accepted" &&
+          stageId !== "rejected" &&
+          (candidate.status?.includes("Interviewed") ||
+            candidate.interview_status === "completed") && (
+            <div className="absolute bottom-3.5 right-3.5">
+              {candidate.ai_score ? (
+                // Show actual score
+                <div className="w-10 h-10">
+                  <svg
+                    className="w-10 h-10 transform -rotate-90"
+                    viewBox="0 0 36 36"
+                  >
+                    {/* Background circle */}
+                    <path
+                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      className="text-slate-200 dark:text-slate-700"
+                    />
+                    {/* Progress circle */}
+                    <path
+                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeDasharray={`${
+                        (candidate.ai_score / 10) * 100
+                      }, 100`}
+                      strokeLinecap="round"
+                      className={
+                        candidate.ai_score >= 8
+                          ? "text-emerald-500/60"
+                          : candidate.ai_score >= 6
+                          ? "text-amber-500/60"
+                          : "text-rose-500/60"
+                      }
+                    />
+                  </svg>
+                  {/* Score text */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span
+                      className={`text-sm font-bold tracking-tight ${
+                        candidate.ai_score >= 8
+                          ? "text-emerald-600/60 dark:text-emerald-400/60"
+                          : candidate.ai_score >= 6
+                          ? "text-amber-600/60 dark:text-amber-400/60"
+                          : "text-rose-600/60 dark:text-rose-400/60"
+                      }`}
+                    >
+                      {candidate.ai_score}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                // Show loader when score should exist but is still loading
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-gray-500" />
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
       </div>
     );
 
@@ -1752,7 +2198,7 @@ export default function InterviewDetailsPage() {
                   size="sm"
                   onClick={onAddRound}
                   className="cursor-pointer text-xs"
-                  title="Add another human interview round"
+                  title="Add another interview round"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1807,6 +2253,7 @@ export default function InterviewDetailsPage() {
                         onMove={onMove}
                         isDragDropReady={isDragDropReady}
                         hasChanges={candidateHasChanges}
+                        stageId={stage.id}
                       />
                     );
                   })
@@ -1839,6 +2286,7 @@ export default function InterviewDetailsPage() {
                     onMove={onMove}
                     isDragDropReady={isDragDropReady}
                     hasChanges={candidateHasChanges}
+                    stageId={stage.id}
                   />
                 );
               })
@@ -1847,6 +2295,43 @@ export default function InterviewDetailsPage() {
         )}
       </div>
     );
+  };
+
+  const handleBulkCandidateMovement = () => {
+    // Move all selected candidates to their next stages
+    for (const candidateId of selectedCandidates) {
+      // Find current stage of this candidate
+      let currentStage = null;
+      let candidate = null;
+
+      for (const stage of stages) {
+        const foundCandidate = stage.candidates.find(
+          (c) => c.id === candidateId
+        );
+        if (foundCandidate) {
+          currentStage = stage;
+          candidate = foundCandidate;
+          break;
+        }
+      }
+
+      if (currentStage && candidate) {
+        const nextStage = getNextStageForStage(currentStage.id);
+        if (nextStage) {
+          // Use the existing stageMoveCandidate function which handles status updates and email queueing
+          stageMoveCandidate(candidate, currentStage.id, nextStage.id);
+        }
+      }
+    }
+
+    // Clear selection
+    setSelectedCandidates(new Set());
+
+    toast({
+      title: "Candidates moved to pipeline",
+      description:
+        "All selected candidates have been moved. Click 'Save Changes' to update statuses and send emails.",
+    });
   };
 
   return (
@@ -1956,7 +2441,7 @@ export default function InterviewDetailsPage() {
                     </Select>
                     {firstChange && (
                       <Button
-                        onClick={handleSaveChanges}
+                        onClick={() => setSaveConfirmOpen(true)}
                         disabled={saving}
                         variant="outline"
                         className="cursor-pointer text-xs"
@@ -2139,7 +2624,7 @@ export default function InterviewDetailsPage() {
                           </div>
                         </CarouselItem>
 
-                        {/* Human Interview */}
+                        {/* Interview Round */}
                         <CarouselItem className="basis-1/4">
                           <div className="p-1">
                             <Card
@@ -2155,7 +2640,7 @@ export default function InterviewDetailsPage() {
                                 processStages.humanInterview
                                   ? "Disable"
                                   : "Enable"
-                              } Human Interview`}
+                              } Interview Round`}
                             >
                               <CardContent className="flex aspect-square items-center justify-center p-6">
                                 <div className="flex flex-col items-center justify-center gap-2">
@@ -2443,7 +2928,7 @@ export default function InterviewDetailsPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={saveAllChanges}
+                          onClick={() => setSaveConfirmOpen(true)}
                           className="cursor-pointer text-xs"
                         >
                           <Save className="h-4 w-4 mr-1" />
@@ -2454,22 +2939,15 @@ export default function InterviewDetailsPage() {
 
                     {/* Interview Invitations */}
                     <Button
-                      onClick={fetchAvailableCandidates}
-                      disabled={loadingCandidates}
+                      onClick={prepareSelectedCandidatesForInvite}
+                      disabled={selectedCandidates.size === 0}
                       className="cursor-pointer text-xs"
                       variant="outline"
                     >
-                      {loadingCandidates ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Send Invitations
-                        </>
-                      )}
+                      <Mail className="mr-2 h-4 w-4" />
+                      Move to{" "}
+                      {getNextStageForCandidates(selectedCandidates)?.title ||
+                        "Next Stage"}
                     </Button>
 
                     <Button
@@ -2526,31 +3004,14 @@ export default function InterviewDetailsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="cursor-pointer text-xs"
-                      >
-                        <CheckSquare className="mr-2 h-4 w-4" />
-                        Bulk Select
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleBulkSelection(8)}>
-                        Select all with score ≥ 8
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleBulkSelection(6)}>
-                        Select all with score ≥ 6
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => setSelectedCandidates(new Set())}
-                      >
-                        Clear selection
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    className="cursor-pointer text-xs"
+                    onClick={() => setBulkSelectOpen(true)}
+                  >
+                    <CheckSquare className="mr-2 h-4 w-4" />
+                    Bulk Select
+                  </Button>
                 </div>
               </div>
               <div className="p-0 m-0">
@@ -2665,8 +3126,10 @@ export default function InterviewDetailsPage() {
             interviewId={id as string}
             jobTitle={job?.title || "Interview"}
             availableCandidates={getAvailableCandidates()}
-            onInvitesSent={handleInvitesSent}
+            onCandidatesMoved={handleBulkCandidateMovement}
             organizationId={getUserContext()?.organization_id || ""}
+            nextStageTitle={nextStageInfo?.title}
+            candidateGroups={candidateGroups}
           />
 
           {/* Candidate View Dialog */}
@@ -2724,6 +3187,81 @@ export default function InterviewDetailsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Save Confirmation Dialog */}
+          <Dialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader className="text-center sm:text-left">
+                <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Confirm Changes & Send Notifications
+                </DialogTitle>
+                <DialogDescription className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Your changes will be saved and email notifications will be
+                  automatically sent to affected candidates about their
+                  application status updates.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <Checkbox
+                  checked={hasReadWarning}
+                  onCheckedChange={(checked) =>
+                    setHasReadWarning(
+                      checked === "indeterminate" ? false : checked
+                    )
+                  }
+                  className="cursor-pointer"
+                  id="confirm-warning"
+                />
+                <label
+                  htmlFor="confirm-warning"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
+                >
+                  I understand that email notifications will be sent to
+                  candidates and this action cannot be undone.
+                </label>
+              </div>
+
+              <DialogFooter className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 space-y-2 space-y-reverse sm:space-y-0">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSaveConfirmOpen(false);
+                    setHasReadWarning(false);
+                  }}
+                  className="w-full sm:w-auto cursor-pointer text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setSaveConfirmOpen(false);
+                    setHasReadWarning(false);
+                    // Check if this is pipeline changes or configuration changes
+                    if (pendingChanges.length > 0) {
+                      await saveAllChanges();
+                    } else if (firstChange) {
+                      await handleSaveChanges();
+                    }
+                  }}
+                  disabled={!hasReadWarning}
+                  className="w-full sm:w-auto cursor-pointer text-xs"
+                  variant="outline"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes & Send Emails
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Bulk Select Dialog */}
+          <BulkSelectDialog
+            open={bulkSelectOpen}
+            onOpenChange={setBulkSelectOpen}
+            stages={stages}
+            onBulkSelect={handleBulkSelection}
+          />
         </>
       )}
     </div>

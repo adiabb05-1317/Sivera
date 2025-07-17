@@ -142,13 +142,12 @@ export function BulkPhoneScreenScheduler({
   const fetchEligibleCandidates = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${siveraBackendUrl}/api/v1/phone-screens/candidates/select`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Organization-ID": getUserContext()?.organization_id || "",
           },
           body: JSON.stringify({
             job_id: jobId,
@@ -160,7 +159,8 @@ export function BulkPhoneScreenScheduler({
             sort_order: "desc",
             limit: 50,
           }),
-        }
+        },
+        false
       );
 
       if (response.ok) {

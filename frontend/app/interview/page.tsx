@@ -530,7 +530,7 @@ function InterviewContent() {
 
             <Button
               onClick={() => setCurrentStep("permissions")}
-              className="cursor-pointer text-xs"
+              className="cursor-pointer text-xs w-full"
               variant="outline"
             >
               Start Interview
@@ -568,14 +568,9 @@ function InterviewContent() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {cameraGranted ? (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700">
-                      Access Granted
-                    </Badge>
+                    <Badge variant="outline">Access Granted</Badge>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
-                    >
+                    <Badge variant="outline" className="bg-red-50">
                       Permission Required
                     </Badge>
                   )}
@@ -590,14 +585,9 @@ function InterviewContent() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {micGranted ? (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700">
-                      Access Granted
-                    </Badge>
+                    <Badge variant="outline">Access Granted</Badge>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
-                    >
+                    <Badge variant="outline" className="bg-red-50">
                       Permission Required
                     </Badge>
                   )}
@@ -608,7 +598,7 @@ function InterviewContent() {
             {(!cameraGranted || !micGranted) && (
               <Button
                 onClick={requestPermissions}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-xs w-full"
                 variant="outline"
               >
                 Grant Access
@@ -618,7 +608,7 @@ function InterviewContent() {
             {cameraGranted && micGranted && (
               <Button
                 onClick={proceedToInterview}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-xs w-full"
                 variant="outline"
               >
                 Continue to Interview

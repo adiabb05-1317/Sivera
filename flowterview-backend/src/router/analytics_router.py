@@ -18,6 +18,9 @@ class ChatMessage(BaseModel):
 class AnalyzeInterviewRequest(BaseModel):
     chat_history: List[ChatMessage]
 
+class CandidateAnalyticsRequest(BaseModel):
+    candidate_ids: List[str]
+
 @router.get("/")
 async def get_analytics(request: Request):
     return {"message": "Hello, World!"}
@@ -73,6 +76,29 @@ async def get_interview_candidate_analytics(interview_id: str, candidate_id: str
     analytics = db.fetch_one("interview_analytics", {"interview_id": interview_id, "candidate_id": candidate_id})
     return {"analytics": analytics}
 
+@router.post("/interview/{interview_id}/candidates")
+async def get_interview_candidates_analytics(interview_id: str, request: CandidateAnalyticsRequest) -> List[Dict[str, Any]]:
+    """
+    Get the analytics for multiple candidates in a specific interview.
+    """
+    if not request.candidate_ids:
+        return []
+    
+    try:
+        # Fetch all analytics for this interview first
+        all_analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
+        
+        # Filter to only include the requested candidates
+        filtered_analytics = [
+            analytics for analytics in all_analytics 
+            if analytics.get("candidate_id") in request.candidate_ids
+        ]
+        
+        return filtered_analytics
+    except Exception as e:
+        logger.error(f"Error fetching analytics for candidates: {e}")
+        return []
+
 @router.get("/average-score")
 async def get_average_score(request: Request) -> Dict[str, Any]:
     """
@@ -83,8 +109,22 @@ async def get_average_score(request: Request) -> Dict[str, Any]:
     total_score = 0
     count = 0
     for a in analytics:
-        total_score += a.get("data").get("overall_score")
-        count += 1
+        try:
+            data = a.get("data")
+            # Handle both direct JSON and string formats for backward compatibility
+            if isinstance(data, str):
+                data = json.loads(data)
+            
+            if isinstance(data, dict) and "overall_score" in data:
+                total_score += data.get("overall_score", 0)
+                count += 1
+        except (json.JSONDecodeError, TypeError, AttributeError) as e:
+            logger.warning(f"Failed to parse analytics data: {e}")
+            continue
+
+    if count == 0:
+        return {"average_score": 0}
+    
     return {"average_score": total_score / count}
 
 @router.get("/average-score/{interview_id}")
@@ -97,8 +137,22 @@ async def get_interview_average_score(interview_id: str) -> Dict[str, Any]:
     total_score = 0
     count = 0 
     for a in analytics:
-        total_score += a.get("data").get("overall_score")
-        count += 1
+        try:
+            data = a.get("data")
+            # Handle both direct JSON and string formats for backward compatibility
+            if isinstance(data, str):
+                data = json.loads(data)
+            
+            if isinstance(data, dict) and "overall_score" in data:
+                total_score += data.get("overall_score", 0)
+                count += 1
+        except (json.JSONDecodeError, TypeError, AttributeError) as e:
+            logger.warning(f"Failed to parse analytics data: {e}")
+            continue
+    
+    if count == 0:
+        return {"average_score": 0}
+    
     return {"average_score": total_score / count}
 
 @router.post("/analyze-interview")

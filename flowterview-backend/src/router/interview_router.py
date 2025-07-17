@@ -45,6 +45,9 @@ class SendInviteRequest(BaseModel):
     job: str = Field(..., description="Job title/position")
     organization_id: str = Field(..., description="Organization ID")
     sender_id: Optional[str] = Field(None, description="ID of the user sending the invitation")
+    email_type: str = Field(..., description="Type of email: 'ai_interview', 'human_interview', 'acceptance', or 'rejection'")
+    stage_type: Optional[str] = Field(None, description="Stage type: 'ai_interview' or 'human_interview'")
+    round_number: Optional[int] = Field(None, description="Round number for human interviews")
 
 
 class VerifyTokenRequest(BaseModel):
@@ -148,7 +151,15 @@ async def send_loops_email(to_email: str, template_id: str, variables: Dict[str,
 
 
 async def send_interview_invite_email(
-    email: str, name: str, job: str, token: str, is_existing_user: bool = False, company_name: str = "Sivera"
+    email: str, 
+    name: str, 
+    job: str, 
+    token: str, 
+    is_existing_user: bool = False, 
+    company_name: str = "Sivera",
+    email_type: str = "ai_interview",
+    stage_type: str = "ai_interview",
+    round_number: int = None
 ) -> None:
     """Background task to send interview invitation email via Loops
 
@@ -158,29 +169,57 @@ async def send_interview_invite_email(
         job: Job title
         token: Verification token
         is_existing_user: Whether user is already verified/registered
+        company_name: Company name
+        email_type: Type of email - 'interview', 'acceptance', or 'rejection'
+        stage_type: Stage type - 'ai_interview' or 'human_interview'
+        round_number: Round number for human interviews
     """
-    logger.info(f"Starting to send interview invite email to {email} with token {token[:10]}...")
+    logger.info(f"Starting to send {email_type} email to {email} with token {token[:10]}...")
     try:
-        # Make sure the token is URL safe and properly encoded
-        import urllib.parse
+        # Determine template based on email type
+        if email_type == "ai_interview" or email_type == "human_interview":
+            template_id = Config.LOOPS_INTERVIEW_TEMPLATE
+            
+            # Make sure the token is URL safe and properly encoded
+            import urllib.parse
+            encoded_token = urllib.parse.quote_plus(token)
+            if email_type == "ai_interview":
+                interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
+            elif email_type == "human_interview":
+                interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/round?token={encoded_token}"
+            
+            # Prepare variables for interview template
+            variables = {
+                "name": name,
+                "job": job,
+                "company": company_name,
+                "verify_url": interview_url
+            }
+            
+        elif email_type == "acceptance":
+            template_id = Config.LOOPS_ACCEPTANCE_TEMPLATE
+            variables = {
+                "name": name,
+                "company": company_name
+            }
+            
+        elif email_type == "rejection":
+            template_id = Config.LOOPS_REJECTION_TEMPLATE
+            variables = {
+                "name": name,
+                "company": company_name
+            }
+            
+        else:
+            raise ValueError(f"Unknown email type: {email_type}")
 
-        encoded_token = urllib.parse.quote_plus(token)
-
-        interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
-
-        logger.info(f"Generated interview URL with token: {encoded_token[:10]}...")
-
-        # Prepare variables for Loops template
-        variables = {"name": name, "job": job, "company": company_name, "verify_url": interview_url}
-
-        # Use appropriate template based on user status
-        template_id = Config.LOOPS_INTERVIEW_TEMPLATE
+        logger.info(f"Generated variables for {email_type} email: {variables}")
 
         await send_loops_email(email, template_id, variables)
-        logger.info(f"Interview invite email sent successfully to {email}")
+        logger.info(f"{email_type.title()} email sent successfully to {email}")
 
     except Exception as e:
-        logger.error(f"Failed to send interview invite email to {email}: {e}")
+        logger.error(f"Failed to send {email_type} email to {email}: {e}")
         raise
 
 
@@ -282,12 +321,24 @@ async def process_invite_request(
     company_name: str,
     sender_id: str = None,
     manager=None,
+    email_type: str = "ai_interview",
+    stage_type: str = "ai_interview",
+    round_number: int = None,
 ) -> None:
     """
     Background task to process the entire invite request including database operations and email sending
     """
     try:
-        logger.info(f"[process-invite-bg] Processing invite for {email}")
+        logger.info(f"[process-invite-bg] Processing {email_type} for {email}")
+
+        # For acceptance and rejection emails, we don't need token generation
+        if email_type in ["acceptance", "rejection"]:
+            # Send the email directly without token
+            await send_interview_invite_email(
+                email, name, job, "", False, company_name, email_type, stage_type, round_number
+            )
+            logger.info(f"[process-invite-bg] {email_type.title()} email sent to {email}")
+            return
 
         # First check if candidate exists as a registered user
         user = db.fetch_one("users", {"email": email})
@@ -359,6 +410,9 @@ async def process_invite_request(
                 "expires_at": expires_at.isoformat(),
             }
 
+            if email_type == "human_interview":
+                token_data["round_number"] = round_number
+
             # Store the token in the database
             result = db.execute_query("verification_tokens", token_data)
             logger.info(f"Token stored successfully: {result}")
@@ -381,7 +435,9 @@ async def process_invite_request(
         try:
             user_type = "existing" if user else "new"
             logger.info(f"Sending verification email for {user_type} user {email}")
-            await send_interview_invite_email(email, name, job, token, False, company_name)
+            await send_interview_invite_email(
+                email, name, job, token, False, company_name, email_type, stage_type, round_number
+            )
             logger.info(f"[process-invite-bg] Verification email sent to {user_type} candidate {email}")
         except Exception as email_error:
             logger.error(f"Error sending verification email: {str(email_error)}")
@@ -424,6 +480,9 @@ async def send_invite(
             company_name,
             request.sender_id,
             manager,
+            request.email_type,
+            request.stage_type,
+            request.round_number,
         )
 
         logger.info(f"[send-invite] Invite processing queued for {request.email}")

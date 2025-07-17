@@ -1,7 +1,7 @@
 "use client";
 
 import usePathStore from "@/app/store/PathStore";
-import { RTVIClient, RTVIEvent } from "@pipecat-ai/client-js";
+import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Message } from "@/lib/types/general";
@@ -23,6 +23,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const { isSpeakerOn, isMicMuted } = usePathStore();
   const { connectionStatus, setConnectionStatus } = usePathStore();
   const {
+    jobId,
+    candidateId,
+    linkedin_profile,
+    additional_links,
     callStatus,
     permissionGranted,
     setPermissionGranted,
@@ -44,7 +48,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   >([]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const rtviClientRef = useRef<RTVIClient | null>(null);
+  const rtviClientRef = useRef<PipecatClient | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -165,7 +169,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     }
   };
 
-  const setupEventListeners = (client: RTVIClient) => {
+  const setupEventListeners = (client: PipecatClient) => {
     client.on(RTVIEvent.TrackStarted, (track, participant) => {
       if (track.kind === "audio" && !participant?.local) {
         setupAudioTrack(track);
@@ -268,7 +272,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     });
 
     client.on(RTVIEvent.TransportStateChanged, (state) => {
-      setTransportState(state);
+      setTransportState(state as any);
     });
   };
 
@@ -310,27 +314,18 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       const pipecat_base_url =
         process.env.NEXT_PUBLIC_PIPECAT_BASE_URL || "https://core.sivera.io";
 
-      const rtviClient = new RTVIClient({
-        params: {
-          baseUrl: `${pipecat_base_url}/api/v1`,
-          audioElement: audioRef.current,
-          audioTrack: microphoneTrack,
-          videoTrack: videoTrack,
-          requestData: {
-            job_id: usePathStore.getState().jobId,
-            candidate_id: usePathStore.getState().candidateId,
-            linkedin_profile: usePathStore.getState().linkedin_profile,
-            additional_links: usePathStore.getState().additional_links,
-          },
-        },
+      const rtviClient = new PipecatClient({
         transport: new DailyTransport({
-          dailyFactoryOptions: {
-            subscribeToTracksAutomatically: true,
-            audioSource: microphoneTrack,
-            videoSource: videoTrack,
-            dailyConfig: {
-              micAudioMode: "speech",
-              userMediaAudioConstraints: {
+          subscribeToTracksAutomatically: true,
+          audioSource: microphoneTrack,
+          startVideoOff: false,
+          startAudioOff: false,
+          dailyConfig: {
+            micAudioMode: "speech",
+          },
+          inputSettings: {
+            audio: {
+              settings: {
                 echoCancellation: { ideal: true },
                 noiseSuppression: { ideal: true },
                 autoGainControl: { ideal: true },
@@ -342,25 +337,24 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         enableCam: true,
         callbacks: {
           onConnected: () => {
-            showToast("Connected to AI service");
             setConnectionStatus("service_connected");
           },
           onDisconnected: () => {
-            showToast("Disconnected from AI service");
             setConnectionStatus("disconnected");
           },
           onBotConnected: () => {
-            showToast("AI assistant connected");
             setConnectionStatus("bot_connected");
+          },
+          onBotReady: async () => {
+            // Don't automatically enable screenshare here
+            console.log(
+              "Bot is ready, waiting for bot to start speaking to request screenshare"
+            );
           },
           onError: (err: any) => {
             console.error("RTVIClient error:", err);
-            showToast(
-              `Connection error: ${err instanceof Error ? err.message : String(err)}`,
-              "error"
-            );
           },
-          onGenericMessage: (data: any) => {
+          onServerMessage: (data: any) => {
             try {
               const message =
                 typeof data === "string" ? JSON.parse(data) : data;
@@ -376,7 +370,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                   setCurrentChatHistory(message.chatHistory);
                 }
 
-                // Handle coding problem messages - check both direct and wrapped formats
+                // Handle coding problem messages
                 const messageData = message.message || message;
 
                 if (
@@ -390,48 +384,45 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                     open_editor,
                   } = messageData.payload;
 
-                  // Store the coding problem in the PathStore
                   setCodingProblem({
                     description: problem_description,
                     constraints: problem_constraints,
                   });
 
-                  // Open the code editor if requested
                   if (open_editor) {
                     setIsCodeEditorOpen(true);
                   }
-                  const problemMessage: Message = {
-                    role: "assistant",
-                    content: `**Coding Problem:**\n\n${problem_description}\n\n**Constraints:**\n\n${problem_constraints}`,
-                  };
                 }
               }
             } catch (error) {
               console.error("Error processing generic message:", error);
-              if (error instanceof Error) {
-                console.error("Error details:", error.message);
-                console.error("Error stack:", error.stack);
-              }
             }
           },
           onTransportStateChanged: (state) => {
-            setTransportState(state);
+            setTransportState(state as any);
           },
         },
       });
-      setRtviClient(rtviClient);
-      rtviClientRef.current = rtviClient;
 
+      rtviClientRef.current = rtviClient;
+      setRtviClient(rtviClient);
       setupEventListeners(rtviClient);
-      await rtviClient.connect();
+
+      // Connect to the service
+      await rtviClient.connect({
+        endpoint: `${pipecat_base_url}/api/v1/connect`,
+        requestData: {
+          job_id: jobId,
+          candidate_id: candidateId,
+          linkedin_profile: linkedin_profile,
+          additional_links: additional_links,
+        },
+      });
+
+      // Initialize devices
+      await rtviClient.initDevices();
     } catch (error) {
-      console.error("Connection failed:", error);
-      showToast(
-        `Connection failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        "error"
-      );
+      console.error("Error connecting:", error);
       setConnectionStatus("disconnected");
     }
   };

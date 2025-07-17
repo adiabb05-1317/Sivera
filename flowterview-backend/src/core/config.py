@@ -24,6 +24,7 @@ class Config:
     # Loops Template IDs
     LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
     LOOPS_REJECTION_TEMPLATE = os.getenv("LOOPS_REJECTION_TEMPLATE", "cmcqp3id80bgazd0ihgb1jh98")
+    LOOPS_ACCEPTANCE_TEMPLATE = os.getenv("LOOPS_ACCEPTANCE_TEMPLATE", "cmd6vyzvg09kzw50jfkcz2gwi")
     LOOPS_CUSTOM_TEMPLATE = os.getenv("LOOPS_CUSTOM_TEMPLATE", "cmcqph48u02skz00i40rwwxzk")
 
     # Frontend URL for generating links

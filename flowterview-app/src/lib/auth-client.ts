@@ -150,7 +150,7 @@ export const setUserContext = async (
   let organization_id: string | null = null;
 
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${
         process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
       }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`,
@@ -160,7 +160,8 @@ export const setUserContext = async (
           "Content-Type": "application/json",
         },
         credentials: "include",
-      }
+      },
+      false
     );
     if (response.ok) {
       const data = await response.json();
@@ -228,7 +229,8 @@ export const clearUserContext = () => {
 // Enhanced API fetch function that includes authentication headers
 export const authenticatedFetch = async (
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  reload?: boolean
 ): Promise<Response> => {
   const userContext = getUserContext();
 
@@ -288,7 +290,8 @@ export const authenticatedFetch = async (
   const method = (options.method || "GET").toUpperCase();
   if (
     response.ok &&
-    (method === "POST" || method === "PUT" || method === "PATCH")
+    (method === "POST" || method === "PUT" || method === "PATCH") &&
+    reload
   ) {
     // Run cache invalidation asynchronously to avoid blocking the response
     invalidateRelevantCaches(url, method).catch((error) => {

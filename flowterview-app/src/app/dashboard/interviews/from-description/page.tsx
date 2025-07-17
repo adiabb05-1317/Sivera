@@ -604,7 +604,7 @@ export default function GenerateFromDescriptionPage() {
                       </div>
                     </CarouselItem>
 
-                    {/* Human Interview */}
+                    {/* Interview Round */}
                     <CarouselItem className="basis-1/4">
                       <div className="p-1">
                         <Card
@@ -616,7 +616,7 @@ export default function GenerateFromDescriptionPage() {
                           onClick={() => toggleProcessStage("humanInterview")}
                           title={`${
                             processStages.humanInterview ? "Disable" : "Enable"
-                          } Human Interview`}
+                          } Interview Round`}
                         >
                           <CardContent className="flex aspect-square items-center justify-center p-6">
                             <div className="flex flex-col items-center justify-center gap-2">
