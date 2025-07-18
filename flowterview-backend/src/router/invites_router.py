@@ -8,7 +8,6 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, EmailStr, Field
 
-from src.lib.manager import ConnectionManager
 from src.router.interview_router import send_interview_invite_email
 from storage.db_manager import DatabaseManager
 
@@ -42,9 +41,7 @@ class BulkInviteResponse(BaseModel):
     errors: List[str] = []
 
 
-async def create_single_room_and_token(
-    manager: ConnectionManager, candidate_id: str, interview_id: str
-) -> Dict[str, Any]:
+async def create_candidate_interview(candidate_id: str, interview_id: str) -> Dict[str, Any]:
     """Create a single room and token for a candidate"""
     try:
         # First check if candidate_interview already exists
@@ -58,14 +55,9 @@ async def create_single_room_and_token(
             return {
                 "success": True,
                 "candidate_id": candidate_id,
-                "room_url": existing_candidate_interview.get("room_url"),
-                "bot_token": existing_candidate_interview.get("bot_token"),
                 "candidate_interview_id": existing_candidate_interview["id"],
                 "already_existed": True,
             }
-
-        # Create new room and token
-        room_url, bot_token = await manager.create_room_and_token()
 
         # Store in candidate_interviews table
         candidate_interview_data = {
@@ -73,28 +65,24 @@ async def create_single_room_and_token(
             "interview_id": interview_id,
             "candidate_id": candidate_id,
             "status": "Scheduled",
-            "room_url": room_url,
-            "bot_token": bot_token,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
 
         # Insert into database
-        result = db.execute_query("candidate_interviews", candidate_interview_data)
+        db.execute_query("candidate_interviews", candidate_interview_data)
 
-        logger.info(f"Created room and token for candidate {candidate_id}: {room_url}")
+        logger.info(f"Created candidate_interview for candidate {candidate_id}")
 
         return {
             "success": True,
             "candidate_id": candidate_id,
-            "room_url": room_url,
-            "bot_token": bot_token,
             "candidate_interview_id": candidate_interview_data["id"],
             "already_existed": False,
         }
 
     except Exception as e:
-        logger.error(f"Failed to create room and token for candidate {candidate_id}: {e}")
+        logger.error(f"Failed to create candidate_interview for candidate {candidate_id}: {e}")
         return {"success": False, "candidate_id": candidate_id, "error": str(e)}
 
 
@@ -153,7 +141,6 @@ async def create_verification_token_and_send_email(
 
 
 async def process_bulk_invites_background(
-    manager: ConnectionManager,
     interview_id: str,
     candidate_ids: List[str],
     emails: List[EmailStr],
@@ -170,7 +157,7 @@ async def process_bulk_invites_background(
     # Phase 1: Create rooms and tokens concurrently
     logger.info("Phase 1: Creating rooms and tokens...")
     room_creation_tasks = [
-        create_single_room_and_token(manager, candidate_id, interview_id) for candidate_id in candidate_ids
+        create_candidate_interview(candidate_id, interview_id) for candidate_id in candidate_ids
     ]
 
     # Use asyncio.gather with return_exceptions=True to handle failures gracefully
@@ -189,8 +176,6 @@ async def process_bulk_invites_background(
                 "candidate_id": result["candidate_id"],
                 "email": emails[i],
                 "name": names[i],
-                "room_url": result["room_url"],
-                "bot_token": result["bot_token"],
             })
         else:
             logger.error(f"Room creation failed for candidate {candidate_ids[i]}: Unknown error")

@@ -150,6 +150,7 @@ class InterviewFlow:
             self.candidate_name = self.candidate.get("name")
             self.job_title = self.job.get("title")
             self.resume_url = self.candidate.get("resume_url")
+            self.db.update("candidate_interviews", {"room_url": self.url, "bot_token": self.token}, {"candidate_id": self.candidate_id, "interview_id": self.interview.get("id")})
         else:
             # this is just for testing
             with open("src/services/flows/default.json", "r") as f:

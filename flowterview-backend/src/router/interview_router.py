@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 import json
+from datetime import datetime, timedelta
 
 # Set up more detailed logging
 import os
@@ -275,42 +276,6 @@ def check_candidate_interview_exists(
         Optional[Dict]: Existing candidate_interview record or None
     """
     return db.fetch_one("candidate_interviews", {"interview_id": interview_id, "candidate_id": candidate_id})
-
-
-async def create_candidate_interview_with_room(
-    interview_id: str, candidate_id: str, manager, db: DatabaseManager
-) -> Optional[str]:
-    """Create a candidate_interview record with room and token.
-
-    Args:
-        interview_id: Interview ID
-        candidate_id: Candidate ID
-        manager: Connection manager for creating rooms
-        db: Database manager instance
-
-    Returns:
-        Optional[str]: Created candidate_interview ID or None if failed
-    """
-    try:
-        room_url, bot_token = await manager.create_room_and_token()
-        ci_record = db.execute_query(
-            "candidate_interviews",
-            {
-                "interview_id": interview_id,
-                "candidate_id": candidate_id,
-                "status": "Scheduled",
-                "scheduled_at": datetime.now().isoformat(),
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-                "bot_token": bot_token,
-                "room_url": room_url,
-            },
-        )
-        logger.info(f"Created candidate_interview {ci_record['id']} with room: {room_url}")
-        return ci_record["id"]
-    except Exception as e:
-        logger.error(f"Failed to create room for candidate_interview: {e}")
-        return None
 
 
 async def process_invite_request(
@@ -910,26 +875,16 @@ async def complete_registration(
                     not existing_candidate_interview.get("room_url")
                     or existing_candidate_interview.get("room_url") == "placeholder"
                 ):
-                    # Create new room and token
-                    from src.lib.manager import ConnectionManager
-
-                    manager = ConnectionManager()
-                    room_url, bot_token = await manager.create_room_and_token()
-
                     db.update(
                         "candidate_interviews",
                         {
                             "status": "Started",
-                            "room_url": room_url,
-                            "bot_token": bot_token,
                             "updated_at": datetime.now().isoformat(),
                             "started_at": datetime.now().isoformat(),
                         },
                         {"id": existing_candidate_interview["id"]},
                     )
-                    logger.info(
-                        f"Updated existing candidate_interview for candidate {candidate_id} with new room: {room_url}"
-                    )
+                    logger.info(f"Updated existing candidate_interview for candidate {candidate_id} to Started status")
                 else:
                     # Just update status
                     db.update(
@@ -948,11 +903,6 @@ async def complete_registration(
         else:
             # No candidate_interview exists - create new one with room and token
             try:
-                from src.lib.manager import ConnectionManager
-
-                manager = ConnectionManager()
-                room_url, bot_token = await manager.create_room_and_token()
-
                 db.execute_query(
                     "candidate_interviews",
                     {
@@ -963,31 +913,11 @@ async def complete_registration(
                         "scheduled_at": datetime.now().isoformat(),
                         "created_at": datetime.now().isoformat(),
                         "updated_at": datetime.now().isoformat(),
-                        "room_url": room_url,
-                        "bot_token": bot_token,
                     },
                 )
-                logger.info(f"Created new candidate_interview for candidate {candidate_id} with room: {room_url}")
+                logger.info(f"Created new candidate_interview for candidate {candidate_id}")
             except Exception as e:
                 logger.error(f"Failed to create room for candidate_interview in complete_registration: {e}")
-                # Fall back to placeholder values
-                room_url = "placeholder"
-                bot_token = "placeholder"
-                db.execute_query(
-                    "candidate_interviews",
-                    {
-                        "interview_id": interview_id,
-                        "candidate_id": candidate_id,
-                        "status": "Started",
-                        "started_at": datetime.now().isoformat(),
-                        "scheduled_at": datetime.now().isoformat(),
-                        "created_at": datetime.now().isoformat(),
-                        "updated_at": datetime.now().isoformat(),
-                        "room_url": room_url,
-                        "bot_token": bot_token,
-                    },
-                )
-                logger.info(f"Created new candidate_interview for candidate {candidate_id} with placeholder room")
 
         # Delete the used token
         db.delete("verification_tokens", {"token": token_data["token"]})
@@ -1576,37 +1506,6 @@ async def validate_candidate_access(interview_id: str) -> Dict[str, Any]:
         return {"success": False, "message": "Failed to validate access"}
 
 
-@router.post("/{interview_id}/join")
-async def join_interview(interview_id: str, request: Request) -> Dict[str, Any]:
-    """
-    Create or join an interview room for a candidate
-    """
-    try:
-        logger.info(f"Candidate joining interview {interview_id}")
-
-        # Check if interview exists
-        interview = db.fetch_one("interviews", {"id": interview_id})
-        if not interview:
-            return {"success": False, "message": "Interview not found"}
-
-        # Get the manager from app state to create a real Daily.co room
-        manager = request.app.state.manager
-        room_url, bot_token = await manager.create_room_and_token()
-
-        logger.info(f"Created interview room for interview {interview_id}: {room_url}")
-
-        return {
-            "success": True,
-            "message": "Interview room created successfully",
-            "room_url": room_url,
-            "bot_token": bot_token,
-        }
-
-    except Exception as e:
-        logger.error(f"Error joining interview {interview_id}: {str(e)}")
-        return {"success": False, "message": "Failed to create interview room"}
-
-
 @router.get("/candidate-interviews/{candidate_interview_id}")
 async def get_candidate_interview_details(candidate_interview_id: str, request: Request):
     """
@@ -1642,6 +1541,8 @@ async def get_candidate_interview_details(candidate_interview_id: str, request: 
 
         # Flatten the nested structure into the desired format
         data = result.data
+        logger.info(f"Candidate interview details: {data}")
+
         details = {
             "candidate_interview_id": data["candidate_interview_id"],
             "candidate_id": data["candidate"]["id"],
@@ -1654,6 +1555,8 @@ async def get_candidate_interview_details(candidate_interview_id: str, request: 
             "flow_json": data["interview"]["job"]["flow"]["flow_json"] if data["interview"]["job"]["flow"] else None,
             "duration": data["interview"]["job"]["flow"]["duration"] if data["interview"]["job"]["flow"] else 30,
             "skills": data["interview"]["job"]["flow"]["skills"] if data["interview"]["job"]["flow"] else [],
+            "room_url": data["room_url"],
+            "status": data["status"],
         }
 
         return {"success": True, "details": details}

@@ -447,7 +447,7 @@ function InterviewContent() {
             )}
             <Button
               onClick={completeRegistration}
-              className="cursor-pointer text-xs"
+              className="cursor-pointer text-xs w-full"
               variant="outline"
               disabled={isLoading || !formData.name.trim()}
             >
