@@ -1,16 +1,15 @@
 import json
 from typing import Any, Dict, List
 
-from src.constants.prompts import (
-    INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE,
-    REACT_FLOW_GENERATION_PROMPT_TEMPLATE,
-)
+from src.constants.prompts import INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE
+
 from src.llm_handler.generic_llm import call_llm
 
 REQUIRED_NODES = [
     "introduction",
     "background_discussion",
     "coding_problem_introduction",
+    "jupyter_notebook_introduction",
     "coding_problem_discussion",
     "system_design_question",
     "behavioral_questions",
@@ -23,6 +22,7 @@ VALID_HANDLERS = {
     "__function__:collect_candidate_info",
     "__function__:process_background_info",
     "__function__:present_coding_problem",
+    "__function__:present_jupyter_notebook",
     "__function__:evaluate_problem_solving",
     "__function__:present_system_design",
     "__function__:evaluate_behavioral_response",

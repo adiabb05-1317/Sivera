@@ -3,8 +3,8 @@
 import usePathStore from "@/app/store/PathStore";
 import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Message } from "@/lib/types/general";
+import { useEffect, useRef, useState } from "react";
+import { Assessment, Message } from "@/lib/types/general";
 
 export interface AudioClientProps {
   onClearTranscripts: () => void;
@@ -36,10 +36,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setJoiningCall,
     setShowStarterQuestions,
     setTransportState,
-    codingProblem,
-    setCodingProblem,
-    isCodeEditorOpen,
-    setIsCodeEditorOpen,
+    currentAssessment,
+    setCurrentAssessment,
+    isAssessmentOpen,
+    setIsAssessmentOpen,
     setRtviClient,
     setLocalVideoStream,
   } = usePathStore();
@@ -370,27 +370,56 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                   setCurrentChatHistory(message.chatHistory);
                 }
 
-                // Handle coding problem messages
+                // Handle assessment messages (coding problems and notebooks)
                 const messageData = message.message || message;
 
                 if (
                   messageData &&
                   typeof messageData === "object" &&
-                  messageData.type === "coding-problem"
+                  (messageData.type === "code-editor" ||
+                    messageData.type === "notebook")
                 ) {
                   const {
-                    problem_description,
-                    problem_constraints,
-                    open_editor,
+                    title,
+                    description,
+                    open_assessment,
+                    ...typeSpecificProps
                   } = messageData.payload;
 
-                  setCodingProblem({
-                    description: problem_description,
-                    constraints: problem_constraints,
-                  });
+                  // Create assessment object based on type
+                  let assessment;
+                  if (messageData.type === "code-editor") {
+                    assessment = {
+                      id: messageData.id,
+                      type: "code-editor",
+                      title,
+                      description,
+                      open_assessment,
+                      languages: typeSpecificProps.languages || [
+                        "python",
+                        "javascript",
+                        "java",
+                      ],
+                      starterCode: typeSpecificProps.starter_code || {},
+                    };
+                  } else if (messageData.type === "notebook") {
+                    assessment = {
+                      id: messageData.id,
+                      type: "notebook",
+                      title,
+                      description,
+                      open_assessment,
+                      language: typeSpecificProps.language || "python",
+                      initialCells: typeSpecificProps.initial_cells || [],
+                    };
+                  }
 
-                  if (open_editor) {
-                    setIsCodeEditorOpen(true);
+                  if (assessment) {
+                    setCurrentAssessment(assessment as Assessment);
+
+                    if (open_assessment) {
+                      setIsAssessmentOpen(true);
+                    }
                   }
                 }
               }
@@ -511,7 +540,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      {/* Remove video element here if it exists - we'll show it in Presentation instead */}
     </div>
   );
 }

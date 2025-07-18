@@ -1,4 +1,9 @@
-import { Message, TConnectionStatus, TSource } from "@/lib/types/general";
+import {
+  Message,
+  TConnectionStatus,
+  TSource,
+  Assessment,
+} from "@/lib/types/general";
 import { create } from "zustand";
 
 type CallStatus =
@@ -30,11 +35,6 @@ type Participant = {
   color?: string;
 };
 
-type CodingProblem = {
-  description: string;
-  constraints: string;
-};
-
 type TPathStore = {
   // Job ID
   jobId: string;
@@ -56,8 +56,8 @@ type TPathStore = {
   setIsHeaderVisible: (isVisible: boolean) => void;
   isTransitioning: boolean;
   setIsTransitioning: (isTransitioning: boolean) => void;
-  isCodeEditorOpen: boolean;
-  setIsCodeEditorOpen: (isOpen: boolean) => void;
+  isAssessmentOpen: boolean;
+  setIsAssessmentOpen: (isOpen: boolean) => void;
   starterQuestionsOpacity: number;
   setStarterQuestionsOpacity: (opacity: number) => void;
 
@@ -133,9 +133,9 @@ type TPathStore = {
   sources: TSource[];
   setSources: (sources: TSource[]) => void;
 
-  // Coding problem properties
-  codingProblem: CodingProblem | null;
-  setCodingProblem: (codingProblem: CodingProblem | null) => void;
+  // Assessment properties
+  currentAssessment: Assessment | null;
+  setCurrentAssessment: (assessment: Assessment | null) => void;
 
   // RTVI client
   rtviClient: any; // Replace 'any' with 'RTVIClient' if you have the type
@@ -181,8 +181,8 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setIsHeaderVisible: (isVisible) => set({ isHeaderVisible: isVisible }),
   isTransitioning: false,
   setIsTransitioning: (isTransitioning) => set({ isTransitioning }),
-  isCodeEditorOpen: false,
-  setIsCodeEditorOpen: (isOpen) => set({ isCodeEditorOpen: isOpen }),
+  isAssessmentOpen: false,
+  setIsAssessmentOpen: (isOpen) => set({ isAssessmentOpen: isOpen }),
   starterQuestionsOpacity: 0,
   setStarterQuestionsOpacity: (opacity) =>
     set({ starterQuestionsOpacity: opacity }),
@@ -273,10 +273,10 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setTransportState: (transportState: TTransportState) =>
     set({ transportState }),
 
-  // Coding problem properties
-  codingProblem: null,
-  setCodingProblem: (codingProblem: CodingProblem | null) =>
-    set({ codingProblem }),
+  // Assessment properties
+  currentAssessment: null,
+  setCurrentAssessment: (assessment: Assessment | null) =>
+    set({ currentAssessment: assessment }),
 
   rtviClient: null,
   setRtviClient: (client: any) => set({ rtviClient: client }),
@@ -323,7 +323,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       joiningCall: false,
       isHeaderVisible: true,
       isTransitioning: false,
-      isCodeEditorOpen: false,
+      isAssessmentOpen: false,
       starterQuestionsOpacity: 0,
       isLoading: true,
       imageLoaded: false,
@@ -336,7 +336,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       transportState: "disconnected",
       permissionGranted: false,
       callStatus: "initial",
-      codingProblem: null,
+      currentAssessment: null,
       rtviClient: null,
       localVideoStream: null,
       editorFontSize: 18,

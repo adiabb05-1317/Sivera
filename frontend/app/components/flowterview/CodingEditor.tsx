@@ -16,6 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { CodingAssessment } from "@/lib/types/general";
 
 const firaCode = Fira_Code({ subsets: ["latin"], weight: "400" });
 
@@ -25,17 +26,18 @@ const SUPPORTED_LANGUAGES = [
   { name: "Java", id: "java" },
 ];
 
-interface CodeEditorProps {
+interface CodingEditorProps {
+  assessment: CodingAssessment;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function CodeEditor({
+export default function CodingEditor({
+  assessment,
   isOpen = false,
   onClose,
-}: CodeEditorProps) {
+}: CodingEditorProps) {
   const {
-    codingProblem,
     sendCodeMessage,
     sendSubmittedMessage,
     editorFontSize,
@@ -66,9 +68,6 @@ export default function CodeEditor({
   useEffect(() => {
     const newTheme = getMonacoTheme(resolvedTheme);
     setMonacoTheme(newTheme);
-
-    // Update existing editor theme if editor is mounted
-    // Note: Theme will be updated when Monaco re-renders with new theme prop
   }, [resolvedTheme]);
 
   const getMonacoLang = (lang: string) => {
@@ -84,6 +83,16 @@ export default function CodeEditor({
     }
   };
 
+  // Initialize starter code from assessment
+  useEffect(() => {
+    if (assessment.starterCode) {
+      setCodes((prev) => ({
+        ...prev,
+        ...assessment.starterCode,
+      }));
+    }
+  }, [assessment.starterCode]);
+
   // Debounce logic
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const lastSentCode = useRef<Record<string, string>>({
@@ -94,14 +103,14 @@ export default function CodeEditor({
   const hasUnsentChanges = useRef(false);
 
   useEffect(() => {
-    // Clear all code when a new problem arrives
+    // Clear all code when a new assessment arrives
     setCodes({ js: "", py: "", java: "" });
     lastSentCode.current = { js: "", py: "", java: "" };
     hasUnsentChanges.current = false;
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-  }, [codingProblem]);
+  }, [assessment]);
 
   // Helper to send code if changed
   const trySendCode = (lang: string, code: string) => {
@@ -149,17 +158,16 @@ export default function CodeEditor({
       trySendCode(lang.id, codes[lang.id]);
       sendSubmittedMessage(codes[lang.id], lang.name);
     });
-    alert("Submitted code:\n" + JSON.stringify(codes, null, 2));
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] text-white border-r overflow-hidden animate-fade-in rounded-3xl border border-app-blue-300/50 dark:border-app-blue-700/70">
-      <div className="flex justify-between items-center py-3 px-4 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
+      <div className="flex justify-between items-center py-1 px-4 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
         <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
           <Icons.Code className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />
-          <span>Coding Challenge</span>
+          Code Editor
         </h3>
         <button
           onClick={handleClose}
@@ -169,23 +177,6 @@ export default function CodeEditor({
           <Icons.X className="w-5 h-5" />
         </button>
       </div>
-
-      {codingProblem && (
-        <div className="bg-white dark:bg-[--meet-surface] border-b border-app-blue-200 dark:border-app-blue-700 px-6 py-5">
-          <h4 className="font-semibold text-app-blue-800 dark:text-app-blue-200 mb-2 text-sm">
-            Problem
-          </h4>
-          <p className="text-gray-700 dark:text-gray-200 mb-4 whitespace-pre-line text-xs leading-relaxed">
-            {codingProblem.description}
-          </p>
-          <h4 className="font-semibold text-app-blue-800 dark:text-app-blue-200 mb-2 text-sm">
-            Constraints
-          </h4>
-          <p className="text-gray-600 dark:text-gray-300 whitespace-pre-line text-xs leading-relaxed">
-            {codingProblem.constraints}
-          </p>
-        </div>
-      )}
 
       <div className="flex justify-between border-b border-app-blue-300 dark:border-app-blue-700 bg-app-blue-50 dark:bg-[--meet-surface] px-6">
         <div className="flex items-center">
@@ -248,7 +239,7 @@ export default function CodeEditor({
 
       <div className="flex justify-end py-4 px-6 bg-app-blue-50 dark:bg-[--meet-surface] border-t border-app-blue-200 dark:border-app-blue-700">
         <Button
-          className="cursor-pointer text-xs"
+          className="cursor-pointer text-xs text-black dark:text-white"
           variant="outline"
           onClick={handleSubmit}
         >

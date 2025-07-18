@@ -15,11 +15,11 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@pipecat-ai/client-js':
-        specifier: ^0.4.1
-        version: 0.4.1
+        specifier: ^1.0.0
+        version: 1.0.0
       '@pipecat-ai/daily-transport':
-        specifier: ^0.4.0
-        version: 0.4.0(@pipecat-ai/client-js@0.4.1)
+        specifier: ^1.0.0
+        version: 1.0.0(@pipecat-ai/client-js@1.0.0)
       '@radix-ui/react-dialog':
         specifier: ^1.1.6
         version: 1.1.14(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -42,7 +42,7 @@ importers:
         specifier: ^1.1.4
         version: 1.1.7(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-slot':
-        specifier: ^1.2.0
+        specifier: ^1.2.3
         version: 1.2.3(@types/react@19.0.10)(react@19.1.0)
       '@radix-ui/react-toast':
         specifier: ^1.2.11
@@ -446,13 +446,13 @@ packages:
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
 
-  '@pipecat-ai/client-js@0.4.1':
-    resolution: {integrity: sha512-3jLKRzeryqLxtkqvr4Bvxe2OxoI7mdOFecm6iolZizXnk/BE480SEg2oAKyov3b5oT6+jmPlT+1HRBlTzEtL7A==}
+  '@pipecat-ai/client-js@1.0.0':
+    resolution: {integrity: sha512-c+LtwyG7KlEPxDImXnxlNrFIlq0I3nd6R3gmLHfDr3fAq5zmlOrzZCeOPWWRhPFvBO+MNSoVrmNeDv6DJWsMPA==}
 
-  '@pipecat-ai/daily-transport@0.4.0':
-    resolution: {integrity: sha512-qPiLwAILBpPY3nUYxpEl4bdvtP+qIb/GwjKugyw3LVbC4HkD5Q5nav0GgKMPNTXIbK08YDCJbAWZhnqzTcmuyw==}
+  '@pipecat-ai/daily-transport@1.0.0':
+    resolution: {integrity: sha512-iXmv9Et/TGPvJoeOY+ZBPv+a3pbqT502jco2MBHl8l2VrtztkidjDwiOkPfPdD191CCwaSbV5laSYALsD0AyxA==}
     peerDependencies:
-      '@pipecat-ai/client-js': ~0.4.0
+      '@pipecat-ai/client-js': ~1.0.0
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -3324,18 +3324,19 @@ snapshots:
   '@opentelemetry/api@1.9.0':
     optional: true
 
-  '@pipecat-ai/client-js@0.4.1':
+  '@pipecat-ai/client-js@1.0.0':
     dependencies:
       '@types/events': 3.0.3
+      bowser: 2.11.0
       clone-deep: 4.0.1
       events: 3.3.0
       typed-emitter: 2.1.0
       uuid: 10.0.0
 
-  '@pipecat-ai/daily-transport@0.4.0(@pipecat-ai/client-js@0.4.1)':
+  '@pipecat-ai/daily-transport@1.0.0(@pipecat-ai/client-js@1.0.0)':
     dependencies:
       '@daily-co/daily-js': 0.77.0
-      '@pipecat-ai/client-js': 0.4.1
+      '@pipecat-ai/client-js': 1.0.0
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
