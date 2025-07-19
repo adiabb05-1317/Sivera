@@ -378,7 +378,6 @@ async def process_invite_request(
             saved_token = db.fetch_one("verification_tokens", {"token": token})
             if saved_token:
                 logger.info(f"Successfully verified token was saved for {email}")
-                db.update("candidates", {"status": "Invited"}, {"email": email, "job_id": matching_job["id"]})
             else:
                 logger.error(f"Failed to verify token was saved for {email}")
                 return

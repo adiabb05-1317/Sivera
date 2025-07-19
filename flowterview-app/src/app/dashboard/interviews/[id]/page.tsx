@@ -458,10 +458,12 @@ export default function InterviewDetailsPage() {
           });
         } else if (
           status?.startsWith("Invited_Meeting_") ||
-          status?.startsWith("Interviewed_Meeting_")
+          status?.startsWith("Interviewed_Meeting_") ||
+          status?.startsWith("Invited_Round_") ||
+          status?.startsWith("Interviewed_Round_")
         ) {
-          // Extract round number from status like "Invited_Meeting_1" or "Interviewed_Meeting_2"
-          const roundMatch = status.match(/_(Meeting_)?(\d+)$/);
+          // Extract round number from status like "Invited_Meeting_1", "Interviewed_Meeting_2", "Invited_Round_1", or "Interviewed_Round_2"
+          const roundMatch = status.match(/_(Meeting_|Round_)?(\d+)$/);
           const roundNumber = roundMatch ? parseInt(roundMatch[2]) : 1;
           const stageId = `human_interview_${roundNumber}`;
 
@@ -619,7 +621,7 @@ export default function InterviewDetailsPage() {
       return "Invited"; // Start with Invited, will become Interviewed after completion
     } else if (stageId.startsWith("human_interview_")) {
       const roundNumber = parseInt(stageId.split("_")[2]);
-      return `Invited_Meeting_${roundNumber}`; // Start with Invited_Meeting_X, will become Interviewed_Meeting_X after completion
+      return `Invited_Round_${roundNumber}`; // Start with Invited_Round_X, will become Interviewed_Round_X after completion
     } else if (stageId === "accepted") {
       return "Accepted";
     } else if (stageId === "rejected") {
