@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 import json
-from datetime import datetime, timedelta
 
 # Set up more detailed logging
 import os
@@ -46,7 +45,9 @@ class SendInviteRequest(BaseModel):
     job: str = Field(..., description="Job title/position")
     organization_id: str = Field(..., description="Organization ID")
     sender_id: Optional[str] = Field(None, description="ID of the user sending the invitation")
-    email_type: str = Field(..., description="Type of email: 'ai_interview', 'human_interview', 'acceptance', or 'rejection'")
+    email_type: str = Field(
+        ..., description="Type of email: 'ai_interview', 'human_interview', 'acceptance', or 'rejection'"
+    )
     stage_type: Optional[str] = Field(None, description="Stage type: 'ai_interview' or 'human_interview'")
     round_number: Optional[int] = Field(None, description="Round number for human interviews")
 
@@ -117,10 +118,11 @@ class InterviewFlowUpdate(BaseModel):
 
 
 class JobUpdate(BaseModel):
-    title: Optional[str]
-    description: Optional[str]
-    process_stages: Optional[dict]
-    phone_screen_questions: Optional[List[str]]  # This will be handled separately for phone_screen table
+    title: Optional[str] = None
+    description: Optional[str] = None
+    process_stages: Optional[dict] = None
+    phone_screen_questions: Optional[List[str]] = None
+    num_rounds: Optional[int] = None
 
 
 async def send_loops_email(to_email: str, template_id: str, variables: Dict[str, Any]) -> None:
@@ -152,15 +154,15 @@ async def send_loops_email(to_email: str, template_id: str, variables: Dict[str,
 
 
 async def send_interview_invite_email(
-    email: str, 
-    name: str, 
-    job: str, 
-    token: str, 
-    is_existing_user: bool = False, 
+    email: str,
+    name: str,
+    job: str,
+    token: str,
+    is_existing_user: bool = False,
     company_name: str = "Sivera",
     email_type: str = "ai_interview",
     stage_type: str = "ai_interview",
-    round_number: int = None
+    round_number: int = None,
 ) -> None:
     """Background task to send interview invitation email via Loops
 
@@ -180,37 +182,27 @@ async def send_interview_invite_email(
         # Determine template based on email type
         if email_type == "ai_interview" or email_type == "human_interview":
             template_id = Config.LOOPS_INTERVIEW_TEMPLATE
-            
+
             # Make sure the token is URL safe and properly encoded
             import urllib.parse
+
             encoded_token = urllib.parse.quote_plus(token)
             if email_type == "ai_interview":
                 interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
             elif email_type == "human_interview":
                 interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/round?token={encoded_token}"
-            
+
             # Prepare variables for interview template
-            variables = {
-                "name": name,
-                "job": job,
-                "company": company_name,
-                "verify_url": interview_url
-            }
-            
+            variables = {"name": name, "job": job, "company": company_name, "verify_url": interview_url}
+
         elif email_type == "acceptance":
             template_id = Config.LOOPS_ACCEPTANCE_TEMPLATE
-            variables = {
-                "name": name,
-                "company": company_name
-            }
-            
+            variables = {"name": name, "company": company_name}
+
         elif email_type == "rejection":
             template_id = Config.LOOPS_REJECTION_TEMPLATE
-            variables = {
-                "name": name,
-                "company": company_name
-            }
-            
+            variables = {"name": name, "company": company_name}
+
         else:
             raise ValueError(f"Unknown email type: {email_type}")
 
@@ -1049,7 +1041,7 @@ async def get_interview_job(interview_id: str, request: Request):
         # Optimized query: get interview with job data in one query
         interview_data = db.fetch_all(
             table="interviews",
-            select="id, job_id, jobs!inner(id, title, organization_id)",
+            select="id, job_id, jobs!inner(id, title, organization_id, num_rounds)",
             query_params={"id": interview_id},
             limit=1,
         )
@@ -1067,7 +1059,7 @@ async def get_interview_job(interview_id: str, request: Request):
                 detail="Access denied: Interview not in your organization",
             )
 
-        return {"id": interview["id"], "job_id": interview["job_id"]}
+        return {"id": interview["id"], "job_id": interview["job_id"], "num_rounds": job_info.get("num_rounds")}
 
     except HTTPException:
         raise
@@ -1094,7 +1086,7 @@ async def list_interviews(request: Request):
         # This will use idx_jobs_org_id_optimized and idx_interviews_job_id_optimized
         interviews = db.fetch_all(
             table="interviews",
-            select="id, status, created_at, candidates_invited, job_id, created_by, jobs!inner(id, title), users!inner(name, email)",
+            select="id, status, created_at, candidates_invited, job_id, created_by, jobs!inner(id, title, num_rounds), users!inner(name, email)",
             eq_filters={"jobs.organization_id": user_context.organization_id},
             order_by=(
                 "created_at",
@@ -1125,6 +1117,7 @@ async def list_interviews(request: Request):
                     "status": interview.get("status", "open"),
                     "date": date,
                     "job_id": interview.get("job_id"),
+                    "num_rounds": job_info.get("num_rounds"),
                     "created_by": interview.get("users", {}).get("email"),
                 }
             )
@@ -1313,6 +1306,7 @@ async def update_job(job_id: str, updates: JobUpdate, request: Request):
             "title": job_data.get("title"),
             "description": job_data.get("description"),
             "process_stages": job_data.get("process_stages"),
+            "num_rounds": job_data.get("num_rounds"),
             "phone_screen_id": job_data.get("phone_screen_id"),
             "phone_screen_questions": response_phone_questions,
             "updated_at": job_data.get("updated_at"),
@@ -1331,7 +1325,7 @@ async def get_interview(interview_id: str, request: Request):
         # Optimized query with JOINs (interviews + jobs + interview_flows + phone_screen)
         interviews = db.fetch_all(
             table="interviews",
-            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,process_stages,phone_screen_id,interview_flows(skills,duration),phone_screen(questions))",
+            select="id,status,created_at,candidates_invited,job_id,jobs!inner(id,title,description,organization_id,flow_id,process_stages,phone_screen_id,interview_flows(skills,duration),phone_screen(questions),num_rounds)",
             query_params={"id": interview_id},
             limit=1,  # Ensure only one record is fetched
         )
@@ -1433,6 +1427,7 @@ async def get_interview(interview_id: str, request: Request):
                 "process_stages": job_data.get("process_stages"),
                 "phone_screen_id": job_data.get("phone_screen_id"),
                 "phone_screen_questions": phone_screen_questions,
+                "num_rounds": job_data.get("num_rounds"),
             },
             "candidates": {
                 "invited": invited_candidates,
@@ -1565,6 +1560,7 @@ async def get_candidate_interview_details(candidate_interview_id: str, request: 
     except Exception as e:
         logger.error(f"Error fetching candidate interview details for {candidate_interview_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch interview details.")
+
 
 @router.get("/by-job/{job_id}")
 async def get_interview_by_job(job_id: str, request: Request):

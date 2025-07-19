@@ -77,7 +77,7 @@ export default function InterviewsPage() {
 
   // Filter and sort logic
   const filteredAndSortedInterviews = useMemo(() => {
-    let filtered = interviews.filter((interview: any) => {
+    const filtered = interviews.filter((interview: any) => {
       // Search filter
       const matchesSearch =
         interview.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

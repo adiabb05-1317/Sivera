@@ -160,13 +160,17 @@ export function BulkInviteDialog({
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
-            Move to Next Stage
+            {candidateGroups.length === 1
+              ? `Move to ${candidateGroups[0].nextStage.title}`
+              : "Move to Next Stage"}
           </DialogTitle>
           <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
             {showStatus
               ? "Moving candidates to next stage. Please wait..."
+              : candidateGroups.length > 0
+              ? "Moving selected candidates to their respective next stages."
               : `Moving selected candidates to ${
-                  nextStageTitle || "Rejected"
+                  nextStageTitle || "next stage"
                 }.`}
           </DialogDescription>
         </DialogHeader>

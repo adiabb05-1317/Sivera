@@ -12,8 +12,6 @@ import {
   Linkedin,
   Eye,
   MoreVertical,
-  ArrowLeft,
-  ArrowRight,
   MessageSquare,
   Loader2,
 } from "lucide-react";
@@ -95,6 +93,38 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
               </p>
             )}
           </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-[85px] justify-end">
+            <Checkbox
+              checked={isSelected}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(candidate, !isSelected);
+              }}
+            />
+            <Badge
+              variant="outline"
+              className={`text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                candidate.notes
+                  ? "opacity-100"
+                  : isDropdownOpen
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100"
+              } transition-opacity`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickAction("add_note", candidate);
+              }}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {candidate.notes ? "Edit Note" : "Add Note"}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Three dots menu positioned at bottom right - adjust position if AI score is present */}
+        <div className="absolute bottom-2 right-2">
           <DropdownMenu onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
@@ -149,80 +179,10 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-[85px] justify-end">
-            <Checkbox
-              checked={isSelected}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(candidate, !isSelected);
-              }}
-            />
-            <Badge
-              variant="outline"
-              className={`text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                candidate.notes
-                  ? "opacity-100"
-                  : isDropdownOpen
-                  ? "opacity-100"
-                  : "opacity-0 group-hover:opacity-100"
-              } transition-opacity`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickAction("add_note", candidate);
-              }}
-            >
-              <MessageSquare className="h-4 w-4" />
-              {candidate.notes ? "Edit Note" : "Add Note"}
-            </Badge>
-            <div
-              className={`gap-1 flex items-center ${
-                isDropdownOpen
-                  ? "opacity-100"
-                  : "opacity-0 group-hover:opacity-100"
-              } transition-opacity`}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-6 w-6 p-0 ${
-                  isDropdownOpen
-                    ? "opacity-100"
-                    : "opacity-0 group-hover:opacity-100"
-                } transition-opacity cursor-pointer`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMove(candidate, "prev");
-                }}
-                title="Move to previous stage"
-              >
-                <ArrowLeft className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-6 w-6 p-0 ${
-                  isDropdownOpen
-                    ? "opacity-100"
-                    : "opacity-0 group-hover:opacity-100"
-                } transition-opacity cursor-pointer`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMove(candidate, "next");
-                }}
-                title="Move to next stage"
-              >
-                <ArrowRight className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        </div>
-        {stageId !== "applied" &&
-          stageId !== "accepted" &&
-          stageId !== "rejected" &&
-          (candidate.status?.includes("Interviewed") ||
-            candidate.interview_status === "completed") && (
-            <div className="absolute bottom-3.5 right-3.5">
+        {stageId === "ai_interview" &&
+          candidate.interview_status &&
+          candidate.interview_status.toLowerCase() === "completed" && (
+            <div className="absolute top-3.5 right-3.5">
               {candidate.ai_score ? (
                 <div className="w-10 h-10">
                   <svg

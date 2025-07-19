@@ -270,7 +270,7 @@ export default function CandidatesPage() {
 
   // Filter and sort logic
   const filteredAndSortedCandidates = useMemo(() => {
-    let filtered = candidates.filter((candidate: any) => {
+    const filtered = candidates.filter((candidate: any) => {
       // Search filter
       const matchesSearch =
         !searchTerm ||

@@ -2,23 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 
-// Dynamically import drag and drop components to avoid SSR issues
-const DragDropContext = dynamic(
-  () => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext),
-  { ssr: false }
-);
-const Droppable = dynamic(
-  () => import("@hello-pangea/dnd").then((mod) => mod.Droppable),
-  { ssr: false }
-);
-const Draggable = dynamic(
-  () => import("@hello-pangea/dnd").then((mod) => mod.Draggable),
-  { ssr: false }
-);
-
-import type { DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -96,7 +80,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import CandidateCard from "@/components/ui/CandidateCard";
 import PipelineColumn from "@/components/ui/PipelineColumn";
 
 // Status badge color mapping using only app colors
@@ -176,7 +159,8 @@ interface PendingChange {
     | "add_round"
     | "remove_round"
     | "send_email"
-    | "update_status";
+    | "update_status"
+    | "update_num_rounds";
   candidateId?: string;
   sourceStageId?: string;
   destinationStageId?: string;
@@ -191,6 +175,8 @@ interface PendingChange {
   stageType?: "ai_interview" | "human_interview" | "acceptance" | "rejection";
   // Status update fields
   newStatus?: string;
+  // Num rounds update fields
+  newNumRounds?: number;
 }
 
 interface Job {
@@ -198,6 +184,7 @@ interface Job {
   title: string;
   description?: string;
   organization_id?: string;
+  num_rounds?: number;
 }
 
 interface Interview {
@@ -245,6 +232,13 @@ export default function InterviewDetailsPage() {
   const [bulkPhoneScreenOpen, setBulkPhoneScreenOpen] = useState(false);
   const [bulkSelectOpen, setBulkSelectOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [candidateGroups, setCandidateGroups] = useState<
+    Array<{
+      nextStage: { id: string; title: string };
+      candidates: Candidate[];
+      currentStage: string;
+    }>
+  >([]);
 
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -257,7 +251,6 @@ export default function InterviewDetailsPage() {
     phoneInterview: false,
     assessments: false,
     aiInterviewer: false,
-    humanInterview: false,
   });
 
   // Phone screen questions state
@@ -275,13 +268,18 @@ export default function InterviewDetailsPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [scoreFilter, setScoreFilter] = useState<number | null>(null);
+
+  // Number of rounds state
+  const [currentNumRounds, setCurrentNumRounds] = useState<number>(1);
+  const [originalNumRounds, setOriginalNumRounds] = useState<number>(1);
   const [noteDialog, setNoteDialog] = useState<{
     open: boolean;
     candidate?: Candidate;
   }>({ open: false });
   const [newNote, setNewNote] = useState("");
-  const [isDragDropReady, setIsDragDropReady] = useState(false);
+
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const { toast } = useToast();
 
@@ -302,6 +300,22 @@ export default function InterviewDetailsPage() {
     return { disabled: false, reason: "" };
   };
 
+  // Helper function to sort candidates by AI score (high to low)
+  const sortCandidatesByScore = (candidates: Candidate[]) => {
+    return candidates.sort((a, b) => {
+      // Candidates with scores come first, then those without
+      if (a.ai_score && b.ai_score) {
+        return b.ai_score - a.ai_score; // High to low
+      } else if (a.ai_score && !b.ai_score) {
+        return -1; // a (with score) comes first
+      } else if (!a.ai_score && b.ai_score) {
+        return 1; // b (with score) comes first
+      } else {
+        return 0; // Both without scores, maintain order
+      }
+    });
+  };
+
   // Auto-adjust timer based on skill count
   useEffect(() => {
     const skillCount = selectedSkills.length;
@@ -314,79 +328,103 @@ export default function InterviewDetailsPage() {
     }
   }, [selectedSkills.length]);
 
-  // Check if drag and drop components are ready
+  // Clear candidate groups when bulk invite dialog closes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsDragDropReady(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!bulkInviteOpen) {
+      setCandidateGroups([]);
+    }
+  }, [bulkInviteOpen]);
+
+  // Reset note saving state when note dialog closes
+  useEffect(() => {
+    if (!noteDialog.open) {
+      setIsSavingNote(false);
+    }
+  }, [noteDialog.open]);
 
   // Fetch AI scores for interviewed candidates
-  useEffect(() => {
-    const fetchAIScores = async () => {
-      try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const fetchAIScores = useCallback(async () => {
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
 
-        // Get candidates with status "Interviewed"
-        const interviewedCandidateIds = invitedCandidates
-          .filter(
-            (c) =>
-              c.status === "Interviewed" || c.interview_status === "completed"
-          )
-          .map((c) => c.id);
+      // Get candidates with status "Interviewed" or interview_status "Completed"
+      const interviewedCandidateIds = invitedCandidates
+        .filter(
+          (c) =>
+            c.status === "Interviewed" ||
+            (c.interview_status &&
+              c.interview_status.toLowerCase() === "completed")
+        )
+        .map((c) => c.id);
 
-        if (interviewedCandidateIds.length === 0) return;
+      console.log(
+        "Candidates eligible for AI scores:",
+        interviewedCandidateIds.length,
+        interviewedCandidateIds
+      );
 
-        // Fetch analytics data for these candidates
-        const response = await authenticatedFetch(
-          `${backendUrl}/api/v1/analytics/interview/${id}/candidates`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              candidate_ids: interviewedCandidateIds,
-            }),
+      if (interviewedCandidateIds.length === 0) return;
+
+      // Fetch analytics data for these candidates
+      const response = await authenticatedFetch(
+        `${backendUrl}/api/v1/analytics/interview/${id}/candidates`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          false
-        );
+          body: JSON.stringify({
+            candidate_ids: interviewedCandidateIds,
+          }),
+        },
+        false
+      );
 
-        if (response.ok) {
-          const analyticsData = await response.json();
+      if (response.ok) {
+        const analyticsData = await response.json();
+        console.log("Analytics data received:", analyticsData);
 
-          // Update stages with actual AI scores
-          setStages((currentStages) =>
-            currentStages.map((stage) => ({
+        // Update stages with actual AI scores and sort by score (high to low)
+        setStages((currentStages) =>
+          currentStages.map((stage) => {
+            const updatedCandidates = stage.candidates.map((candidate) => {
+              const analytics = analyticsData.find(
+                (a: any) => a.candidate_id === candidate.id
+              );
+
+              if (analytics && analytics.data?.overall_score) {
+                return {
+                  ...candidate,
+                  ai_score: analytics.data.overall_score,
+                };
+              }
+
+              return candidate;
+            });
+
+            // Sort candidates by AI score (descending: high to low)
+            const sortedCandidates = sortCandidatesByScore([
+              ...updatedCandidates,
+            ]);
+
+            return {
               ...stage,
-              candidates: stage.candidates.map((candidate) => {
-                const analytics = analyticsData.find(
-                  (a: any) => a.candidate_id === candidate.id
-                );
-
-                if (analytics && analytics.data?.overall_score) {
-                  return {
-                    ...candidate,
-                    ai_score: analytics.data.overall_score,
-                  };
-                }
-
-                return candidate;
-              }),
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching AI scores:", error);
+              candidates: sortedCandidates,
+            };
+          })
+        );
       }
-    };
+    } catch (error) {
+      console.error("Error fetching AI scores:", error);
+    }
+  }, [invitedCandidates, id]);
 
+  useEffect(() => {
     if (invitedCandidates.length > 0) {
       fetchAIScores();
     }
-  }, [id, invitedCandidates]);
+  }, [fetchAIScores, invitedCandidates]);
 
   // Initialize pipeline stages
   useEffect(() => {
@@ -453,28 +491,24 @@ export default function InterviewDetailsPage() {
         }
       });
 
-      // Create initial stages
+      // Create initial stages with sorted candidates
       const initialStages: PipelineStage[] = [
         {
           id: "applied",
           title: "Applied",
           type: "ai_interview",
-          candidates: appliedCandidates,
+          candidates: sortCandidatesByScore([...appliedCandidates]),
         },
         {
           id: "ai_interview",
           title: "AI Interview",
           type: "ai_interview",
-          candidates: aiInterviewCandidates,
+          candidates: sortCandidatesByScore([...aiInterviewCandidates]),
         },
       ];
 
-      // Add human interview stages - always include at least Round 1
-      const humanStageIds = Object.keys(humanInterviewCandidates).sort();
-      const maxRound = Math.max(
-        1, // Always have at least round 1
-        ...humanStageIds.map((stageId) => parseInt(stageId.split("_")[2]) || 1)
-      );
+      // Add human interview stages - use num_rounds from database, with minimum of 1
+      const maxRound = Math.max(1, currentNumRounds);
 
       // Create human interview stages from 1 to maxRound
       for (let round = 1; round <= maxRound; round++) {
@@ -484,7 +518,9 @@ export default function InterviewDetailsPage() {
           title: `Interview Round ${round}`,
           type: "human_interview",
           round: round,
-          candidates: humanInterviewCandidates[stageId] || [], // Use existing candidates or empty array
+          candidates: sortCandidatesByScore([
+            ...(humanInterviewCandidates[stageId] || []),
+          ]),
         });
       }
 
@@ -494,13 +530,13 @@ export default function InterviewDetailsPage() {
           id: "accepted",
           title: "Accepted",
           type: "accepted",
-          candidates: acceptedCandidates,
+          candidates: sortCandidatesByScore([...acceptedCandidates]),
         },
         {
           id: "rejected",
           title: "Rejected",
           type: "rejected",
-          candidates: rejectedCandidates,
+          candidates: sortCandidatesByScore([...rejectedCandidates]),
         }
       );
 
@@ -728,6 +764,11 @@ export default function InterviewDetailsPage() {
             pipeline_stage: destinationStageId,
             status: newBackendStatus, // Update the status in the visual state too
           });
+
+          // Re-sort destination stage candidates by AI score
+          destStage.candidates = sortCandidatesByScore([
+            ...destStage.candidates,
+          ]);
         }
       }
 
@@ -819,30 +860,29 @@ export default function InterviewDetailsPage() {
         setNewNote(candidate.notes || ""); // Pre-populate with existing notes if any
         setNoteDialog({ open: true, candidate });
         break;
+      case "view_resume":
+        if (candidate.resume_url) {
+          // Open resume in new tab
+          window.open(candidate.resume_url, "_blank", "noopener,noreferrer");
+          toast({
+            title: "Resume opened",
+            description: `Opened resume for ${candidate.name}`,
+          });
+        } else {
+          // Show message that no resume is available
+          toast({
+            title: "No resume available",
+            description: `${candidate.name} has not uploaded a resume yet.`,
+            variant: "destructive",
+          });
+        }
+        break;
     }
   };
 
   const addHumanInterviewRound = () => {
-    const humanInterviewStages = stages.filter(
-      (s) => s.type === "human_interview"
-    );
-
-    // Find the next available round number
-    const existingRounds = humanInterviewStages
-      .map((s) => s.round || 0)
-      .filter((r) => r > 0)
-      .sort((a, b) => a - b);
-
-    let nextRound = 1;
-    for (const round of existingRounds) {
-      if (round === nextRound) {
-        nextRound++;
-      } else {
-        break;
-      }
-    }
-
-    const newStageId = `human_interview_${nextRound}`;
+    const newNumRounds = currentNumRounds + 1;
+    const newStageId = `human_interview_${newNumRounds}`;
 
     // Check if this stage was previously removed - if so, just remove the remove change
     const existingRemoveChange = pendingChanges.find(
@@ -865,9 +905,9 @@ export default function InterviewDetailsPage() {
 
           newStages.splice(insertIndex, 0, {
             id: newStageId,
-            title: `Interview Round ${nextRound}`,
+            title: `Interview Round ${newNumRounds}`,
             type: "human_interview",
-            round: nextRound,
+            round: newNumRounds,
             candidates: [],
           });
 
@@ -879,7 +919,7 @@ export default function InterviewDetailsPage() {
       addPendingChange({
         type: "add_round",
         stageId: newStageId,
-        roundNumber: nextRound,
+        roundNumber: newNumRounds,
         timestamp: Date.now(),
       });
 
@@ -889,15 +929,25 @@ export default function InterviewDetailsPage() {
 
         newStages.splice(insertIndex, 0, {
           id: newStageId,
-          title: `Interview Round ${nextRound}`,
+          title: `Interview Round ${newNumRounds}`,
           type: "human_interview",
-          round: nextRound,
+          round: newNumRounds,
           candidates: [],
         });
 
         return newStages;
       });
     }
+
+    // Update the current number of rounds and track the change
+    setCurrentNumRounds(newNumRounds);
+
+    // Add pending change to update num_rounds in database
+    addPendingChange({
+      type: "update_num_rounds",
+      newNumRounds: newNumRounds,
+      timestamp: Date.now(),
+    });
   };
 
   const removeHumanInterviewRound = (stageId: string) => {
@@ -939,70 +989,113 @@ export default function InterviewDetailsPage() {
 
     // Remove the stage from visual state
     setStages((prev) => prev.filter((s) => s.id !== stageId));
+
+    // Update the current number of rounds and track the change
+    const newNumRounds = Math.max(1, currentNumRounds - 1);
+    setCurrentNumRounds(newNumRounds);
+
+    // Add pending change to update num_rounds in database
+    addPendingChange({
+      type: "update_num_rounds",
+      newNumRounds: newNumRounds,
+      timestamp: Date.now(),
+    });
   };
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-
-    const { source, destination, draggableId } = result;
-
-    // If dropped in the same place, do nothing
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    // Find the candidate
-    const sourceStage = stages.find((s) => s.id === source.droppableId);
-    const candidate = sourceStage?.candidates.find((c) => c.id === draggableId);
-
-    if (candidate) {
-      stageMoveCandidate(
-        candidate,
-        source.droppableId,
-        destination.droppableId
-      );
-    }
-  };
-
-  const saveNote = () => {
+  const saveNote = async () => {
     if (noteDialog.candidate && newNote.trim()) {
-      addPendingChange({
-        type: "add_note",
-        candidateId: noteDialog.candidate.id,
-        note: newNote.trim(),
-        timestamp: Date.now(),
-      });
+      const candidateId = noteDialog.candidate.id;
+      const noteText = newNote.trim();
 
-      // Update visual state immediately
-      setStages((prev) => {
-        const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
-        const stageIndex = newStages.findIndex((s: PipelineStage) =>
-          s.candidates.some((c: Candidate) => c.id === noteDialog.candidate?.id)
+      setIsSavingNote(true);
+
+      try {
+        // Save note to database immediately
+        await authenticatedFetch(
+          `${siveraBackendUrl}/api/v1/candidates/${candidateId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              notes: noteText,
+            }),
+          }
         );
 
-        if (stageIndex >= 0) {
-          const candidateIndex = newStages[stageIndex].candidates.findIndex(
-            (c: Candidate) => c.id === noteDialog.candidate?.id
+        // Update visual state immediately after successful save
+        setStages((prev) => {
+          const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+          const stageIndex = newStages.findIndex((s: PipelineStage) =>
+            s.candidates.some((c: Candidate) => c.id === candidateId)
           );
 
-          if (candidateIndex >= 0) {
-            newStages[stageIndex].candidates[candidateIndex] = {
-              ...newStages[stageIndex].candidates[candidateIndex],
-              notes: newNote.trim(),
-            };
+          if (stageIndex >= 0) {
+            const candidateIndex = newStages[stageIndex].candidates.findIndex(
+              (c: Candidate) => c.id === candidateId
+            );
+
+            if (candidateIndex >= 0) {
+              newStages[stageIndex].candidates[candidateIndex] = {
+                ...newStages[stageIndex].candidates[candidateIndex],
+                notes: noteText,
+              };
+            }
           }
-        }
 
-        return newStages;
-      });
+          return newStages;
+        });
 
-      setNoteDialog({ open: false });
-      setNewNote("");
+        // Show success message
+        toast({
+          title: "Note saved",
+          description: `Note has been updated for ${noteDialog.candidate.name}`,
+        });
+
+        setNoteDialog({ open: false });
+        setNewNote("");
+        setIsSavingNote(false);
+      } catch (error) {
+        console.error("Failed to save note:", error);
+        toast({
+          title: "Failed to save note",
+          description: "Please try again or save changes later.",
+        });
+
+        // Still add to pending changes as fallback
+        addPendingChange({
+          type: "add_note",
+          candidateId: candidateId,
+          note: noteText,
+          timestamp: Date.now(),
+        });
+
+        // Update visual state even if API call failed
+        setStages((prev) => {
+          const newStages = JSON.parse(JSON.stringify(prev)); // Deep copy
+          const stageIndex = newStages.findIndex((s: PipelineStage) =>
+            s.candidates.some((c: Candidate) => c.id === candidateId)
+          );
+
+          if (stageIndex >= 0) {
+            const candidateIndex = newStages[stageIndex].candidates.findIndex(
+              (c: Candidate) => c.id === candidateId
+            );
+
+            if (candidateIndex >= 0) {
+              newStages[stageIndex].candidates[candidateIndex] = {
+                ...newStages[stageIndex].candidates[candidateIndex],
+                notes: noteText,
+              };
+            }
+          }
+
+          return newStages;
+        });
+
+        setNoteDialog({ open: false });
+        setNewNote("");
+        setIsSavingNote(false);
+      }
     }
   };
 
@@ -1049,12 +1142,78 @@ export default function InterviewDetailsPage() {
         }
       }
 
+      // Process note changes
+      const noteChanges = pendingChanges.filter((c) => c.type === "add_note");
+      if (noteChanges.length > 0) {
+        if (statusChanges.length === 0) {
+          toast({
+            title: "Processing changes...",
+            description: `Saving ${noteChanges.length} note${
+              noteChanges.length !== 1 ? "s" : ""
+            }...`,
+          });
+        }
+
+        // Save notes to database
+        for (const noteChange of noteChanges) {
+          try {
+            await authenticatedFetch(
+              `${siveraBackendUrl}/api/v1/candidates/${noteChange.candidateId}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  notes: noteChange.note,
+                }),
+              }
+            );
+          } catch (error) {
+            console.error(
+              `Failed to save note for candidate ${noteChange.candidateId}:`,
+              error
+            );
+            // Continue with other notes even if one fails
+          }
+        }
+      }
+
+      // Process num_rounds updates
+      const numRoundsChanges = pendingChanges.filter(
+        (c) => c.type === "update_num_rounds"
+      );
+      if (numRoundsChanges.length > 0) {
+        const latestNumRoundsChange =
+          numRoundsChanges[numRoundsChanges.length - 1];
+        try {
+          await authenticatedFetch(
+            `${siveraBackendUrl}/api/v1/interviews/jobs/${job?.id}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                num_rounds: latestNumRoundsChange.newNumRounds,
+              }),
+            }
+          );
+
+          // Update the original num_rounds state
+          setOriginalNumRounds(latestNumRoundsChange.newNumRounds!);
+        } catch (error) {
+          console.error("Failed to update num_rounds:", error);
+          // Continue with other updates even if this fails
+        }
+      }
+
       // Process email actions
       const emailChanges = pendingChanges.filter(
         (c) => c.type === "send_email"
       );
       if (emailChanges.length > 0) {
-        if (statusChanges.length === 0) {
+        if (
+          statusChanges.length === 0 &&
+          noteChanges.length === 0 &&
+          numRoundsChanges.length === 0
+        ) {
           toast({
             title: "Processing changes...",
             description: `Sending ${emailChanges.length} emails...`,
@@ -1120,6 +1279,9 @@ export default function InterviewDetailsPage() {
       const updatedStatuses = pendingChanges.filter(
         (c) => c.type === "update_status"
       ).length;
+      const updatedNumRounds = pendingChanges.filter(
+        (c) => c.type === "update_num_rounds"
+      ).length;
 
       let description = `${pendingChanges.length} changes saved`;
       const details = [];
@@ -1147,6 +1309,7 @@ export default function InterviewDetailsPage() {
             updatedStatuses !== 1 ? "es" : ""
           } updated`
         );
+      if (updatedNumRounds > 0) details.push("rounds updated");
 
       if (details.length > 0) {
         description = details.join(", ");
@@ -1171,6 +1334,14 @@ export default function InterviewDetailsPage() {
     setStages(JSON.parse(JSON.stringify(originalStages)));
     setPendingChanges([]);
     setSelectedCandidates(new Set());
+    setCurrentNumRounds(originalNumRounds);
+
+    // Re-fetch AI scores after stages are reset (use setTimeout to ensure state update happens first)
+    setTimeout(() => {
+      if (invitedCandidates.length > 0) {
+        fetchAIScores();
+      }
+    }, 0);
 
     toast({
       title: "Changes discarded",
@@ -1196,15 +1367,32 @@ export default function InterviewDetailsPage() {
                 candidate.email === invitedCandidate.email
             );
 
-            // Merge interview-specific data with complete candidate data
+            // Merge with interview-specific data taking precedence (especially interview_status from candidate_interviews)
             return {
               ...completeCandidateData, // Complete candidate data (including resume_url)
               ...invitedCandidate, // Interview-specific data (interview_status, room_url, etc.)
+              // Ensure interview_status from candidate_interviews table is preserved
+              interview_status:
+                invitedCandidate.interview_status ||
+                completeCandidateData?.interview_status,
             };
           }
         );
+        console.log(
+          "Merged invited candidates:",
+          mergedInvitedCandidates.map((c) => ({
+            id: c.id,
+            name: c.name,
+            interview_status: c.interview_status,
+            status: c.status,
+          }))
+        );
         setInvitedCandidates(mergedInvitedCandidates);
       } else {
+        console.log(
+          "Using direct invited candidates:",
+          details.candidates.invited
+        );
         setInvitedCandidates(details.candidates.invited || []);
       }
 
@@ -1228,7 +1416,6 @@ export default function InterviewDetailsPage() {
           phoneInterview: true,
           assessments: true,
           aiInterviewer: true,
-          humanInterview: true,
         });
       }
 
@@ -1238,6 +1425,11 @@ export default function InterviewDetailsPage() {
       } else {
         setPhoneScreenQuestions([]);
       }
+
+      // Set number of rounds from the job data
+      const numRounds = (details.job as any)?.num_rounds || 1;
+      setCurrentNumRounds(numRounds);
+      setOriginalNumRounds(numRounds);
     }
   }, [details, allCandidates]);
 
@@ -1379,7 +1571,7 @@ export default function InterviewDetailsPage() {
       }
     }
 
-    // If only one unique next stage, return it
+    // If only one unique next stage, return it with specific title
     if (nextStages.size === 1) {
       return { title: Array.from(nextStages)[0] };
     }
@@ -1418,7 +1610,7 @@ export default function InterviewDetailsPage() {
       return;
     }
 
-    // Group candidates by their next stage
+    // Group candidates by their current stage and next stage
     const candidatesByNextStage: Array<{
       nextStage: { id: string; title: string };
       candidates: Candidate[];
@@ -1444,9 +1636,11 @@ export default function InterviewDetailsPage() {
       if (currentStage && candidate) {
         const nextStage = getNextStageForStage(currentStage.id);
         if (nextStage) {
-          // Find existing group or create new one
+          // Find existing group or create new one based on both current and next stage
           let group = candidatesByNextStage.find(
-            (g) => g.nextStage.id === nextStage.id
+            (g) =>
+              g.nextStage.id === nextStage.id &&
+              g.currentStage === currentStage.title
           );
           if (!group) {
             group = {
@@ -1469,18 +1663,30 @@ export default function InterviewDetailsPage() {
       return;
     }
 
-    // Flatten all candidates for the dialog
-    const allCandidates = candidatesByNextStage.flatMap(
-      (group) => group.candidates
-    );
-
-    // Set dialog data
-    setInvitedCandidates(allCandidates);
+    // Set the candidate groups and open the dialog
+    setCandidateGroups(candidatesByNextStage);
     setBulkInviteOpen(true);
   };
 
   // Get candidates available for bulk invite (not already invited)
   const getAvailableCandidates = () => {
+    // If we have selected candidates, return those for moving
+    if (selectedCandidates.size > 0) {
+      const selectedCandidatesList: Candidate[] = [];
+      for (const candidateId of selectedCandidates) {
+        for (const stage of stages) {
+          const foundCandidate = stage.candidates.find(
+            (c) => c.id === candidateId
+          );
+          if (foundCandidate) {
+            selectedCandidatesList.push(foundCandidate);
+            break;
+          }
+        }
+      }
+      return selectedCandidatesList;
+    }
+    // Otherwise return all invited candidates
     return invitedCandidates;
   };
 
@@ -1707,7 +1913,7 @@ export default function InterviewDetailsPage() {
                     <Carousel className="w-full max-w-2xl">
                       <CarouselContent>
                         {/* Phone Interview */}
-                        <CarouselItem className="basis-1/4">
+                        <CarouselItem className="basis-1/3">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1760,7 +1966,7 @@ export default function InterviewDetailsPage() {
                         </CarouselItem>
 
                         {/* Assessments */}
-                        <CarouselItem className="basis-1/4">
+                        <CarouselItem className="basis-1/3">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1809,7 +2015,7 @@ export default function InterviewDetailsPage() {
                         </CarouselItem>
 
                         {/* AI Interviewer */}
-                        <CarouselItem className="basis-1/4">
+                        <CarouselItem className="basis-1/3">
                           <div className="p-1">
                             <Card
                               className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -1848,59 +2054,6 @@ export default function InterviewDetailsPage() {
                                     <div
                                       className={`text-xs ${
                                         processStages.aiInterviewer
-                                          ? "text-app-blue-500 dark:text-app-blue-300"
-                                          : "text-gray-400 dark:text-gray-500"
-                                      }`}
-                                    >
-                                      Interview
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </CarouselItem>
-
-                        {/* Interview Round */}
-                        <CarouselItem className="basis-1/4">
-                          <div className="p-1">
-                            <Card
-                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                                processStages.humanInterview
-                                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
-                                  : "opacity-50 hover:opacity-70 hover:border-gray-400"
-                              }`}
-                              onClick={() =>
-                                toggleProcessStage("humanInterview")
-                              }
-                              title={`${
-                                processStages.humanInterview
-                                  ? "Disable"
-                                  : "Enable"
-                              } Interview Round`}
-                            >
-                              <CardContent className="flex aspect-square items-center justify-center p-6">
-                                <div className="flex flex-col items-center justify-center gap-2">
-                                  <Users
-                                    className={`h-6 w-6 ${
-                                      processStages.humanInterview
-                                        ? "text-app-blue-600 dark:text-app-blue-400"
-                                        : "text-gray-400 dark:text-gray-500"
-                                    }`}
-                                  />
-                                  <div className="text-center">
-                                    <div
-                                      className={`text-sm font-semibold ${
-                                        processStages.humanInterview
-                                          ? "text-app-blue-600 dark:text-app-blue-400"
-                                          : "text-gray-500 dark:text-gray-400"
-                                      }`}
-                                    >
-                                      Human
-                                    </div>
-                                    <div
-                                      className={`text-xs ${
-                                        processStages.humanInterview
                                           ? "text-app-blue-500 dark:text-app-blue-300"
                                           : "text-gray-400 dark:text-gray-500"
                                       }`}
@@ -2137,6 +2290,9 @@ export default function InterviewDetailsPage() {
                         0
                       )}{" "}
                       total candidates
+                      <span className="mx-2">•</span>
+                      {currentNumRounds} interview round
+                      {currentNumRounds !== 1 ? "s" : ""}
                       {selectedCandidates.size > 0 && (
                         <>
                           <span className="mx-2">•</span>
@@ -2178,6 +2334,21 @@ export default function InterviewDetailsPage() {
                       </>
                     )}
 
+                    {selectedCandidates.size > 0 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCandidates(new Set());
+                          }}
+                          className="cursor-pointer text-xs"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Deselect All
+                        </Button>
+                      </>
+                    )}
+
                     {/* Interview Invitations */}
                     <Button
                       onClick={prepareSelectedCandidatesForInvite}
@@ -2186,9 +2357,17 @@ export default function InterviewDetailsPage() {
                       variant="outline"
                     >
                       <Mail className="mr-2 h-4 w-4" />
-                      Move to{" "}
-                      {getNextStageForCandidates(selectedCandidates)?.title ||
-                        "Next Stage"}
+                      {(() => {
+                        const nextStageInfo =
+                          getNextStageForCandidates(selectedCandidates);
+                        if (
+                          nextStageInfo?.title &&
+                          nextStageInfo.title !== "Next Stages"
+                        ) {
+                          return `Move to ${nextStageInfo.title}`;
+                        }
+                        return "Move to Next Stage";
+                      })()}
                     </Button>
 
                     <Button
@@ -2270,77 +2449,65 @@ export default function InterviewDetailsPage() {
                   <div className="w-full max-w-full overflow-hidden min-w-0">
                     <div className="h-[700px] w-full overflow-hidden relative">
                       {/* Pipeline Board */}
-                      {isDragDropReady ? (
-                        <DragDropContext onDragEnd={handleDragEnd}>
-                          <div className="flex h-full w-full overflow-x-auto overflow-y-hidden absolute inset-0 bg-gray-100 dark:bg-gray-950">
-                            {filteredStages.map((stage) => {
-                              // Check the pending changes for this specific stage
-                              const addChange = pendingChanges.find(
-                                (change) =>
-                                  change.type === "add_round" &&
-                                  change.stageId === stage.id
-                              );
+                      <div className="flex h-full w-full overflow-x-auto overflow-y-hidden absolute inset-0 bg-gray-100 dark:bg-gray-950">
+                        {filteredStages.map((stage) => {
+                          // Check the pending changes for this specific stage
+                          const addChange = pendingChanges.find(
+                            (change) =>
+                              change.type === "add_round" &&
+                              change.stageId === stage.id
+                          );
 
-                              const removeChange = pendingChanges.find(
-                                (change) =>
-                                  change.type === "remove_round" &&
-                                  change.stageId === stage.id
-                              );
+                          const removeChange = pendingChanges.find(
+                            (change) =>
+                              change.type === "remove_round" &&
+                              change.stageId === stage.id
+                          );
 
-                              const isNewStage = !!addChange && !removeChange;
-                              const isRemovedStage =
-                                !!removeChange && !addChange;
+                          const isNewStage = !!addChange && !removeChange;
+                          const isRemovedStage = !!removeChange && !addChange;
 
-                              // Check if this stage can be removed (only the highest round)
-                              const humanStages = filteredStages.filter(
-                                (s) => s.type === "human_interview"
-                              );
-                              const highestRoundStage = humanStages.sort(
-                                (a, b) => (b.round || 0) - (a.round || 0)
-                              )[0];
-                              const canRemove =
+                          // Check if this stage can be removed (only the highest round)
+                          const humanStages = filteredStages.filter(
+                            (s) => s.type === "human_interview"
+                          );
+                          const highestRoundStage = humanStages.sort(
+                            (a, b) => (b.round || 0) - (a.round || 0)
+                          )[0];
+                          const canRemove =
+                            stage.type === "human_interview" &&
+                            typeof stage.round === "number" &&
+                            stage.round > 1 &&
+                            stage.id === highestRoundStage?.id;
+
+                          return (
+                            <PipelineColumn
+                              key={stage.id}
+                              stage={stage}
+                              onQuickAction={handleQuickAction}
+                              onSelect={handleSelect}
+                              selectedCandidates={selectedCandidates}
+                              onMove={handleMove}
+                              isDragDropReady={false}
+                              pendingChanges={pendingChanges}
+                              isNewStage={isNewStage}
+                              isRemovedStage={isRemovedStage}
+                              canRemove={canRemove}
+                              onAddRound={
                                 stage.type === "human_interview" &&
-                                typeof stage.round === "number" &&
-                                stage.round > 1 &&
-                                stage.id === highestRoundStage?.id;
-
-                              return (
-                                <PipelineColumn
-                                  key={stage.id}
-                                  stage={stage}
-                                  onQuickAction={handleQuickAction}
-                                  onSelect={handleSelect}
-                                  selectedCandidates={selectedCandidates}
-                                  onMove={handleMove}
-                                  isDragDropReady={isDragDropReady}
-                                  pendingChanges={pendingChanges}
-                                  isNewStage={isNewStage}
-                                  isRemovedStage={isRemovedStage}
-                                  canRemove={canRemove}
-                                  onAddRound={
-                                    stage.type === "human_interview" &&
-                                    stage.id === highestRoundStage?.id
-                                      ? addHumanInterviewRound
-                                      : undefined
-                                  }
-                                  onRemoveRound={
-                                    canRemove
-                                      ? removeHumanInterviewRound
-                                      : undefined
-                                  }
-                                />
-                              );
-                            })}
-                          </div>
-                        </DragDropContext>
-                      ) : (
-                        <div className="flex items-center justify-center h-32">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                          <span className="ml-2 text-sm text-gray-500">
-                            Loading pipeline...
-                          </span>
-                        </div>
-                      )}
+                                stage.id === highestRoundStage?.id
+                                  ? addHumanInterviewRound
+                                  : undefined
+                              }
+                              onRemoveRound={
+                                canRemove
+                                  ? removeHumanInterviewRound
+                                  : undefined
+                              }
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2372,12 +2539,17 @@ export default function InterviewDetailsPage() {
             nextStageTitle={
               getNextStageForCandidates(selectedCandidates)?.title
             }
+            candidateGroups={candidateGroups}
           />
 
           {/* Note Dialog */}
           <Dialog
             open={noteDialog.open}
-            onOpenChange={(open) => setNoteDialog({ open })}
+            onOpenChange={(open) => {
+              if (!isSavingNote) {
+                setNoteDialog({ open });
+              }
+            }}
           >
             <DialogContent>
               <DialogHeader>
@@ -2397,12 +2569,14 @@ export default function InterviewDetailsPage() {
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   rows={4}
+                  disabled={isSavingNote}
                 />
               </div>
               <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setNoteDialog({ open: false })}
+                  disabled={isSavingNote}
                   className="cursor-pointer text-xs"
                 >
                   Cancel
@@ -2410,10 +2584,19 @@ export default function InterviewDetailsPage() {
                 <Button
                   variant="outline"
                   onClick={saveNote}
-                  disabled={!newNote.trim()}
+                  disabled={!newNote.trim() || isSavingNote}
                   className="cursor-pointer text-xs"
                 >
-                  {noteDialog.candidate?.notes ? "Update Note" : "Add Note"}
+                  {isSavingNote ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : noteDialog.candidate?.notes ? (
+                    "Update Note"
+                  ) : (
+                    "Add Note"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
