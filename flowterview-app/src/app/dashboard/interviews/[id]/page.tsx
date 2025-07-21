@@ -18,20 +18,14 @@ import {
   FileText,
   Bot,
   Route,
-  Eye,
-  Send,
-  Check,
-  ArrowRight,
-  GitBranch,
-  Kanban,
   Search,
   Filter,
-  MessageSquare,
   CheckSquare,
   RotateCcw,
-  Trash2,
-  MoreVertical,
-  Linkedin,
+  ArrowRight,
+  Check,
+  Calendar as CalendarIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,6 +52,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { Calendar } from "@/components/ui/calendar";
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
 import { useToast } from "@/hooks/use-toast";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
@@ -81,44 +76,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import PipelineColumn from "@/components/ui/PipelineColumn";
-
-// Status badge color mapping using only app colors
-const getCandidateStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "Applied":
-      return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
-    case "Screening":
-      return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
-    case "Interview_Scheduled":
-    case "scheduled":
-      return "bg-app-blue-200/90 text-app-blue-800 border-app-blue-400/80";
-    case "Interviewed":
-      return "bg-app-blue-200/80 text-app-blue-900 border-app-blue-500/80";
-    case "completed":
-      return "bg-app-blue-300/90 text-app-blue-900 border-app-blue-500/80";
-    case "started":
-      return "bg-app-blue-400/90 text-app-blue-900 border-app-blue-500/80";
-    case "invited":
-      return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
-    case "Hired":
-      return "bg-app-blue-500/90 text-white border-app-blue-600/80";
-    case "On_Hold":
-      return "bg-app-blue-800/20 text-app-blue-600 border-app-blue-700/50";
-    case "Rejected":
-      return "bg-app-blue-900/30 text-app-blue-400 border-app-blue-800/50";
-    default:
-      return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
-  }
-};
-
-// Utility function to format status text consistently
-const formatStatusText = (status: string) => {
-  return status
-    .replace(/_/g, " ") // Replace underscores with spaces
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
-};
 
 interface Candidate {
   id: string;
@@ -177,6 +134,8 @@ interface PendingChange {
   newStatus?: string;
   // Num rounds update fields
   newNumRounds?: number;
+  // Scheduling data for human interviews
+  schedulingData?: InterviewSchedule;
 }
 
 interface Job {
@@ -209,6 +168,910 @@ interface InterviewData {
   skills: string[];
   duration: number;
 }
+
+// Human Interview Scheduling Interfaces
+interface InterviewerAssignment {
+  candidateId: string;
+  interviewerId: string;
+  interviewerName: string;
+  interviewerEmail: string;
+}
+
+interface InterviewSchedule {
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  date: string;
+  time: string;
+  duration: number; // in minutes
+  interviewerName: string;
+  interviewerEmail: string;
+  timeZone: string;
+  // Additional fields for global scheduling
+  startDateTime: string; // ISO string for precise timezone handling
+  endTime: string;
+  intervalGap: number; // in minutes
+}
+
+interface CalculatedTimeSlot {
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  interviewerName: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  interviewerEmail: string;
+}
+
+interface HumanInterviewDialogData {
+  candidates: Candidate[];
+  destinationStage: {
+    id: string;
+    title: string;
+    round: number;
+  };
+  sourceStage: {
+    id: string;
+    title: string;
+  };
+  assignments: InterviewerAssignment[];
+  schedules: InterviewSchedule[];
+}
+
+// Human Interview Scheduling Dialog Component
+const HumanInterviewSchedulingDialog = ({
+  open,
+  onOpenChange,
+  data,
+  onComplete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data: HumanInterviewDialogData | null;
+  onComplete: (schedules: InterviewSchedule[]) => void;
+}) => {
+  const { toast } = useToast();
+  const siveraBackendUrl =
+    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  const [currentPage, setCurrentPage] = useState<"assignments" | "scheduling">(
+    "assignments"
+  );
+  const [assignments, setAssignments] = useState<InterviewerAssignment[]>([]);
+  const [schedules, setSchedules] = useState<InterviewSchedule[]>([]);
+  const [availableInterviewers, setAvailableInterviewers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+    }>
+  >([]);
+  const [selectedInterviewers, setSelectedInterviewers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+    }>
+  >([]);
+  const [isLoadingInterviewers, setIsLoadingInterviewers] = useState(false);
+
+  // Scheduling state
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to?: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [commonDuration, setCommonDuration] = useState<number>(60);
+  const [intervalTime, setIntervalTime] = useState<number>(10);
+  const [calculatedSlots, setCalculatedSlots] = useState<CalculatedTimeSlot[]>(
+    []
+  );
+  const [schedulingError, setSchedulingError] = useState<string>("");
+
+  // Fetch organization users when dialog opens
+  useEffect(() => {
+    const fetchInterviewers = async () => {
+      if (open && data) {
+        setIsLoadingInterviewers(true);
+        try {
+          const userContext = getUserContext();
+          if (userContext?.organization_id) {
+            const response = await authenticatedFetch(
+              `${siveraBackendUrl}/api/v1/organizations/${userContext.organization_id}/users`,
+              { method: "GET" }
+            );
+
+            if (response.ok) {
+              const users = await response.json();
+              // Filter for users who could be interviewers (not just candidates)
+              const interviewers = users.filter(
+                (user: any) =>
+                  user.role === "recruiter" ||
+                  user.role === "admin" ||
+                  user.role === "interviewer"
+              );
+              setAvailableInterviewers(interviewers);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching interviewers:", error);
+          toast({
+            title: "Error loading interviewers",
+            description: "Could not load available interviewers",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingInterviewers(false);
+        }
+      }
+    };
+
+    fetchInterviewers();
+  }, [open, data, siveraBackendUrl, toast]);
+
+  // Initialize assignments and schedules when data changes
+  useEffect(() => {
+    if (data?.candidates) {
+      const initialAssignments = data.candidates.map((candidate) => ({
+        candidateId: candidate.id,
+        interviewerId: "",
+        interviewerName: "",
+        interviewerEmail: "",
+      }));
+
+      const initialSchedules = data.candidates.map((candidate) => ({
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        candidateEmail: candidate.email,
+        date: "",
+        time: "",
+        duration: 60, // Default 60 minutes
+        interviewerName: "",
+        interviewerEmail: "",
+        timeZone: "",
+        startDateTime: "",
+        endTime: "",
+        intervalGap: 10, // Default 10 minutes
+      }));
+
+      setAssignments(initialAssignments);
+      setSchedules(initialSchedules);
+    }
+  }, [data]);
+
+  const handleAddInterviewer = (interviewer: {
+    id: string;
+    name: string;
+    email: string;
+  }) => {
+    // Check if interviewer is already in the selected list
+    if (!selectedInterviewers.find((i) => i.id === interviewer.id)) {
+      setSelectedInterviewers((prev) => [...prev, interviewer]);
+    }
+  };
+
+  const handleRemoveInterviewer = (interviewerId: string) => {
+    setSelectedInterviewers((prev) =>
+      prev.filter((i) => i.id !== interviewerId)
+    );
+  };
+
+  /**
+   * Global Interview Scheduling Algorithm
+   *
+   * This algorithm creates a bulletproof schedule for sending interview links worldwide:
+   * 1. Even distribution: Uses round-robin to balance interviewer workload
+   * 2. Parallel interviews: Different interviewers can interview simultaneously
+   * 3. No conflicts: Same interviewer never has overlapping interviews
+   * 4. Proper gaps: Respects interval time between back-to-back interviews
+   * 5. Timezone-aware: Generates ISO datetime strings for global compatibility
+   * 6. Weekdays only: Automatically excludes weekends
+   * 7. Business hours: Operates within 9 AM - 5 PM working hours
+   */
+  const calculateTimeSlots = useCallback(() => {
+    if (
+      !dateRange.from ||
+      !dateRange.to ||
+      !data?.candidates ||
+      selectedInterviewers.length === 0
+    ) {
+      setCalculatedSlots([]);
+      setSchedulingError("");
+      return;
+    }
+
+    const startDate = new Date(dateRange.from);
+    const endDate = new Date(dateRange.to);
+    const candidates = data.candidates;
+    const interviewers = selectedInterviewers;
+
+    // Working hours configuration (9 AM to 5 PM)
+    const workingStartHour = 9;
+    const workingEndHour = 17;
+    const workingMinutesPerDay = (workingEndHour - workingStartHour) * 60; // 480 minutes
+
+    // Calculate available working days (excluding weekends)
+    const availableDays: Date[] = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        // Exclude Sunday (0) and Saturday (6)
+        availableDays.push(new Date(currentDate));
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate capacity
+    const interviewsPerDayPerInterviewer = Math.floor(
+      workingMinutesPerDay / (commonDuration + intervalTime)
+    );
+    const totalInterviewSlots =
+      availableDays.length *
+      interviewsPerDayPerInterviewer *
+      interviewers.length;
+
+    // Validate inputs for global scheduling
+    if (candidates.length === 0) {
+      setSchedulingError("No candidates to schedule interviews for.");
+      setCalculatedSlots([]);
+      return;
+    }
+
+    if (interviewers.length === 0) {
+      setSchedulingError(
+        "No interviewers selected. Please select at least one interviewer."
+      );
+      setCalculatedSlots([]);
+      return;
+    }
+
+    if (availableDays.length === 0) {
+      setSchedulingError(
+        "No available working days in the selected date range. Please select a date range that includes weekdays."
+      );
+      setCalculatedSlots([]);
+      return;
+    }
+
+    // Check if we have enough slots
+    if (totalInterviewSlots < candidates.length) {
+      setSchedulingError(
+        `Not enough time slots available. Need ${candidates.length} slots but only ${totalInterviewSlots} available. ` +
+          `Try increasing the date range (currently ${availableDays.length} working days), adding more interviewers (currently ${interviewers.length}), or reducing interview duration.`
+      );
+      setCalculatedSlots([]);
+      return;
+    }
+
+    // Step 1: Distribute candidates evenly across interviewers using round-robin
+    const candidateAssignments: Array<{
+      candidate: any;
+      interviewer: any;
+    }> = [];
+
+    candidates.forEach((candidate, index) => {
+      const interviewerIndex = index % interviewers.length;
+      candidateAssignments.push({
+        candidate,
+        interviewer: interviewers[interviewerIndex],
+      });
+    });
+
+    // Step 2: Group assignments by interviewer for scheduling
+    const interviewerSchedules: Map<
+      string,
+      Array<{ candidate: any; interviewer: any }>
+    > = new Map();
+
+    candidateAssignments.forEach((assignment) => {
+      const interviewerKey = assignment.interviewer.id;
+      if (!interviewerSchedules.has(interviewerKey)) {
+        interviewerSchedules.set(interviewerKey, []);
+      }
+      interviewerSchedules.get(interviewerKey)!.push(assignment);
+    });
+
+    // Step 3: Schedule interviews for each interviewer across available days
+    const slots: CalculatedTimeSlot[] = [];
+    const currentDayIndex = 0;
+    const currentSlotIndex = 0;
+
+    // Create a schedule tracker for each interviewer
+    const interviewerSlotTrackers: Map<
+      string,
+      { dayIndex: number; slotIndex: number }
+    > = new Map();
+    interviewers.forEach((interviewer) => {
+      interviewerSlotTrackers.set(interviewer.id, {
+        dayIndex: 0,
+        slotIndex: 0,
+      });
+    });
+
+    candidateAssignments.forEach((assignment) => {
+      const { candidate, interviewer } = assignment;
+      const tracker = interviewerSlotTrackers.get(interviewer.id)!;
+
+      // Find next available slot for this interviewer
+      let dayIndex = tracker.dayIndex;
+      let slotIndex = tracker.slotIndex;
+
+      // If we've exceeded slots for current day, move to next day
+      if (slotIndex >= interviewsPerDayPerInterviewer) {
+        dayIndex++;
+        slotIndex = 0;
+      }
+
+      // Ensure we don't exceed available days
+      if (dayIndex >= availableDays.length) {
+        // This shouldn't happen if capacity calculation is correct
+        console.warn(
+          "Exceeded available days for interviewer:",
+          interviewer.name
+        );
+        return;
+      }
+
+      const day = availableDays[dayIndex];
+      const startTimeMinutes =
+        workingStartHour * 60 + slotIndex * (commonDuration + intervalTime);
+      const endTimeMinutes = startTimeMinutes + commonDuration;
+
+      const startHour = Math.floor(startTimeMinutes / 60);
+      const startMinute = startTimeMinutes % 60;
+      const endHour = Math.floor(endTimeMinutes / 60);
+      const endMinute = endTimeMinutes % 60;
+
+      const startTime = `${startHour.toString().padStart(2, "0")}:${startMinute
+        .toString()
+        .padStart(2, "0")}`;
+      const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute
+        .toString()
+        .padStart(2, "0")}`;
+
+      slots.push({
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        candidateEmail: candidate.email,
+        interviewerName: interviewer.name,
+        interviewerEmail: interviewer.email,
+        date: new Date(day),
+        startTime,
+        endTime,
+      });
+
+      // Update tracker for this interviewer
+      tracker.slotIndex = slotIndex + 1;
+      tracker.dayIndex = dayIndex;
+      interviewerSlotTrackers.set(interviewer.id, tracker);
+    });
+
+    setCalculatedSlots(slots);
+
+    // Automatically update assignments based on calculated slots
+    const autoAssignments = slots.map((slot) => ({
+      candidateId: slot.candidateId,
+      interviewerId:
+        selectedInterviewers.find((i) => i.name === slot.interviewerName)?.id ||
+        "",
+      interviewerName: slot.interviewerName,
+      interviewerEmail: slot.interviewerEmail,
+    }));
+    setAssignments(autoAssignments);
+
+    setSchedulingError("");
+  }, [
+    dateRange,
+    commonDuration,
+    intervalTime,
+    data?.candidates,
+    selectedInterviewers,
+  ]);
+
+  // Recalculate slots when dependencies change
+  useEffect(() => {
+    calculateTimeSlots();
+  }, [calculateTimeSlots]);
+
+  const updateAssignment = (candidateId: string, interviewerId: string) => {
+    const interviewer = selectedInterviewers.find(
+      (i) => i.id === interviewerId
+    );
+    if (!interviewer) return;
+
+    setAssignments((prev) =>
+      prev.map((assignment) =>
+        assignment.candidateId === candidateId
+          ? {
+              ...assignment,
+              interviewerId: interviewer.id,
+              interviewerName: interviewer.name,
+              interviewerEmail: interviewer.email,
+            }
+          : assignment
+      )
+    );
+  };
+
+  const updateSchedule = (
+    candidateId: string,
+    field: keyof InterviewSchedule,
+    value: string | number
+  ) => {
+    setSchedules((prev) =>
+      prev.map((schedule) =>
+        schedule.candidateId === candidateId
+          ? { ...schedule, [field]: value }
+          : schedule
+      )
+    );
+  };
+
+  const canProceedToScheduling = selectedInterviewers.length > 0;
+  const canComplete =
+    dateRange.from &&
+    dateRange.to &&
+    calculatedSlots.length > 0 &&
+    schedulingError === "" &&
+    canProceedToScheduling;
+
+  const handleComplete = () => {
+    if (canComplete) {
+      // Get the user's timezone for proper scheduling across timezones
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const convertedSchedules: InterviewSchedule[] = calculatedSlots.map(
+        (slot) => {
+          // Create a proper datetime object for the interview
+          // This ensures consistent timezone handling for global scheduling
+          const [hours, minutes] = slot.startTime.split(":").map(Number);
+          const interviewDateTime = new Date(slot.date);
+          interviewDateTime.setHours(hours, minutes, 0, 0);
+
+          // Validate datetime for global reliability
+          if (isNaN(interviewDateTime.getTime())) {
+            console.error("Invalid interview datetime:", slot);
+            // Fallback to current time if parsing fails
+            const fallbackDateTime = new Date();
+            fallbackDateTime.setHours(hours, minutes, 0, 0);
+            interviewDateTime.setTime(fallbackDateTime.getTime());
+          }
+
+          return {
+            candidateId: slot.candidateId,
+            candidateName: slot.candidateName,
+            candidateEmail: slot.candidateEmail,
+            date: slot.date.toISOString().split("T")[0],
+            time: slot.startTime,
+            duration: commonDuration,
+            interviewerName: slot.interviewerName,
+            interviewerEmail: slot.interviewerEmail,
+            timeZone: userTimeZone,
+            startDateTime: interviewDateTime.toISOString(),
+            endTime: slot.endTime,
+            intervalGap: intervalTime,
+          };
+        }
+      );
+
+      onComplete(convertedSchedules);
+      onOpenChange(false);
+      setCurrentPage("assignments");
+    }
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
+    setCurrentPage("assignments");
+    setAssignments([]);
+    setSchedules([]);
+    setIsLoadingInterviewers(false);
+  };
+
+  if (!data) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-app-blue-600" />
+            Schedule {data.destinationStage.title}
+          </DialogTitle>
+          <DialogDescription>
+            Configure interviewer assignments and scheduling.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Page Navigation */}
+        <div className="flex items-center justify-center my-4">
+          <div className="flex items-center space-x-7">
+            <div
+              className={`flex items-center space-x-2 ${
+                currentPage === "assignments"
+                  ? "text-app-blue-600"
+                  : "text-gray-400"
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentPage === "assignments"
+                    ? "bg-app-blue-600 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                1
+              </div>
+              <span className="text-sm font-medium">Select Interviewers</span>
+            </div>
+            <ArrowRight className="h-4 w-4 text-gray-400" />
+            <div
+              className={`flex items-center space-x-2 ${
+                currentPage === "scheduling"
+                  ? "text-app-blue-600"
+                  : "text-gray-400"
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentPage === "scheduling"
+                    ? "bg-app-blue-600 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                2
+              </div>
+              <span className="text-sm font-medium">Schedule Interviews</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Page 1: Interviewer Assignments */}
+        {currentPage === "assignments" && (
+          <div className="space-y-6">
+            {/* Available Organization Members */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-medium mb-3">Organization Members</h3>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {isLoadingInterviewers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-xs text-gray-500">
+                      Loading interviewers...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {availableInterviewers
+                      .filter(
+                        (interviewer) =>
+                          !selectedInterviewers.find(
+                            (selected) => selected.id === interviewer.id
+                          )
+                      )
+                      .map((interviewer) => (
+                        <div
+                          key={interviewer.id}
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <div>
+                            <div className="text-xs font-medium">
+                              {interviewer.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {interviewer.email}
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => handleAddInterviewer(interviewer)}
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer text-xs"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      ))}
+
+                    {availableInterviewers.filter(
+                      (interviewer) =>
+                        !selectedInterviewers.find(
+                          (selected) => selected.id === interviewer.id
+                        )
+                    ).length === 0 && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        All members have been added as interviewers
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Interviewer selection and random assignment */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-medium mb-3">
+                Interviewer Selection
+              </h3>
+
+              {/* Selected interviewers list */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    Selected Interviewers
+                  </h4>
+                </div>
+
+                {selectedInterviewers.length === 0 ? (
+                  <div className="text-xs text-gray-500 italic py-2 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded">
+                    No interviewers selected. Add interviewers from above.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {selectedInterviewers.map((interviewer) => (
+                      <div
+                        key={interviewer.id}
+                        className="flex items-center justify-between p-2 bg-white dark:bg-gray-900 rounded-md border"
+                      >
+                        <div>
+                          <div className="text-xs font-medium">
+                            {interviewer.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {interviewer.email}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            handleRemoveInterviewer(interviewer.id)
+                          }
+                          variant="ghost"
+                          size="sm"
+                          className="cursor-pointer text-xs"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Summary of selected interviewers */}
+              <div className="mt-4 p-3 bg-app-blue-50 dark:bg-app-blue-900/20 rounded-lg border">
+                <div className="text-xs text-app-blue-700 dark:text-app-blue-300">
+                  <strong>{selectedInterviewers.length}</strong> interviewer
+                  {selectedInterviewers.length !== 1 ? "s" : ""} selected.
+                  Proceed to scheduling to assign them to candidates.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Page 2: Scheduling */}
+        {currentPage === "scheduling" && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">Interview Scheduling</h3>
+
+            {/* Common duration and interval settings */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">
+                      Duration
+                    </label>
+                    <Select
+                      value={String(commonDuration)}
+                      onValueChange={(value) =>
+                        setCommonDuration(parseInt(value))
+                      }
+                    >
+                      <SelectTrigger className="w-34 h-8 cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30" className="cursor-pointer">
+                          30 minutes
+                        </SelectItem>
+                        <SelectItem value="45" className="cursor-pointer">
+                          45 minutes
+                        </SelectItem>
+                        <SelectItem value="60" className="cursor-pointer">
+                          60 minutes
+                        </SelectItem>
+                        <SelectItem value="90" className="cursor-pointer">
+                          90 minutes
+                        </SelectItem>
+                        <SelectItem value="120" className="cursor-pointer">
+                          120 minutes
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">
+                      Interval Gap
+                    </label>
+                    <Select
+                      value={String(intervalTime)}
+                      onValueChange={(value) =>
+                        setIntervalTime(parseInt(value))
+                      }
+                    >
+                      <SelectTrigger className="w-28 h-8 cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5" className="cursor-pointer">
+                          5 mins
+                        </SelectItem>
+                        <SelectItem value="10" className="cursor-pointer">
+                          10 mins
+                        </SelectItem>
+                        <SelectItem value="15" className="cursor-pointer">
+                          15 mins
+                        </SelectItem>
+                        <SelectItem value="20" className="cursor-pointer">
+                          20 mins
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  9AM-5PM, weekdays only
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Calendar Section */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Date Range
+                </h4>
+                <div className="border rounded-lg p-2 flex flex-col">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={(range) =>
+                      setDateRange(range || { from: undefined, to: undefined })
+                    }
+                    disabled={(date) => date < new Date()}
+                    numberOfMonths={1}
+                    className="rounded-md w-full scale-90 origin-top p-0 px-2 mt-3 mb-0 pb-0"
+                  />
+                  <div className="p-2 pt-0 -mt-5">
+                    {dateRange.from && dateRange.to && (
+                      <div className="mt-2 pt-2 border-t text-xs text-gray-600 dark:text-gray-400">
+                        <div>
+                          {dateRange.from.toLocaleDateString()} -{" "}
+                          {dateRange.to.toLocaleDateString()}
+                        </div>
+                        <div className="mt-1 text-xs text-app-blue-600 font-medium">
+                          {calculatedSlots.length > 0 &&
+                            `${calculatedSlots.length} slots assigned`}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Candidates Section */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Interviews
+                </h4>
+
+                {schedulingError && (
+                  <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+                    <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <div>{schedulingError}</div>
+                  </div>
+                )}
+
+                <div className="border rounded-lg max-h-112 overflow-y-auto">
+                  {calculatedSlots.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      {schedulingError
+                        ? "Adjust settings above"
+                        : "Select date range to calculate schedule"}
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {calculatedSlots.map((slot, index) => (
+                        <div
+                          key={index}
+                          className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-medium">
+                                {slot.candidateName}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                with {slot.interviewerEmail}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs font-medium">
+                                {slot.date.toLocaleDateString()}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {slot.startTime} - {slot.endTime}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-between">
+          {currentPage !== "scheduling" && (
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="cursor-pointer text-xs"
+            >
+              Cancel
+            </Button>
+          )}
+
+          <div className="flex gap-2">
+            {currentPage === "scheduling" && (
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage("assignments")}
+                className="cursor-pointer text-xs"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+
+            {currentPage === "assignments" ? (
+              <Button
+                onClick={() => setCurrentPage("scheduling")}
+                disabled={!canProceedToScheduling}
+                className="cursor-pointer text-xs"
+                variant="outline"
+              >
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleComplete}
+                disabled={!canComplete}
+                className="cursor-pointer text-xs"
+                variant="outline"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Schedule Interviews
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function InterviewDetailsPage() {
   const router = useRouter();
@@ -280,6 +1143,12 @@ export default function InterviewDetailsPage() {
 
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+
+  // Human Interview Scheduling Dialog State
+  const [humanInterviewDialogOpen, setHumanInterviewDialogOpen] =
+    useState(false);
+  const [humanInterviewDialogData, setHumanInterviewDialogData] =
+    useState<HumanInterviewDialogData | null>(null);
 
   const { toast } = useToast();
 
@@ -676,6 +1545,42 @@ export default function InterviewDetailsPage() {
   }));
 
   const stageMoveCandidate = (
+    candidate: Candidate,
+    sourceStageId: string,
+    destinationStageId: string
+  ) => {
+    // Check if moving to a human interview round
+    if (destinationStageId.startsWith("human_interview_")) {
+      // Find the destination stage to get round info
+      const destStage = stages.find((s) => s.id === destinationStageId);
+      const sourceStage = stages.find((s) => s.id === sourceStageId);
+
+      if (destStage && sourceStage) {
+        setHumanInterviewDialogData({
+          candidates: [candidate],
+          destinationStage: {
+            id: destStage.id,
+            title: destStage.title,
+            round: destStage.round || 1,
+          },
+          sourceStage: {
+            id: sourceStage.id,
+            title: sourceStage.title,
+          },
+          assignments: [],
+          schedules: [],
+        });
+        setHumanInterviewDialogOpen(true);
+        return; // Don't proceed with immediate move
+      }
+    }
+
+    // Original move logic for non-human interview stages
+    performCandidateMove(candidate, sourceStageId, destinationStageId);
+  };
+
+  // Helper function to perform the actual candidate move
+  const performCandidateMove = (
     candidate: Candidate,
     sourceStageId: string,
     destinationStageId: string
@@ -1206,7 +2111,7 @@ export default function InterviewDetailsPage() {
         }
       }
 
-      // Process email actions
+      // Process email actions - group by email type for batch sending
       const emailChanges = pendingChanges.filter(
         (c) => c.type === "send_email"
       );
@@ -1222,15 +2127,29 @@ export default function InterviewDetailsPage() {
           });
         }
 
-        // Send emails in batches
-        for (const emailChange of emailChanges) {
-          try {
-            const userContext = getUserContext();
-            const organizationId = userContext?.organization_id;
+        // Group email changes by type (human interviews with scheduling vs basic emails)
+        const humanInterviewEmails = emailChanges.filter(
+          (c) => c.emailType === "human_interview" && c.schedulingData
+        );
+        const basicEmails = emailChanges.filter(
+          (c) => c.emailType !== "human_interview" || !c.schedulingData
+        );
 
-            if (!organizationId) {
-              throw new Error("Organization ID not found");
-            }
+        const userContext = getUserContext();
+        const organizationId = userContext?.organization_id;
+
+        if (!organizationId) {
+          throw new Error("Organization ID not found");
+        }
+
+        // Send human interview emails with full scheduling data (candidates + recruiters)
+        if (humanInterviewEmails.length > 0) {
+          try {
+            const candidates = humanInterviewEmails.map((emailChange) => ({
+              email: emailChange.email!,
+              name: emailChange.name!,
+              scheduling: emailChange.schedulingData!,
+            }));
 
             await authenticatedFetch(
               `${siveraBackendUrl}/api/v1/interviews/send-invite`,
@@ -1238,23 +2157,48 @@ export default function InterviewDetailsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  email: emailChange.email,
-                  name: emailChange.name,
                   job: job?.title || "",
                   organization_id: organizationId,
                   sender_id: userContext?.user_id || "system",
-                  email_type: emailChange.emailType,
-                  stage_type: emailChange.stageType,
-                  round_number: emailChange.roundNumber,
+                  email_type: "human_interview",
+                  stage_type: "human_interview",
+                  candidates: candidates,
+                  // Include scheduling data to trigger recruiter emails
+                  has_scheduling: true,
                 }),
               }
             );
           } catch (error) {
-            console.error(
-              `Failed to send email to ${emailChange.email}:`,
-              error
+            console.error("Failed to send human interview emails:", error);
+          }
+        }
+
+        // Send basic emails (AI interview, acceptance, rejection)
+        if (basicEmails.length > 0) {
+          try {
+            const candidates = basicEmails.map((emailChange) => ({
+              email: emailChange.email!,
+              name: emailChange.name!,
+            }));
+
+            await authenticatedFetch(
+              `${siveraBackendUrl}/api/v1/interviews/send-invite`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  job: job?.title || "",
+                  organization_id: organizationId,
+                  sender_id: userContext?.user_id || "system",
+                  email_type: basicEmails[0]?.emailType || "ai_interview",
+                  stage_type: basicEmails[0]?.stageType || "ai_interview",
+                  candidates: candidates,
+                  has_scheduling: false,
+                }),
+              }
             );
-            // Continue with other emails even if one fails
+          } catch (error) {
+            console.error("Failed to send basic emails:", error);
           }
         }
       }
@@ -1740,7 +2684,14 @@ export default function InterviewDetailsPage() {
   };
 
   const handleBulkCandidateMovement = () => {
-    // Move all selected candidates to their next stages
+    // Group candidates by their destination stage
+    const movementGroups: {
+      [destinationStageId: string]: {
+        candidates: Candidate[];
+        sourceStages: string[];
+      };
+    } = {};
+
     for (const candidateId of selectedCandidates) {
       // Find current stage of this candidate
       let currentStage = null;
@@ -1760,8 +2711,82 @@ export default function InterviewDetailsPage() {
       if (currentStage && candidate) {
         const nextStage = getNextStageForStage(currentStage.id);
         if (nextStage) {
-          // Use the existing stageMoveCandidate function which handles status updates and email queueing
-          stageMoveCandidate(candidate, currentStage.id, nextStage.id);
+          if (!movementGroups[nextStage.id]) {
+            movementGroups[nextStage.id] = { candidates: [], sourceStages: [] };
+          }
+          movementGroups[nextStage.id].candidates.push(candidate);
+          if (
+            !movementGroups[nextStage.id].sourceStages.includes(currentStage.id)
+          ) {
+            movementGroups[nextStage.id].sourceStages.push(currentStage.id);
+          }
+        }
+      }
+    }
+
+    // Check if any destination is a human interview round
+    const humanInterviewDestinations = Object.keys(movementGroups).filter(
+      (stageId) => stageId.startsWith("human_interview_")
+    );
+
+    if (humanInterviewDestinations.length > 0) {
+      // For now, handle only the first human interview destination
+      // TODO: Could be enhanced to handle multiple different human interview rounds
+      const destinationStageId = humanInterviewDestinations[0];
+      const group = movementGroups[destinationStageId];
+
+      const destStage = stages.find((s) => s.id === destinationStageId);
+      // Use the first source stage for the dialog title (could be enhanced)
+      const sourceStage = stages.find((s) => s.id === group.sourceStages[0]);
+
+      if (destStage && sourceStage) {
+        setHumanInterviewDialogData({
+          candidates: group.candidates,
+          destinationStage: {
+            id: destStage.id,
+            title: destStage.title,
+            round: destStage.round || 1,
+          },
+          sourceStage: {
+            id: sourceStage.id,
+            title:
+              group.sourceStages.length > 1
+                ? "Multiple Stages"
+                : sourceStage.title,
+          },
+          assignments: [],
+          schedules: [],
+        });
+        setHumanInterviewDialogOpen(true);
+
+        // Clear selection
+        setSelectedCandidates(new Set());
+        return;
+      }
+    }
+
+    // Original bulk movement logic for non-human interview stages
+    for (const candidateId of selectedCandidates) {
+      // Find current stage of this candidate
+      let currentStage = null;
+      let candidate = null;
+
+      for (const stage of stages) {
+        const foundCandidate = stage.candidates.find(
+          (c) => c.id === candidateId
+        );
+        if (foundCandidate) {
+          currentStage = stage;
+          candidate = foundCandidate;
+          break;
+        }
+      }
+
+      if (currentStage && candidate) {
+        const nextStage = getNextStageForStage(currentStage.id);
+        if (nextStage) {
+          // Use the existing performCandidateMove function which handles non-human interviews
+          performCandidateMove(candidate, currentStage.id, nextStage.id);
         }
       }
     }
@@ -1774,6 +2799,51 @@ export default function InterviewDetailsPage() {
       description:
         "All selected candidates have been moved. Click 'Save Changes' to update statuses and send emails.",
     });
+  };
+
+  // Handle completion of human interview scheduling dialog
+  const handleHumanInterviewComplete = (schedules: InterviewSchedule[]) => {
+    if (!humanInterviewDialogData) return;
+
+    // Move candidates to the destination stage and store scheduling data
+    humanInterviewDialogData.candidates.forEach((candidate) => {
+      performCandidateMove(
+        candidate,
+        humanInterviewDialogData.sourceStage.id,
+        humanInterviewDialogData.destinationStage.id
+      );
+
+      // Add scheduling data to pending changes for this candidate
+      const candidateSchedule = schedules.find(
+        (s) => s.candidateId === candidate.id
+      );
+      if (candidateSchedule) {
+        addPendingChange({
+          type: "send_email",
+          candidateId: candidate.id,
+          email: candidate.email,
+          name: candidate.name,
+          emailType: "human_interview",
+          stageType: "human_interview",
+          timestamp: Date.now(),
+          // Store complete scheduling data for batch sending
+          schedulingData: candidateSchedule,
+        });
+      }
+    });
+
+    // Show success message
+    toast({
+      title: "Interviews scheduled",
+      description: `${humanInterviewDialogData.candidates.length} candidate${
+        humanInterviewDialogData.candidates.length !== 1 ? "s" : ""
+      } scheduled for ${
+        humanInterviewDialogData.destinationStage.title
+      }. Click 'Save Changes' to send invitations.`,
+    });
+
+    // Reset dialog state
+    setHumanInterviewDialogData(null);
   };
 
   return (
@@ -2293,8 +3363,8 @@ export default function InterviewDetailsPage() {
                       )}{" "}
                       total candidates
                       <span className="mx-2">•</span>
-                      {currentNumRounds} interview round
-                      {currentNumRounds !== 1 ? "s" : ""}
+                      {/* +1 because we have a AI default round */}
+                      {currentNumRounds + 1} interview rounds
                       {selectedCandidates.size > 0 && (
                         <>
                           <span className="mx-2">•</span>
@@ -2675,6 +3745,14 @@ export default function InterviewDetailsPage() {
             onOpenChange={setBulkSelectOpen}
             stages={stages}
             onBulkSelect={handleBulkSelection}
+          />
+
+          {/* Human Interview Scheduling Dialog */}
+          <HumanInterviewSchedulingDialog
+            open={humanInterviewDialogOpen}
+            onOpenChange={setHumanInterviewDialogOpen}
+            data={humanInterviewDialogData}
+            onComplete={handleHumanInterviewComplete}
           />
         </>
       )}

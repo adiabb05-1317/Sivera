@@ -39,9 +39,40 @@ class GenerateFlowRequest(BaseModel):
     job_description: str = Field(..., min_length=50, description="Job description for the interview flow")
 
 
+class CandidateScheduling(BaseModel):
+    """Scheduling data for human interviews"""
+
+    candidateId: str
+    candidateName: str
+    candidateEmail: str
+    date: str
+    time: str
+    duration: int
+    interviewerName: str
+    interviewerEmail: str
+    timeZone: str
+    startDateTime: str
+    endTime: str
+    intervalGap: int
+
+
+class CandidateData(BaseModel):
+    """Candidate data for batch processing"""
+
+    email: EmailStr
+    name: str
+    scheduling: Optional[CandidateScheduling] = None
+
+
 class SendInviteRequest(BaseModel):
-    email: EmailStr = Field(..., description="Candidate's email address")
-    name: str = Field(..., description="Candidate's name")
+    # For backward compatibility - single candidate (deprecated)
+    email: Optional[EmailStr] = Field(None, description="Candidate's email address (deprecated)")
+    name: Optional[str] = Field(None, description="Candidate's name (deprecated)")
+
+    # New batch processing fields
+    candidates: Optional[List[CandidateData]] = Field(None, description="List of candidates for batch processing")
+
+    # Common fields
     job: str = Field(..., description="Job title/position")
     organization_id: str = Field(..., description="Organization ID")
     sender_id: Optional[str] = Field(None, description="ID of the user sending the invitation")
@@ -49,7 +80,10 @@ class SendInviteRequest(BaseModel):
         ..., description="Type of email: 'ai_interview', 'human_interview', 'acceptance', or 'rejection'"
     )
     stage_type: Optional[str] = Field(None, description="Stage type: 'ai_interview' or 'human_interview'")
-    round_number: Optional[int] = Field(None, description="Round number for human interviews")
+    has_scheduling: bool = Field(False, description="Whether this request includes scheduling data")
+
+    # Deprecated field
+    round_number: Optional[int] = Field(None, description="Round number for human interviews (deprecated)")
 
 
 class VerifyTokenRequest(BaseModel):
@@ -153,6 +187,176 @@ async def send_loops_email(to_email: str, template_id: str, variables: Dict[str,
         raise
 
 
+def format_time_12hour(time_24h: str) -> str:
+    """Convert 24-hour time format to 12-hour format with AM/PM
+
+    Args:
+        time_24h: Time in 24-hour format like "09:00" or "15:30"
+
+    Returns:
+        Time in 12-hour format like "9:00 AM" or "3:30 PM"
+    """
+    try:
+        from datetime import datetime
+
+        # Parse the time
+        time_obj = datetime.strptime(time_24h, "%H:%M")
+        # Format to 12-hour with AM/PM, removing leading zero from hour
+        formatted_time = time_obj.strftime("%I:%M %p").lstrip("0")
+        return formatted_time
+    except (ValueError, TypeError):
+        # Fallback to original time if parsing fails
+        return time_24h
+
+
+async def send_batch_human_interview_emails(
+    candidates: List[CandidateData],
+    job: str,
+    company_name: str,
+    organization_id: str,
+) -> None:
+    """Send batch emails for human interviews to both candidates and recruiters"""
+    logger.info(f"Starting to send batch human interview emails for {len(candidates)} candidates")
+
+    try:
+        # Process each interview individually (one candidate + one recruiter per interview)
+        for candidate_data in candidates:
+            if candidate_data.scheduling:
+                scheduling = candidate_data.scheduling
+
+                # Generate ONE token per interview (shared by candidate + recruiter)
+                interview_token = secrets.token_urlsafe(32)
+                logger.info(f"Generated shared token for interview: {interview_token[:10]}...")
+
+                # Store round verification entries for both participants
+                # 1. Candidate entry
+                candidate_verification = {
+                    "token": interview_token,
+                    "email": candidate_data.email,
+                    "role": "candidate",
+                    "has_joined": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                }
+                db.execute_query("round_verification", candidate_verification)
+
+                # 2. Recruiter entry
+                recruiter_verification = {
+                    "token": interview_token,
+                    "email": scheduling.interviewerEmail,
+                    "role": "recruiter",
+                    "has_joined": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                }
+                db.execute_query("round_verification", recruiter_verification)
+
+                # Create shared URL for this interview
+                encoded_token = urllib.parse.quote_plus(interview_token)
+                interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/round?token={encoded_token}"
+
+                # Send email to candidate
+                candidate_variables = {
+                    "name": candidate_data.name,
+                    "job": job,
+                    "company": company_name,
+                    "date": scheduling.date,
+                    "time": format_time_12hour(scheduling.time),
+                    "timezone": scheduling.timeZone,
+                    "url": interview_url,  # Same token for candidate
+                }
+
+                await send_loops_email(
+                    candidate_data.email, Config.LOOPS_NORMAL_INTERVIEW_TEMPLATE, candidate_variables
+                )
+                logger.info(
+                    f"Human interview email sent to candidate: {candidate_data.email} with token: {interview_token[:10]}..."
+                )
+
+                # Send email to recruiter
+                recruiter_variables = {
+                    "name": scheduling.interviewerName,
+                    "job": job,
+                    "candidate_name": candidate_data.name,
+                    "date": scheduling.date,
+                    "time": format_time_12hour(scheduling.time),
+                    "timezone": scheduling.timeZone,
+                    "url": interview_url,  # Same token for recruiter
+                    "company": company_name,
+                }
+
+                await send_loops_email(
+                    scheduling.interviewerEmail, Config.LOOPS_RECRUITER_INTERVIEW_TEMPLATE, recruiter_variables
+                )
+                logger.info(
+                    f"Human interview email sent to recruiter: {scheduling.interviewerEmail} with token: {interview_token[:10]}..."
+                )
+
+    except Exception as e:
+        logger.error(f"Failed to send batch human interview emails: {e}")
+        raise
+
+
+async def send_batch_basic_emails(
+    candidates: List[CandidateData],
+    job: str,
+    company_name: str,
+    organization_id: str,
+    email_type: str,
+) -> None:
+    """Send batch basic emails (AI interview, acceptance, rejection) to candidates only"""
+    logger.info(f"Starting to send batch {email_type} emails for {len(candidates)} candidates")
+
+    try:
+        # Determine template based on email type
+        if email_type == "ai_interview":
+            template_id = Config.LOOPS_INTERVIEW_TEMPLATE
+        elif email_type == "acceptance":
+            template_id = Config.LOOPS_ACCEPTANCE_TEMPLATE
+        elif email_type == "rejection":
+            template_id = Config.LOOPS_REJECTION_TEMPLATE
+        else:
+            raise ValueError(f"Unknown email type: {email_type}")
+
+        # Send emails to all candidates
+        for candidate_data in candidates:
+            if email_type == "ai_interview":
+                # Generate verification token for AI interviews
+                token = secrets.token_urlsafe(32)
+                expires_at = datetime.utcnow() + timedelta(hours=24)
+
+                # Store token
+                token_data = {
+                    "token": str(token),
+                    "email": candidate_data.email,
+                    "name": candidate_data.name,
+                    "organization_id": str(organization_id),
+                    "job_title": job,
+                    "expires_at": expires_at.isoformat(),
+                }
+
+                db.execute_query("verification_tokens", token_data)
+
+                # Create interview URL
+                encoded_token = urllib.parse.quote_plus(token)
+                interview_url = f"{os.getenv('FRONTEND_URL', 'https://app.sivera.io')}/interview?token={encoded_token}"
+
+                variables = {
+                    "name": candidate_data.name,
+                    "job": job,
+                    "company": company_name,
+                    "verify_url": interview_url,
+                }
+            else:
+                # For acceptance/rejection emails
+                variables = {"name": candidate_data.name, "company": company_name}
+
+            await send_loops_email(candidate_data.email, template_id, variables)
+            logger.info(f"{email_type.title()} email sent to candidate: {candidate_data.email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send batch {email_type} emails: {e}")
+        raise
+
+
 async def send_interview_invite_email(
     email: str,
     name: str,
@@ -164,7 +368,7 @@ async def send_interview_invite_email(
     stage_type: str = "ai_interview",
     round_number: int = None,
 ) -> None:
-    """Background task to send interview invitation email via Loops
+    """Background task to send interview invitation email via Loops (DEPRECATED - use batch functions)
 
     Args:
         email: Candidate's email address
@@ -367,9 +571,6 @@ async def process_invite_request(
                 "expires_at": expires_at.isoformat(),
             }
 
-            if email_type == "human_interview":
-                token_data["round_number"] = round_number
-
             # Store the token in the database
             result = db.execute_query("verification_tokens", token_data)
             logger.info(f"Token stored successfully: {result}")
@@ -408,11 +609,19 @@ async def send_invite(
     request: SendInviteRequest, background_tasks: BackgroundTasks, app_request: Request
 ) -> Dict[str, Any]:
     """
-    Send an interview invitation email to the candidate
-    Returns immediately and processes the invite in the background
+    Send interview invitation emails to candidates (and recruiters for human interviews)
+    Supports both single candidate (deprecated) and batch processing
+    Returns immediately and processes the invites in the background
     """
     try:
         logger.info(f"[send-invite] Received invite request: {request.dict()}")
+
+        # Validate that either candidates OR email+name is provided
+        if not request.candidates and not (request.email and request.name):
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'candidates' (for batch processing) or both 'email' and 'name' (for single candidate) must be provided",
+            )
 
         # Validate organization exists and has valid UUID format
         try:
@@ -423,31 +632,72 @@ async def send_invite(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        # Get the manager from app state
-        manager = app_request.app.state.manager
+        # Determine if this is batch processing or single candidate (backward compatibility)
+        if request.candidates:
+            # Validate that candidates list is not empty
+            if not request.candidates:
+                raise HTTPException(status_code=400, detail="Candidates list cannot be empty")
 
-        # Queue the processing as a background task
-        background_tasks.add_task(
-            process_invite_request,
-            request.email,
-            request.name,
-            request.job,
-            request.organization_id,
-            company_name,
-            request.sender_id,
-            manager,
-            request.email_type,
-            request.stage_type,
-            request.round_number,
-        )
+            # New batch processing approach
+            if request.has_scheduling and request.email_type == "human_interview":
+                # Human interview with scheduling - send to both candidates and recruiters
+                background_tasks.add_task(
+                    send_batch_human_interview_emails,
+                    request.candidates,
+                    request.job,
+                    company_name,
+                    request.organization_id,
+                )
+                logger.info(
+                    f"[send-invite] Batch human interview emails queued for {len(request.candidates)} candidates"
+                )
+            else:
+                # Basic emails (AI interview, acceptance, rejection) - candidates only
+                background_tasks.add_task(
+                    send_batch_basic_emails,
+                    request.candidates,
+                    request.job,
+                    company_name,
+                    request.organization_id,
+                    request.email_type,
+                )
+                logger.info(
+                    f"[send-invite] Batch {request.email_type} emails queued for {len(request.candidates)} candidates"
+                )
 
-        logger.info(f"[send-invite] Invite processing queued for {request.email}")
+            return {
+                "success": True,
+                "message": f"Batch invitation processing started for {len(request.candidates)} candidates",
+            }
 
-        # Return immediately
-        return {
-            "success": True,
-            "message": "Invitation is being processed and will be sent shortly",
-        }
+        else:
+            # Backward compatibility - single candidate processing
+            # Validation already done above, so we know email and name are present
+
+            # Get the manager from app state
+            manager = app_request.app.state.manager
+
+            # Queue the processing as a background task (legacy approach)
+            background_tasks.add_task(
+                process_invite_request,
+                request.email,
+                request.name,
+                request.job,
+                request.organization_id,
+                company_name,
+                request.sender_id,
+                manager,
+                request.email_type,
+                request.stage_type,
+                request.round_number,
+            )
+
+            logger.info(f"[send-invite] Legacy invite processing queued for {request.email}")
+
+            return {
+                "success": True,
+                "message": "Invitation is being processed and will be sent shortly",
+            }
 
     except HTTPException as he:
         # Pass through HTTP exceptions as-is

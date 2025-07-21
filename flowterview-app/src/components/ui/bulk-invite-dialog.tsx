@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Users, Loader2, Check, ArrowRight } from "lucide-react";
 import { authenticatedFetch } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
@@ -101,13 +100,6 @@ export function BulkInviteDialog({
     setIsLoading(true);
 
     try {
-      // Just move candidates to next stage - emails will be sent when user clicks Save Changes
-      toast({
-        title: "Candidates moved!",
-        description: `Successfully moved ${selectedCandidates.length} candidates to next stage. Click 'Save Changes' to send emails.`,
-      });
-
-      // Close dialog and let parent handle the actual movement
       onCandidatesMoved();
       onOpenChange(false);
     } catch (error: unknown) {

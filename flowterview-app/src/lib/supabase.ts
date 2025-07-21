@@ -10,6 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type Organization = {
   id: string;
   name: string;
+  domain?: string;
   logo_url?: string;
   created_at: string;
   updated_at: string;

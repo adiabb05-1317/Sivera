@@ -19,6 +19,9 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Plus,
+  X,
+  Mail,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -53,6 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
 import { useAuthStore } from "../../../../store";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 // LinkedIn integration types
 interface LinkedInIntegrationStatus {
@@ -104,6 +108,11 @@ export default function SettingsPage() {
   const [membersDialogOpen, setMembersDialogOpen] = useState(false);
   const [promotingUser, setPromotingUser] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Add members state
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [newMemberEmails, setNewMemberEmails] = useState("");
+  const [invitingMembers, setInvitingMembers] = useState(false);
   const themeOptions = [
     {
       value: "light",
@@ -176,6 +185,107 @@ export default function SettingsPage() {
       });
     } finally {
       setMembersLoading(false);
+    }
+  };
+
+  // Add members functionality
+  const validateEmailDomain = (email: string): boolean => {
+    if (!organization?.domain || !email.includes("@")) {
+      return false;
+    }
+
+    const emailDomain = email.split("@")[1].toLowerCase();
+    const orgDomain = organization.domain.toLowerCase();
+
+    // Handle cases where organization domain might be just the domain name
+    // or might include the full domain (e.g., "company" vs "company.com")
+    return (
+      emailDomain === orgDomain ||
+      emailDomain === `${orgDomain}.com` ||
+      emailDomain.endsWith(`.${orgDomain}`) ||
+      orgDomain.endsWith(`.${emailDomain}`)
+    );
+  };
+
+  const handleAddMembers = async () => {
+    if (!organization?.id || !newMemberEmails.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter email addresses",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Parse and validate emails
+    const emailList = newMemberEmails
+      .split(/[,\n\s]+/)
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
+
+    if (emailList.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please enter valid email addresses",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email domains
+    const invalidEmails = emailList.filter(
+      (email) => !validateEmailDomain(email)
+    );
+    if (invalidEmails.length > 0) {
+      toast({
+        title: "Invalid Email Domain",
+        description: `The following emails don't match your organization domain (${
+          organization.domain
+        }): ${invalidEmails.join(", ")}`,
+      });
+      return;
+    }
+
+    setInvitingMembers(true);
+    try {
+      const response = await authenticatedFetch(
+        `${backendUrl}/api/v1/organizations/${organization.id}/invite-recruiters`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emails: emailList }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Invitations Sent",
+          description: `Successfully sent invitations to ${result.emails_count} member(s)`,
+        });
+
+        // Reset and close add members UI
+        setNewMemberEmails("");
+        setShowAddMembers(false);
+
+        // Refresh members list after a short delay to allow for processing
+        setTimeout(() => {
+          fetchOrganizationMembers();
+        }, 2000);
+      } else {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to send invitations");
+      }
+    } catch (error) {
+      console.error("Error sending invitations:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to send invitations",
+        variant: "destructive",
+      });
+    } finally {
+      setInvitingMembers(false);
     }
   };
 
@@ -616,7 +726,7 @@ export default function SettingsPage() {
                   ) : (
                     <>
                       <Users className="h-3 w-3 mr-1" />
-                      View Members
+                      View / Add Members
                     </>
                   )}
                 </Button>
@@ -893,9 +1003,84 @@ export default function SettingsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              <Button
+                onClick={() => setShowAddMembers(true)}
+                variant="outline"
+                className="cursor-pointer text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Members
+              </Button>
             </div>
 
-            {membersLoading ? (
+            {/* Add Members UI */}
+            {showAddMembers ? (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between mb-0">
+                  <h3 className="text-sm font-medium">Add Team Members</h3>
+                  <Button
+                    onClick={() => {
+                      setShowAddMembers(false);
+                      setNewMemberEmails("");
+                    }}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-3 mt-0">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                    Enter email addresses separated by commas, spaces, or new
+                    lines.
+                  </p>
+                  <div className="px-1">
+                    <Textarea
+                      className="w-full min-h-[120px]"
+                      placeholder={`Enter email addresses...${
+                        organization?.domain
+                          ? `\ne.g., johndoe@${organization.domain}, jane@${organization.domain}`
+                          : ""
+                      }`}
+                      value={newMemberEmails}
+                      onChange={(e) => setNewMemberEmails(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleAddMembers}
+                      disabled={invitingMembers || !newMemberEmails.trim()}
+                      className="flex-1 cursor-pointer text-xs"
+                      variant="outline"
+                    >
+                      {invitingMembers ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending Invitations...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Invitations
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowAddMembers(false);
+                        setNewMemberEmails("");
+                      }}
+                      variant="outline"
+                      className="cursor-pointer text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : membersLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-app-blue-600 dark:text-app-blue-400 mx-auto mb-4" />
