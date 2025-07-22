@@ -453,7 +453,7 @@ export default function GenerateFromDescriptionPage() {
               </div>
 
               <div className="flex justify-center">
-                <Carousel className="w-full max-w-3xl">
+                <Carousel className="w-full max-w-md">
                   <CarouselContent>
                     {/* Phone Interview */}
                     <CarouselItem className="basis-1/3">

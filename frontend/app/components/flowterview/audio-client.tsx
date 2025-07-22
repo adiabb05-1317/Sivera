@@ -42,6 +42,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setIsAssessmentOpen,
     setRtviClient,
     setLocalVideoStream,
+    roundNumber,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>

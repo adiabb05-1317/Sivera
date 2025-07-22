@@ -42,6 +42,7 @@ class GenerateFlowRequest(BaseModel):
 class CandidateScheduling(BaseModel):
     """Scheduling data for human interviews"""
 
+    interviewId: str
     candidateId: str
     candidateName: str
     candidateEmail: str
@@ -54,6 +55,7 @@ class CandidateScheduling(BaseModel):
     startDateTime: str
     endTime: str
     intervalGap: int
+    roundNumber: int
 
 
 class CandidateData(BaseModel):
@@ -233,6 +235,9 @@ async def send_batch_human_interview_emails(
                 candidate_verification = {
                     "token": interview_token,
                     "email": candidate_data.email,
+                    "candidate_id": scheduling.candidateId,
+                    "interview_id": scheduling.interviewId,
+                    "round": scheduling.roundNumber,
                     "role": "candidate",
                     "has_joined": False,
                     "created_at": datetime.utcnow().isoformat(),
@@ -243,6 +248,8 @@ async def send_batch_human_interview_emails(
                 recruiter_verification = {
                     "token": interview_token,
                     "email": scheduling.interviewerEmail,
+                    "interview_id": scheduling.interviewId,
+                    "round": scheduling.roundNumber,
                     "role": "recruiter",
                     "has_joined": False,
                     "created_at": datetime.utcnow().isoformat(),

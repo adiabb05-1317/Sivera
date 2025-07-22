@@ -44,6 +44,10 @@ type TPathStore = {
   candidateId: string;
   setCandidateId: (candidateId: string) => void;
 
+  // Round interview properties
+  roundNumber: number;
+  setRoundNumber: (roundNumber: number) => void;
+
   // Toast management
   showToast: (message: string, type: "info" | "success" | "error") => void;
   toasts: Array<{ message: string; type: "info" | "success" | "error" }>;
@@ -175,6 +179,10 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Candidate ID
   candidateId: "",
   setCandidateId: (candidateId: string) => set({ candidateId }),
+
+  // Round interview properties
+  roundNumber: -1,
+  setRoundNumber: (roundNumber: number) => set({ roundNumber }),
 
   // UI States
   isHeaderVisible: true,

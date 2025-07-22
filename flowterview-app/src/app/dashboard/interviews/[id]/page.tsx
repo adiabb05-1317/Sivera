@@ -178,6 +178,7 @@ interface InterviewerAssignment {
 }
 
 interface InterviewSchedule {
+  interviewId: string;
   candidateId: string;
   candidateName: string;
   candidateEmail: string;
@@ -191,9 +192,11 @@ interface InterviewSchedule {
   startDateTime: string; // ISO string for precise timezone handling
   endTime: string;
   intervalGap: number; // in minutes
+  roundNumber: number;
 }
 
 interface CalculatedTimeSlot {
+  interviewId: string;
   candidateId: string;
   candidateName: string;
   candidateEmail: string;
@@ -202,9 +205,11 @@ interface CalculatedTimeSlot {
   startTime: string;
   endTime: string;
   interviewerEmail: string;
+  roundNumber: number;
 }
 
 interface HumanInterviewDialogData {
+  interviewId: string;
   candidates: Candidate[];
   destinationStage: {
     id: string;
@@ -322,6 +327,7 @@ const HumanInterviewSchedulingDialog = ({
       }));
 
       const initialSchedules = data.candidates.map((candidate) => ({
+        interviewId: data.interviewId,
         candidateId: candidate.id,
         candidateName: candidate.name,
         candidateEmail: candidate.email,
@@ -334,6 +340,7 @@ const HumanInterviewSchedulingDialog = ({
         startDateTime: "",
         endTime: "",
         intervalGap: 10, // Default 10 minutes
+        roundNumber: data.destinationStage.round,
       }));
 
       setAssignments(initialAssignments);
@@ -534,6 +541,7 @@ const HumanInterviewSchedulingDialog = ({
         .padStart(2, "0")}`;
 
       slots.push({
+        interviewId: data.interviewId,
         candidateId: candidate.id,
         candidateName: candidate.name,
         candidateEmail: candidate.email,
@@ -542,6 +550,7 @@ const HumanInterviewSchedulingDialog = ({
         date: new Date(day),
         startTime,
         endTime,
+        roundNumber: data.destinationStage.round,
       });
 
       // Update tracker for this interviewer
@@ -554,6 +563,7 @@ const HumanInterviewSchedulingDialog = ({
 
     // Automatically update assignments based on calculated slots
     const autoAssignments = slots.map((slot) => ({
+      interviewId: slot.interviewId,
       candidateId: slot.candidateId,
       interviewerId:
         selectedInterviewers.find((i) => i.name === slot.interviewerName)?.id ||
@@ -642,6 +652,7 @@ const HumanInterviewSchedulingDialog = ({
           }
 
           return {
+            interviewId: slot.interviewId,
             candidateId: slot.candidateId,
             candidateName: slot.candidateName,
             candidateEmail: slot.candidateEmail,
@@ -654,6 +665,7 @@ const HumanInterviewSchedulingDialog = ({
             startDateTime: interviewDateTime.toISOString(),
             endTime: slot.endTime,
             intervalGap: intervalTime,
+            roundNumber: slot.roundNumber,
           };
         }
       );
@@ -1557,6 +1569,7 @@ export default function InterviewDetailsPage() {
 
       if (destStage && sourceStage) {
         setHumanInterviewDialogData({
+          interviewId: id as string,
           candidates: [candidate],
           destinationStage: {
             id: destStage.id,
@@ -2741,6 +2754,7 @@ export default function InterviewDetailsPage() {
 
       if (destStage && sourceStage) {
         setHumanInterviewDialogData({
+          interviewId: id as string,
           candidates: group.candidates,
           destinationStage: {
             id: destStage.id,
@@ -2982,7 +2996,7 @@ export default function InterviewDetailsPage() {
                   </div>
 
                   <div className="flex justify-center">
-                    <Carousel className="w-full max-w-2xl">
+                    <Carousel className="w-full max-w-md">
                       <CarouselContent>
                         {/* Phone Interview */}
                         <CarouselItem className="basis-1/3">
