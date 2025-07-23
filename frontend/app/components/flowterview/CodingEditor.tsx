@@ -160,10 +160,11 @@ export default function CodingEditor({
     });
   };
 
-  if (!isOpen) return null;
+  // Keep component mounted but hidden to preserve state
+  const containerClasses = `h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] text-white border-r overflow-hidden animate-fade-in rounded-3xl border border-app-blue-300/50 dark:border-app-blue-700/70 ${!isOpen ? "hidden" : ""}`;
 
   return (
-    <div className="h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] text-white border-r overflow-hidden animate-fade-in rounded-3xl border border-app-blue-300/50 dark:border-app-blue-700/70">
+    <div className={containerClasses}>
       <div className="flex justify-between items-center py-1 px-4 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
         <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
           <Icons.Code className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />

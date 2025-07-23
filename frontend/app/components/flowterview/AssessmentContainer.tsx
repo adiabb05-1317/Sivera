@@ -16,11 +16,12 @@ export default function AssessmentContainer({
 }: AssessmentContainerProps) {
   const { currentAssessment } = usePathStore();
 
-  if (!isOpen || !currentAssessment) return null;
-
   const handleClose = () => {
     if (onClose) onClose();
   };
+
+  // Don't render anything if no assessment exists
+  if (!currentAssessment) return null;
 
   // Render the appropriate assessment component based on type
   const renderAssessment = () => {
@@ -51,5 +52,9 @@ export default function AssessmentContainer({
     }
   };
 
-  return renderAssessment();
+  return (
+    <div className={`h-full w-full ${!isOpen ? "hidden" : ""}`}>
+      {renderAssessment()}
+    </div>
+  );
 }

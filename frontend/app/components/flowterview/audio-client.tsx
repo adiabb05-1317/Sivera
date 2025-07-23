@@ -5,6 +5,7 @@ import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
 import { useEffect, useRef, useState } from "react";
 import { Assessment, Message } from "@/lib/types/general";
+import { Button } from "@/components/ui/button";
 
 export interface AudioClientProps {
   onClearTranscripts: () => void;
@@ -538,9 +539,84 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     };
   }, [callStatus]);
 
+  // Sample assessments for testing
+  const sampleNotebookAssessment: Assessment = {
+    id: "test-notebook-1",
+    type: "notebook",
+    title: "Data Analysis Challenge",
+    description:
+      "Analyze the given dataset and create visualizations to identify trends and patterns.",
+    open_assessment: true,
+    language: "python",
+    initialCells: [
+      {
+        id: "cell-1",
+        type: "markdown",
+        content:
+          "# Data Analysis Challenge\n\nYour task is to analyze the dataset and create meaningful visualizations.",
+      },
+      {
+        id: "cell-2",
+        type: "code",
+        content:
+          "import pandas as pd\nimport matplotlib.pyplot as plt\nimport numpy as np\n\n# Load sample data\ndata = pd.DataFrame({\n    'x': np.random.randn(100),\n    'y': np.random.randn(100)\n})\n\nprint(\"Dataset loaded successfully!\")\ndata.head()",
+      },
+    ],
+  };
+
+  const sampleCodingAssessment: Assessment = {
+    id: "test-coding-1",
+    type: "code-editor",
+    title: "Algorithm Implementation",
+    description:
+      "Implement a function to solve the two-sum problem. Given an array of integers and a target sum, return the indices of two numbers that add up to the target.",
+    open_assessment: true,
+    languages: ["python", "javascript", "java"],
+    starterCode: {
+      python:
+        'def two_sum(nums, target):\n    """\n    Find two numbers in the array that add up to target\n    \n    Args:\n        nums: List of integers\n        target: Target sum\n        \n    Returns:\n        List of two indices\n    """\n    # Your implementation here\n    pass\n\n# Test cases\nprint(two_sum([2, 7, 11, 15], 9))  # Expected: [0, 1]\nprint(two_sum([3, 2, 4], 6))       # Expected: [1, 2]',
+      javascript:
+        "function twoSum(nums, target) {\n    /*\n     * Find two numbers in the array that add up to target\n     * \n     * @param {number[]} nums - Array of integers\n     * @param {number} target - Target sum\n     * @returns {number[]} Array of two indices\n     */\n    // Your implementation here\n}\n\n// Test cases\nconsole.log(twoSum([2, 7, 11, 15], 9)); // Expected: [0, 1]\nconsole.log(twoSum([3, 2, 4], 6));      // Expected: [1, 2]",
+      java: "public class Solution {\n    /**\n     * Find two numbers in the array that add up to target\n     * \n     * @param nums Array of integers\n     * @param target Target sum\n     * @return Array of two indices\n     */\n    public int[] twoSum(int[] nums, int target) {\n        // Your implementation here\n        return new int[0];\n    }\n    \n    public static void main(String[] args) {\n        Solution solution = new Solution();\n        int[] result1 = solution.twoSum(new int[]{2, 7, 11, 15}, 9);\n        int[] result2 = solution.twoSum(new int[]{3, 2, 4}, 6);\n        \n        System.out.println(java.util.Arrays.toString(result1)); // Expected: [0, 1]\n        System.out.println(java.util.Arrays.toString(result2)); // Expected: [1, 2]\n    }\n}",
+    },
+  };
+
+  const handleTestAssessments = () => {
+    if (!currentAssessment) {
+      // Show notebook assessment first
+      setCurrentAssessment(sampleNotebookAssessment);
+      setIsAssessmentOpen(true);
+      showToast("Loaded Jupyter Notebook Assessment", "info");
+    } else if (currentAssessment.type === "notebook") {
+      // Switch to coding assessment
+      setCurrentAssessment(sampleCodingAssessment);
+      setIsAssessmentOpen(true);
+      showToast("Loaded Coding Assessment", "info");
+    } else {
+      // Close assessments
+      setCurrentAssessment(null);
+      setIsAssessmentOpen(false);
+      showToast("Closed Assessment", "info");
+    }
+  };
+
   return (
     <div className="relative">
       <audio ref={audioRef} />
+      <Button
+        onClick={handleTestAssessments}
+        className="fixed top-4 right-4 z-50 shadow-lg"
+        style={{
+          pointerEvents: "auto",
+          zIndex: 9999,
+        }}
+      >
+        {!currentAssessment
+          ? "Test Jupyter Notebook"
+          : currentAssessment.type === "notebook"
+            ? "Test Coding Assessment"
+            : "Close Assessments"}
+      </Button>
     </div>
   );
 }
