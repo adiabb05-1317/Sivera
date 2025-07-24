@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
 import { authenticatedFetch, getCookie } from "@/lib/auth-client";
+import { useInterviews } from "@/hooks/useStores";
 import {
   Carousel,
   CarouselContent,
@@ -42,6 +43,7 @@ interface FormData {
 export default function GenerateFromDescriptionPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { refresh: refreshInterviews } = useInterviews();
   const [showInterviewEditor, setShowInterviewEditor] = useState(false);
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -252,12 +254,17 @@ export default function GenerateFromDescriptionPage() {
 
       const data = await response.json();
 
+
+   
+
       toast({
         title: "Success!",
         description: "Interview created successfully",
       });
+      refreshInterviews();
 
-      setIsInterviewCreated(true);
+      // Redirect to interviews page
+      router.push("/dashboard/interviews");
     } catch (error) {
       toast({
         title: "Error creating interview",
