@@ -80,6 +80,7 @@ async def create_user(user: UserIn, request: Request):
         role = None
         if org:
             organization_id = org["id"]
+            role = "recruiter"  # Set role for existing organization
         else:
             # Create organization (idempotent: if org with name exists, fetch it)
             try:
@@ -95,6 +96,11 @@ async def create_user(user: UserIn, request: Request):
                         status_code=400, detail=f"Failed to create or fetch organization: {org_err}"
                     )
                 organization_id = org["id"]
+        
+        # Ensure role is never None
+        if role is None:
+            role = "recruiter"
+            
         # Create user with organization_id
         user_data = {
             "id": user.user_id,
