@@ -335,6 +335,7 @@ export async function addBulkCandidates({
         body: JSON.stringify({ candidate_ids: candidateIds }),
       }
     );
+    console.log("addResp", addResp.ok);
 
     if (!addResp.ok) {
       // Fallback to individual updates if bulk endpoint fails
@@ -350,9 +351,7 @@ export async function addBulkCandidates({
       );
 
       await Promise.all(updatePromises);
-    } else {
-      const addResult = await addResp.json();
-    }
+    } 
   }
 
   return bulkResult.candidates;

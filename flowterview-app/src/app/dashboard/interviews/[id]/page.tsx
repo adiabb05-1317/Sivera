@@ -1096,10 +1096,13 @@ export default function InterviewDetailsPage() {
     details,
     isLoading: loading,
     error,
+    refresh: refreshInterviewDetails,
   } = useInterviewDetails(id as string);
 
   // Get all candidates to merge with interview candidates for complete data
-  const { candidates: allCandidates } = useCandidates();
+  const { candidates: allCandidates, refresh: refreshCandidates } =
+    useCandidates();
+
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [hasReadWarning, setHasReadWarning] = useState(false);
@@ -2522,8 +2525,9 @@ export default function InterviewDetailsPage() {
         description: "Interview settings updated successfully",
       });
 
-      // Refresh the data
-      window.location.reload();
+      // Refresh the data via store invalidation
+      refreshInterviewDetails();
+      refreshCandidates();
     } catch (error) {
       console.error("Error updating interview:", error);
       toast({
@@ -2536,7 +2540,8 @@ export default function InterviewDetailsPage() {
 
   const handleInvitesSent = () => {
     // Refresh the data after invites are sent
-    window.location.reload();
+    refreshInterviewDetails();
+    refreshCandidates();
   };
 
   // Get the next stage for selected candidates - now handles multiple stages
@@ -3786,7 +3791,8 @@ export default function InterviewDetailsPage() {
             jobTitle={job?.title || "Interview"}
             onScheduled={() => {
               // Refresh the data after phone screens are scheduled
-              window.location.reload();
+              refreshInterviewDetails();
+              refreshCandidates();
             }}
           />
 
