@@ -311,11 +311,13 @@ export default function InviteCandidatesPage() {
         interviewId: selectedInterview,
       });
 
-      // Refresh related data stores
-      refreshCandidates();
-      refreshInterviews();
+     
       
       setIsSent(true);
+      setTimeout(() => {
+        refreshCandidates();
+        refreshInterviews();
+      }, 2000);
     } catch (err) {
       console.error("Error in handleSubmit:", err);
       setInterviewError(
