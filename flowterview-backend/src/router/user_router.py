@@ -83,7 +83,7 @@ async def create_user(user: UserIn, request: Request):
         else:
             # Create organization (idempotent: if org with name exists, fetch it)
             try:
-                org = db.execute_query("organizations", {"domain": org_name, "email": user.email})
+                org = db.execute_query("organizations", {"domain": org_name})
                 organization_id = org["id"]
                 role = "admin"
             except DatabaseError as org_err:
