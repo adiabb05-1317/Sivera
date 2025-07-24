@@ -177,7 +177,7 @@ export default function DashboardPage() {
           {recentInterviews.length === 4 && !isLoading && (
             <Button
               onClick={() => router.push("/dashboard/interviews")}
-              className="cursor-pointer text-xs"
+              className="cursor-pointer text-xs w-full"
               variant="outline"
             >
               View all

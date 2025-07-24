@@ -203,16 +203,6 @@ const CandidateViewDialog = ({
             {!candidate.resume_url && (
               <p className="text-sm text-gray-500">No resume available.</p>
             )}
-            {candidate.status !== "Interviewed" && (
-              <Button
-                onClick={() => handleSendInvite(candidate)}
-                variant="outline"
-                className="cursor-pointer text-xs"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Invite for Interview
-              </Button>
-            )}
           </div>
         </DialogFooter>
       </DialogContent>

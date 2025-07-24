@@ -211,6 +211,17 @@ export const useInterviewsStore = create<InterviewsState>()(
             Date.now() - currentDetails.lastFetched > cacheTTL);
 
         if (!needsFetch && currentDetails && !currentDetails.isLoading) {
+          console.log(
+            `🚫 Skipping fetch for interview ${interviewId} - already have fresh data`
+          );
+          return;
+        }
+
+        // Prevent concurrent fetches for the same interview
+        if (currentDetails && currentDetails.isLoading) {
+          console.log(
+            `⏳ Already fetching interview ${interviewId} - skipping duplicate request`
+          );
           return;
         }
 

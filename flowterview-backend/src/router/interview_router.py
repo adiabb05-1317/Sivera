@@ -83,6 +83,7 @@ class SendInviteRequest(BaseModel):
     )
     stage_type: Optional[str] = Field(None, description="Stage type: 'ai_interview' or 'human_interview'")
     has_scheduling: bool = Field(False, description="Whether this request includes scheduling data")
+    interview_id: Optional[str] = Field(None, description="Interview ID for this request")
 
     # Deprecated field
     round_number: Optional[int] = Field(None, description="Round number for human interviews (deprecated)")
@@ -216,6 +217,7 @@ async def send_batch_human_interview_emails(
     job: str,
     company_name: str,
     organization_id: str,
+    interview_id: str = None,
 ) -> None:
     """Send batch emails for human interviews to both candidates and recruiters"""
     logger.info(f"Starting to send batch human interview emails for {len(candidates)} candidates")
@@ -308,6 +310,7 @@ async def send_batch_basic_emails(
     company_name: str,
     organization_id: str,
     email_type: str,
+    interview_id: str = None,
 ) -> None:
     """Send batch basic emails (AI interview, acceptance, rejection) to candidates only"""
     logger.info(f"Starting to send batch {email_type} emails for {len(candidates)} candidates")
@@ -323,6 +326,18 @@ async def send_batch_basic_emails(
         else:
             raise ValueError(f"Unknown email type: {email_type}")
 
+        # For AI interviews, find the interview_id if not provided
+        if email_type == "ai_interview" and not interview_id:
+            # Try to find a matching interview for this job title
+            matching_job = db.fetch_one("jobs", {"title": job, "organization_id": organization_id})
+            if matching_job:
+                # Find an interview for this job with status 'active' or 'draft'
+                all_interviews = db.fetch_all("interviews", {"job_id": matching_job["id"]})
+                matching_interview = next((i for i in all_interviews if i["status"] in ("active", "draft")), None)
+                if matching_interview:
+                    interview_id = matching_interview["id"]
+                    logger.info(f"Found interview_id {interview_id} for job {job}")
+
         # Send emails to all candidates
         for candidate_data in candidates:
             if email_type == "ai_interview":
@@ -336,6 +351,7 @@ async def send_batch_basic_emails(
                     "email": candidate_data.email,
                     "name": candidate_data.name,
                     "organization_id": str(organization_id),
+                    "interview_id": interview_id,
                     "job_title": job,
                     "expires_at": expires_at.isoformat(),
                 }
@@ -654,6 +670,7 @@ async def send_invite(
                     request.job,
                     company_name,
                     request.organization_id,
+                    request.interview_id,
                 )
                 logger.info(
                     f"[send-invite] Batch human interview emails queued for {len(request.candidates)} candidates"
@@ -667,6 +684,7 @@ async def send_invite(
                     company_name,
                     request.organization_id,
                     request.email_type,
+                    request.interview_id,
                 )
                 logger.info(
                     f"[send-invite] Batch {request.email_type} emails queued for {len(request.candidates)} candidates"
@@ -1624,6 +1642,7 @@ async def get_interview(interview_id: str, request: Request):
         for candidate in job_candidates:
             candidate_id = candidate["id"]
             interview_details = candidate_interview_map.get(candidate_id)
+            print(f"Interview details: {interview_details}")
 
             enhanced_candidate = {
                 **candidate,
@@ -1662,6 +1681,9 @@ async def get_interview(interview_id: str, request: Request):
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
         available_candidates = [c for c in enhanced_candidates if not c["is_invited"]]
+
+        print(f"Invited candidates: {invited_candidates}")
+        print(f"Available candidates: {available_candidates}")
 
         # Build optimized response
         response = {

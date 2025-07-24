@@ -26,6 +26,7 @@ import {
   Check,
   Calendar as CalendarIcon,
   AlertTriangle,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1099,7 +1100,6 @@ export default function InterviewDetailsPage() {
 
   // Get all candidates to merge with interview candidates for complete data
   const { candidates: allCandidates } = useCandidates();
-  console.log(allCandidates);
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [hasReadWarning, setHasReadWarning] = useState(false);
@@ -1107,6 +1107,7 @@ export default function InterviewDetailsPage() {
   const [bulkPhoneScreenOpen, setBulkPhoneScreenOpen] = useState(false);
   const [bulkSelectOpen, setBulkSelectOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
   const [candidateGroups, setCandidateGroups] = useState<
     Array<{
       nextStage: { id: string; title: string };
@@ -1168,6 +1169,37 @@ export default function InterviewDetailsPage() {
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
   const coreBackendUrl =
     process.env.NEXT_PUBLIC_CORE_BACKEND_URL || "https://core.sivera.io";
+
+  // Status badge color mapping using only app colors
+  const getCandidateStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "Applied":
+        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+      case "Screening":
+        return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
+      case "Interview_Scheduled":
+        return "bg-app-blue-200/90 text-app-blue-800 border-app-blue-400/80";
+      case "Interviewed":
+        return "bg-app-blue-200/80 text-app-blue-900 border-app-blue-500/80";
+      case "Hired":
+        return "bg-app-blue-500/80 text-white border-app-blue-600/80";
+      case "On_Hold":
+        return "bg-app-blue-800/20 text-app-blue-600 border-app-blue-700/50";
+      case "Rejected":
+        return "bg-app-blue-900/30 text-app-blue-400 border-app-blue-800/50";
+      default:
+        return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
+    }
+  };
+
+  // Utility function to format status text consistently
+  const formatStatusText = (status: string) => {
+    return status
+      .replace(/_/g, " ") // Replace underscores with spaces
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
 
   // Timer options and logic
   const timerOptions = [10, 20, 30];
@@ -2178,6 +2210,7 @@ export default function InterviewDetailsPage() {
                   candidates: candidates,
                   // Include scheduling data to trigger recruiter emails
                   has_scheduling: true,
+                  interview_id: id as string,
                 }),
               }
             );
@@ -2207,6 +2240,7 @@ export default function InterviewDetailsPage() {
                   stage_type: basicEmails[0]?.stageType || "ai_interview",
                   candidates: candidates,
                   has_scheduling: false,
+                  interview_id: id as string,
                 }),
               }
             );
@@ -3360,245 +3394,388 @@ export default function InterviewDetailsPage() {
               />
             )}
 
-            {/* Candidate Pipeline Section */}
-            <div className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800 max-w-full overflow-hidden">
-              <div className="border-b border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-medium tracking-tight dark:text-white flex items-center gap-2">
-                      Candidate Pipeline
-                    </CardTitle>
-                    <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
-                      {job?.title}
-                      <span className="mx-2">•</span>
-                      {stages.reduce(
-                        (acc, stage) => acc + stage.candidates.length,
-                        0
-                      )}{" "}
-                      total candidates
-                      <span className="mx-2">•</span>
-                      {/* +1 because we have a AI default round */}
-                      {currentNumRounds + 1} interview rounds
-                      {selectedCandidates.size > 0 && (
-                        <>
-                          <span className="mx-2">•</span>
-                          <span className="text-app-blue-600 font-medium">
-                            {String(selectedCandidates.size)} selected
-                          </span>
-                        </>
-                      )}
+            {/* Candidate Section - Pipeline for Active, List for Draft/Completed */}
+            {details?.interview.status === "active" ? (
+              /* Candidate Pipeline Section - Active Interview */
+              <div className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800 max-w-full overflow-hidden">
+                <div className="border-b border-gray-200 dark:border-gray-800 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-medium tracking-tight dark:text-white flex items-center gap-2">
+                        Candidate Pipeline
+                      </CardTitle>
+                      <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                        {job?.title}
+                        <span className="mx-2">•</span>
+                        {stages.reduce(
+                          (acc, stage) => acc + stage.candidates.length,
+                          0
+                        )}{" "}
+                        total candidates
+                        <span className="mx-2">•</span>
+                        {/* +1 because we have a AI default round */}
+                        {currentNumRounds + 1} interview rounds
+                        {selectedCandidates.size > 0 && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="text-app-blue-600 font-medium">
+                              {String(selectedCandidates.size)} selected
+                            </span>
+                          </>
+                        )}
+                        {hasUnsavedChanges && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="text-app-blue-600 font-medium">
+                              {String(pendingChanges.length)} unsaved change
+                              {pendingChanges.length !== 1 ? "s" : ""}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
                       {hasUnsavedChanges && (
                         <>
-                          <span className="mx-2">•</span>
-                          <span className="text-app-blue-600 font-medium">
-                            {String(pendingChanges.length)} unsaved change
-                            {pendingChanges.length !== 1 ? "s" : ""}
-                          </span>
+                          <Button
+                            variant="outline"
+                            onClick={discardChanges}
+                            className="cursor-pointer text-xs"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            Discard
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setSaveConfirmOpen(true)}
+                            className="cursor-pointer text-xs"
+                          >
+                            <Save className="h-4 w-4 mr-1" />
+                            Save Changes
+                          </Button>
                         </>
                       )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {hasUnsavedChanges && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={discardChanges}
-                          className="cursor-pointer text-xs"
-                        >
-                          <RotateCcw className="h-4 w-4 mr-1" />
-                          Discard
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setSaveConfirmOpen(true)}
-                          className="cursor-pointer text-xs"
-                        >
-                          <Save className="h-4 w-4 mr-1" />
-                          Save Changes
-                        </Button>
-                      </>
-                    )}
 
-                    {selectedCandidates.size > 0 && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedCandidates(new Set());
-                          }}
-                          className="cursor-pointer text-xs"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Deselect All
-                        </Button>
-                      </>
-                    )}
+                      {selectedCandidates.size > 0 && (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCandidates(new Set());
+                            }}
+                            className="cursor-pointer text-xs"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Deselect All
+                          </Button>
+                        </>
+                      )}
 
-                    {/* Interview Invitations */}
-                    <Button
-                      onClick={prepareSelectedCandidatesForInvite}
-                      disabled={selectedCandidates.size === 0}
-                      className="cursor-pointer text-xs"
-                      variant="outline"
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      {(() => {
-                        const nextStageInfo =
-                          getNextStageForCandidates(selectedCandidates);
-                        if (
-                          nextStageInfo?.title &&
-                          nextStageInfo.title !== "Next Stages"
-                        ) {
-                          return `Move to ${nextStageInfo.title}`;
-                        }
-                        return "Move to Next Stage";
-                      })()}
-                    </Button>
-
-                    <Button
-                      onClick={() =>
-                        router.push(
-                          `/dashboard/candidates/invite?interview=${id}`
-                        )
-                      }
-                      className="cursor-pointer text-xs"
-                      variant="outline"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add New Candidate
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search candidates by name or email..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                      {/* Interview Invitations */}
                       <Button
-                        variant="outline"
+                        onClick={prepareSelectedCandidatesForInvite}
+                        disabled={selectedCandidates.size === 0}
                         className="cursor-pointer text-xs"
+                        variant="outline"
                       >
-                        <Filter className="mr-2 h-4 w-4" />
-                        Filters
-                        {scoreFilter && (
-                          <Badge variant="secondary" className="ml-2">
-                            ≥{scoreFilter}
-                          </Badge>
-                        )}
+                        <Mail className="mr-2 h-4 w-4" />
+                        {(() => {
+                          const nextStageInfo =
+                            getNextStageForCandidates(selectedCandidates);
+                          if (
+                            nextStageInfo?.title &&
+                            nextStageInfo.title !== "Next Stages"
+                          ) {
+                            return `Move to ${nextStageInfo.title}`;
+                          }
+                          return "Move to Next Stage";
+                        })()}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setScoreFilter(null)}>
-                        All Scores
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setScoreFilter(8)}>
-                        Score ≥ 8
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setScoreFilter(6)}>
-                        Score ≥ 6
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
 
-                  <Button
-                    variant="outline"
-                    className="cursor-pointer text-xs"
-                    onClick={() => setBulkSelectOpen(true)}
-                  >
-                    <CheckSquare className="mr-2 h-4 w-4" />
-                    Bulk Select
-                  </Button>
-                </div>
-              </div>
-              <div className="p-0 m-0">
-                {invitedCandidates.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Users className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-4" />
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      No candidates assigned
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                      Get started by adding candidates to this interview.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="w-full max-w-full overflow-hidden min-w-0">
-                    <div className="h-[700px] w-full overflow-hidden relative">
-                      {/* Pipeline Board */}
-                      <div className="flex h-full w-full overflow-x-auto overflow-y-hidden absolute inset-0 bg-gray-100 dark:bg-gray-950">
-                        {filteredStages.map((stage) => {
-                          // Check the pending changes for this specific stage
-                          const addChange = pendingChanges.find(
-                            (change) =>
-                              change.type === "add_round" &&
-                              change.stageId === stage.id
-                          );
-
-                          const removeChange = pendingChanges.find(
-                            (change) =>
-                              change.type === "remove_round" &&
-                              change.stageId === stage.id
-                          );
-
-                          const isNewStage = !!addChange && !removeChange;
-                          const isRemovedStage = !!removeChange && !addChange;
-
-                          // Check if this stage can be removed (only the highest round)
-                          const humanStages = filteredStages.filter(
-                            (s) => s.type === "human_interview"
-                          );
-                          const highestRoundStage = humanStages.sort(
-                            (a, b) => (b.round || 0) - (a.round || 0)
-                          )[0];
-                          const canRemove =
-                            stage.type === "human_interview" &&
-                            typeof stage.round === "number" &&
-                            stage.round > 1 &&
-                            stage.id === highestRoundStage?.id;
-
-                          return (
-                            <PipelineColumn
-                              key={stage.id}
-                              stage={stage}
-                              onQuickAction={handleQuickAction}
-                              onSelect={handleSelect}
-                              selectedCandidates={selectedCandidates}
-                              onMove={handleMove}
-                              isDragDropReady={false}
-                              pendingChanges={pendingChanges}
-                              isNewStage={isNewStage}
-                              isRemovedStage={isRemovedStage}
-                              canRemove={canRemove}
-                              onAddRound={
-                                stage.type === "human_interview" &&
-                                stage.id === highestRoundStage?.id
-                                  ? addHumanInterviewRound
-                                  : undefined
-                              }
-                              onRemoveRound={
-                                canRemove
-                                  ? removeHumanInterviewRound
-                                  : undefined
-                              }
-                            />
-                          );
-                        })}
-                      </div>
+                      <Button
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/candidates/invite?interview=${id}`
+                          )
+                        }
+                        className="cursor-pointer text-xs"
+                        variant="outline"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add New Candidate
+                      </Button>
                     </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Search candidates by name or email..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="cursor-pointer text-xs"
+                        >
+                          <Filter className="mr-2 h-4 w-4" />
+                          Filters
+                          {scoreFilter && (
+                            <Badge variant="secondary" className="ml-2">
+                              ≥{scoreFilter}
+                            </Badge>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => setScoreFilter(null)}>
+                          All Scores
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setScoreFilter(8)}>
+                          Score ≥ 8
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setScoreFilter(6)}>
+                          Score ≥ 6
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer text-xs"
+                      onClick={() => setBulkSelectOpen(true)}
+                    >
+                      <CheckSquare className="mr-2 h-4 w-4" />
+                      Bulk Select
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-0 m-0">
+                  {invitedCandidates.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-4" />
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        No candidates assigned
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Get started by adding candidates to this interview.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-full overflow-hidden min-w-0">
+                      <div className="h-[700px] w-full overflow-hidden relative">
+                        {/* Pipeline Board */}
+                        <div className="flex h-full w-full overflow-x-auto overflow-y-hidden absolute inset-0 bg-gray-100 dark:bg-gray-950">
+                          {filteredStages.map((stage) => {
+                            // Check the pending changes for this specific stage
+                            const addChange = pendingChanges.find(
+                              (change) =>
+                                change.type === "add_round" &&
+                                change.stageId === stage.id
+                            );
+
+                            const removeChange = pendingChanges.find(
+                              (change) =>
+                                change.type === "remove_round" &&
+                                change.stageId === stage.id
+                            );
+
+                            const isNewStage = !!addChange && !removeChange;
+                            const isRemovedStage = !!removeChange && !addChange;
+
+                            // Check if this stage can be removed (only the highest round)
+                            const humanStages = filteredStages.filter(
+                              (s) => s.type === "human_interview"
+                            );
+                            const highestRoundStage = humanStages.sort(
+                              (a, b) => (b.round || 0) - (a.round || 0)
+                            )[0];
+                            const canRemove =
+                              stage.type === "human_interview" &&
+                              typeof stage.round === "number" &&
+                              stage.round > 1 &&
+                              stage.id === highestRoundStage?.id;
+
+                            return (
+                              <PipelineColumn
+                                key={stage.id}
+                                stage={stage}
+                                onQuickAction={handleQuickAction}
+                                onSelect={handleSelect}
+                                selectedCandidates={selectedCandidates}
+                                onMove={handleMove}
+                                isDragDropReady={false}
+                                pendingChanges={pendingChanges}
+                                isNewStage={isNewStage}
+                                isRemovedStage={isRemovedStage}
+                                canRemove={canRemove}
+                                onAddRound={
+                                  stage.type === "human_interview" &&
+                                  stage.id === highestRoundStage?.id
+                                    ? addHumanInterviewRound
+                                    : undefined
+                                }
+                                onRemoveRound={
+                                  canRemove
+                                    ? removeHumanInterviewRound
+                                    : undefined
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Candidate List Section - Draft/Completed Interview */
+              <div className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800 max-w-full overflow-hidden">
+                <div className="border-b border-gray-200 dark:border-gray-800 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-medium tracking-tight dark:text-white flex items-center gap-2">
+                        Candidates
+                      </CardTitle>
+                      <p className="text-xs text-gray-500 font-semibold dark:text-gray-300">
+                        {job?.title}
+                        <span className="mx-2">•</span>
+                        {invitedCandidates.length} candidate
+                        {invitedCandidates.length !== 1 ? "s" : ""}
+                        <span className="mx-2">•</span>
+                        Interview is {details?.interview.status || "draft"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/candidates/invite?interview=${id}`
+                          )
+                        }
+                        className="cursor-pointer text-xs"
+                        variant="outline"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add New Candidate
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Search candidates by name or email..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                          Job Role
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                          Date Added
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                      {invitedCandidates.length > 0 ? (
+                        invitedCandidates
+                          .filter((candidate) => {
+                            const matchesSearch =
+                              candidate.name
+                                .toLowerCase()
+                                .includes(searchQuery.toLowerCase()) ||
+                              candidate.email
+                                .toLowerCase()
+                                .includes(searchQuery.toLowerCase());
+                            return matchesSearch;
+                          })
+                          .map((candidate) => (
+                            <tr
+                              key={candidate.id}
+                              className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
+                              onClick={() => {
+                                setSelectedCandidate(candidate);
+                                setCandidateDialogOpen(true);
+                              }}
+                            >
+                              <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                {candidate.name}
+                              </td>
+                              <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {candidate.email}
+                              </td>
+                              <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {job?.title || "-"}
+                              </td>
+                              <td className="px-6 py-6 whitespace-nowrap text-sm">
+                                <Badge
+                                  variant="outline"
+                                  className={`${getCandidateStatusBadgeClass(
+                                    candidate.status || "Applied"
+                                  )} font-normal text-xs border-[0.5px] opacity-80`}
+                                >
+                                  {formatStatusText(
+                                    candidate.status || "Applied"
+                                  )}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {candidate.created_at
+                                  ? new Date(
+                                      candidate.created_at
+                                    ).toLocaleDateString()
+                                  : "-"}
+                              </td>
+                            </tr>
+                          ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-300"
+                          >
+                            <div className="py-8">
+                              <Users className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 mb-4" />
+                              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                                No candidates assigned
+                              </h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                Add candidates to this interview to get started.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bulk Phone Screen Scheduler */}
@@ -3768,6 +3945,42 @@ export default function InterviewDetailsPage() {
             data={humanInterviewDialogData}
             onComplete={handleHumanInterviewComplete}
           />
+
+          {/* Candidate View Dialog */}
+          <Dialog
+            open={candidateDialogOpen}
+            onOpenChange={(open) => {
+              setCandidateDialogOpen(open);
+              if (!open) setSelectedCandidate(null);
+            }}
+          >
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="tracking-tight">Candidate</DialogTitle>
+                <DialogDescription>{selectedCandidate?.name}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <div className="flex gap-2 w-full">
+                  {selectedCandidate?.resume_url && (
+                    <Button
+                      onClick={() =>
+                        window.open(
+                          selectedCandidate.resume_url,
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                      variant="outline"
+                      className="cursor-pointer text-xs w-full"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Resume
+                    </Button>
+                  )}
+                </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
