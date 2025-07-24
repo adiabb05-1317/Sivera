@@ -13,6 +13,8 @@ import {
   CandidateStatus,
 } from "@/lib/supabase-candidates";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { AppErrorHandler } from "@/lib/error-handler";
+import { config } from "@/lib/config";
 
 interface CandidatesState {
   // Data states
@@ -92,8 +94,8 @@ export const useCandidatesStore = create<CandidatesState>()(
       allCandidates: initialDataState<Candidate[]>([]),
       filters: {},
       filteredCandidates: [],
-      cacheTTL: 5 * 60 * 1000, // 5 minutes
-      staleTime: 1 * 60 * 1000, // 1 minute
+      cacheTTL: config.cache.defaultTTL,
+      staleTime: config.cache.staleTime,
 
       // Cache management
       isDataStale: (lastFetched) => {
@@ -143,7 +145,11 @@ export const useCandidatesStore = create<CandidatesState>()(
         }));
 
         try {
-          const data = await fetchCandidatesSortedByJob();
+          const data = await AppErrorHandler.withRetry(
+            () => fetchCandidatesSortedByJob(),
+            config.api.retryAttempts,
+            "fetchCandidatesByJob"
+          );
           const candidatesArray = Object.values(data).flat() as Candidate[];
 
           set((state) => ({
@@ -166,16 +172,20 @@ export const useCandidatesStore = create<CandidatesState>()(
           // Apply current filters
           get().applyFilters();
         } catch (error) {
+          const appError = AppErrorHandler.createError(
+            error,
+            "fetchCandidatesByJob"
+          );
+          
           set((state) => ({
             candidatesByJob: {
               ...state.candidatesByJob,
               isLoading: false,
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to fetch candidates",
+              error: appError.message,
             },
           }));
+
+          console.error("Failed to fetch candidates:", appError);
         }
       },
 
@@ -253,8 +263,42 @@ export const useCandidatesStore = create<CandidatesState>()(
       },
 
       updateCandidateStatus: async (candidateId, status) => {
+        // Get current candidate for rollback if needed
+        const currentCandidate = get().getCandidateById(candidateId);
+        const previousStatus = currentCandidate?.status;
+
+        // Optimistic update - update UI immediately
+        const updateCandidate = (candidate: Candidate) =>
+          candidate.id === candidateId
+            ? { ...candidate, status }
+            : candidate;
+
+        set((state) => {
+          const updatedCandidatesByJob = Object.fromEntries(
+            Object.entries(state.candidatesByJob.data).map(
+              ([jobId, candidates]) => [
+                jobId,
+                candidates.map(updateCandidate),
+              ]
+            )
+          );
+
+          return {
+            candidatesByJob: {
+              ...state.candidatesByJob,
+              data: updatedCandidatesByJob,
+            },
+            allCandidates: {
+              ...state.allCandidates,
+              data: state.allCandidates.data.map(updateCandidate),
+            },
+          };
+        });
+
+        get().applyFilters();
+
         try {
-          // Call API to update status
+          // Call API to persist the change
           const response = await authenticatedFetch(
             `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/${candidateId}/status`,
             {
@@ -267,37 +311,38 @@ export const useCandidatesStore = create<CandidatesState>()(
           if (!response.ok) {
             throw new Error("Failed to update candidate status");
           }
-
-          // Update local state
-          set((state) => {
-            const updateCandidate = (candidate: Candidate) =>
+        } catch (error) {
+          // Rollback optimistic update on error
+          if (previousStatus) {
+            const rollbackUpdate = (candidate: Candidate) =>
               candidate.id === candidateId
-                ? { ...candidate, status }
+                ? { ...candidate, status: previousStatus }
                 : candidate;
 
-            const updatedCandidatesByJob = Object.fromEntries(
-              Object.entries(state.candidatesByJob.data).map(
-                ([jobId, candidates]) => [
-                  jobId,
-                  candidates.map(updateCandidate),
-                ]
-              )
-            );
+            set((state) => {
+              const rolledBackCandidatesByJob = Object.fromEntries(
+                Object.entries(state.candidatesByJob.data).map(
+                  ([jobId, candidates]) => [
+                    jobId,
+                    candidates.map(rollbackUpdate),
+                  ]
+                )
+              );
 
-            return {
-              candidatesByJob: {
-                ...state.candidatesByJob,
-                data: updatedCandidatesByJob,
-              },
-              allCandidates: {
-                ...state.allCandidates,
-                data: state.allCandidates.data.map(updateCandidate),
-              },
-            };
-          });
+              return {
+                candidatesByJob: {
+                  ...state.candidatesByJob,
+                  data: rolledBackCandidatesByJob,
+                },
+                allCandidates: {
+                  ...state.allCandidates,
+                  data: state.allCandidates.data.map(rollbackUpdate),
+                },
+              };
+            });
 
-          get().applyFilters();
-        } catch (error) {
+            get().applyFilters();
+          }
           throw error;
         }
       },

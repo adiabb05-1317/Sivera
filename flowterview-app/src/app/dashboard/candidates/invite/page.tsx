@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAddCandidate, useBulkAddCandidates } from "./supabase-hooks";
-import { useJobs } from "@/hooks/useStores";
+import { useJobs, useCandidates, useInterviews } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import {
@@ -70,6 +70,10 @@ export default function InviteCandidatesPage() {
 
   // Fetch jobs from backend
   const { jobs, isLoading: jobsLoading, error: jobsError } = useJobs();
+  
+  // Additional hooks for cache invalidation
+  const { refresh: refreshCandidates } = useCandidates();
+  const { refresh: refreshInterviews } = useInterviews();
   const {
     submitCandidate,
     loading: addLoading,
@@ -307,6 +311,10 @@ export default function InviteCandidatesPage() {
         interviewId: selectedInterview,
       });
 
+      // Refresh related data stores
+      refreshCandidates();
+      refreshInterviews();
+      
       setIsSent(true);
     } catch (err) {
       console.error("Error in handleSubmit:", err);

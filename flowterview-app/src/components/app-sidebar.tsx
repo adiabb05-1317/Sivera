@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -51,26 +51,46 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { setShowCompanySetupModal } = useAuthStore();
 
   const handleSignOut = async () => {
     try {
-      // 1. Supabase logout
-      const { logout: supabaseLogout } = await import("@/lib/auth-client");
+      console.log("🔓 User initiated logout");
+      
+      // 1. Clear auth store first
+      logout();
+      
+      // 2. Clear all cookies and data via auth-client
+      const { logout: supabaseLogout, clearUserContext } = await import("@/lib/auth-client");
+      
+      console.log("🧹 Clearing user context...");
+      clearUserContext(); // Clear immediately
+      
+      console.log("🚪 Supabase logout...");
       await supabaseLogout();
 
-      // 2. Clear our auth store
-      logout();
-
-      // 3. Redirect
-      router.push("/auth/login");
+      console.log("🔄 Redirecting to login page");
+      
+      // 3. Force immediate redirect with hard navigation
+      window.location.replace("/auth/login");
+      
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
+      
+      // Force cleanup even on error
+      try {
+        const { clearUserContext } = await import("@/lib/auth-client");
+        clearUserContext();
+        logout();
+      } catch (cleanupError) {
+        console.error("❌ Cleanup error:", cleanupError);
+      }
+      
       // Force redirect even on error
-      router.push("/auth/login");
+      console.log("🔄 Force redirecting to login after error");
+      window.location.replace("/auth/login");
     }
   };
 
