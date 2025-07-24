@@ -70,7 +70,7 @@ export default function InviteCandidatesPage() {
 
   // Fetch jobs from backend
   const { jobs, isLoading: jobsLoading, error: jobsError } = useJobs();
-  
+
   // Additional hooks for cache invalidation
   const { refresh: refreshCandidates } = useCandidates();
   const { refresh: refreshInterviews } = useInterviews();
@@ -259,11 +259,13 @@ export default function InviteCandidatesPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("handleSubmit");
     e.preventDefault();
     setInterviewError("");
     setIsSubmitting(true);
 
     try {
+      console.log("Submitting candidates");
       // Require interview selection if not from query
       if (!selectedInterview) {
         setInterviewError("Please select an interview/job before submitting.");
@@ -287,6 +289,8 @@ export default function InviteCandidatesPage() {
         }
       }
 
+      console.log("Job ID:", jobId);
+
       if (!jobId) {
         setInterviewError(
           "Could not determine job for the selected interview."
@@ -296,6 +300,7 @@ export default function InviteCandidatesPage() {
       }
 
       // Use bulk submission for much better performance
+      console.log("Candidates:", candidates);
       const candidatesData = candidates.map((candidate) => ({
         name: candidate.name,
         email: candidate.email,
@@ -305,19 +310,20 @@ export default function InviteCandidatesPage() {
         status: candidate.status as any, // Convert to CandidateStatus
       }));
 
+      console.log("Submitting bulk candidates");
       await submitBulkCandidates({
         candidates: candidatesData,
         jobId,
         interviewId: selectedInterview,
       });
+      console.log("Bulk candidates submitted");
 
-     
-      
       setIsSent(true);
-      setTimeout(() => {
-        refreshCandidates();
-        refreshInterviews();
-      }, 2000);
+
+      refreshCandidates();
+      refreshInterviews();
+
+      console.log("Refreshing candidates and interviews");
     } catch (err) {
       console.error("Error in handleSubmit:", err);
       setInterviewError(

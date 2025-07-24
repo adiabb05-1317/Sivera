@@ -75,7 +75,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
         jobs = {job["id"]: job["title"] for job in db.fetch_all("jobs")}
         # Attach job object to each candidate if job_id exists
         for c in candidates:
-            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-"), "id": c.get("job_id")}
+            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-"), "id": c.get("job_id"), "status": c.get("status")}
 
         def parse_created_at(dt_str):
             try:
