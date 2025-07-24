@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -51,26 +51,46 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { setShowCompanySetupModal } = useAuthStore();
 
   const handleSignOut = async () => {
     try {
-      // 1. Supabase logout
-      const { logout: supabaseLogout } = await import("@/lib/auth-client");
+      console.log("🔓 User initiated logout");
+      
+      // 1. Clear auth store first
+      logout();
+      
+      // 2. Clear all cookies and data via auth-client
+      const { logout: supabaseLogout, clearUserContext } = await import("@/lib/auth-client");
+      
+      console.log("🧹 Clearing user context...");
+      clearUserContext(); // Clear immediately
+      
+      console.log("🚪 Supabase logout...");
       await supabaseLogout();
 
-      // 2. Clear our auth store
-      logout();
-
-      // 3. Redirect
-      router.push("/auth/login");
+      console.log("🔄 Redirecting to login page");
+      
+      // 3. Force immediate redirect with hard navigation
+      window.location.replace("/auth/login");
+      
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
+      
+      // Force cleanup even on error
+      try {
+        const { clearUserContext } = await import("@/lib/auth-client");
+        clearUserContext();
+        logout();
+      } catch (cleanupError) {
+        console.error("❌ Cleanup error:", cleanupError);
+      }
+      
       // Force redirect even on error
-      router.push("/auth/login");
+      console.log("🔄 Force redirecting to login after error");
+      window.location.replace("/auth/login");
     }
   };
 
@@ -175,7 +195,7 @@ export function AppSidebar() {
                             ? "bg-app-blue-200 dark:bg-app-blue-700 text-app-blue-800 dark:text-app-blue-100 font-semibold"
                             : "text-gray-600 dark:text-gray-300 hover:bg-app-blue-50 dark:hover:bg-app-blue-900/50 hover:text-app-blue-600 dark:hover:text-app-blue-300"
                         }
-                        transition-all duration-200 p-5"
+                        transition-all duration-200 p-5
                       `}
                       style={{
                         border: isActive
@@ -186,7 +206,7 @@ export function AppSidebar() {
                     >
                       <Link
                         href={item.href}
-                        className="flex items-center gap-3.5 pl-[1.1rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:w-fit group-data-[collapsible=icon]:pl-0 group-data-[collapsible=icon]:h-10 p-5"
+                        className="flex items-center gap-3.5 pl-[1.1rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:w-fit group-data-[collapsible=icon]:pl-0 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:p-[1.45rem] p-5"
                       >
                         <item.icon
                           className={`h-5 w-5 flex-shrink-0 ${
@@ -208,7 +228,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="w-full px-2 pb-4">
+      <SidebarFooter className="w-full px-2 pb-4 pl-[1.22rem] pr-[1.22rem]">
         <SidebarMenu className="w-full">
           <SidebarMenuItem>
             <DropdownMenu>
@@ -216,11 +236,12 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   size="lg"
                   className="group w-full py-2 rounded-xl transition-colors hover:bg-muted data-[state=open]:bg-muted
-             group-data-[collapsible=icon]:justify-center
-             group-data-[collapsible=icon]:items-center
-             group-data-[collapsible=icon]:ml-[0.5rem]
-             group-data-[collapsible=icon]:mb-[0.5rem]
-             group-data-[collapsible=icon]:h-12 cursor-pointer"
+             !group-data-[collapsible=icon]:justify-center
+             !group-data-[collapsible=icon]:items-center
+             !group-data-[collapsible=icon]:ml-[0.5rem]
+             !group-data-[collapsible=icon]:mb-[0.5rem]
+             !group-data-[collapsible=icon]:p-[1.45rem]
+             !group-data-[collapsible=icon]:h-12 cursor-pointer"
                 >
                   <div className="flex w-full items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-fit group-data-[collapsible=icon]:gap-0">
                     <Avatar className="h-8 w-8">

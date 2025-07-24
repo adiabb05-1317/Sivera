@@ -24,6 +24,7 @@ from .handler_functions import (
     present_system_design,
     process_background_info,
     process_devops_experience,
+    present_assessment,
 )
 from .interview_flow import InterviewFlow
 

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { LucideVolume2, Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import { Codesandbox, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Separator } from "@/components/ui/separator";
 
@@ -46,15 +46,15 @@ const Controls = ({
   participants,
   joinAndLeaveCallHandler,
   style,
-  isCodeEditorOpen,
-  toggleCodeEditor,
+  isAssessmentOpen,
+  toggleAssessment,
 }: {
   participants: Participant[];
   joinAndLeaveCallHandler: (state: "join" | "leave") => Promise<void>;
   className?: string;
   style?: React.CSSProperties;
-  isCodeEditorOpen?: boolean;
-  toggleCodeEditor?: () => void;
+  isAssessmentOpen?: boolean;
+  toggleAssessment?: () => void;
 }) => {
   // State for UI interactions
   const [isHovered, setIsHovered] = useState<string | null>(null);
@@ -75,6 +75,7 @@ const Controls = ({
     permissionGranted,
     setTtsConnecting,
     setConnectionStatus,
+    currentAssessment,
   } = usePathStore();
 
   // Theme states
@@ -128,34 +129,36 @@ const Controls = ({
       className="rounded-full shadow-lg flex items-center justify-center p-3 gap-4 relative z-20 bg-white dark:bg-slate-800 border border-app-blue-100 dark:border-slate-700"
       style={style}
     >
-      {/* Left group: Code editor and captions */}
-      <div className="flex items-center gap-4">
-        {/* Code Editor toggle */}
-        <button
-          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
+      {/* Left group: Assessment and captions */}
+      {currentAssessment && (
+        <div className="flex items-center gap-4">
+          {/* Assessment toggle */}
+          <button
+            className={`p-4 rounded-full w-12 h-12 flex items-center justify-center transition-colors duration-200
             ${
-              isCodeEditorOpen
+              isAssessmentOpen
                 ? "bg-app-blue-500 text-white"
                 : "bg-app-blue-100 dark:bg-app-blue-500/20 text-app-blue-500 dark:text-app-blue-400 hover:bg-app-blue-200 dark:hover:bg-app-blue-500/30"
             }
           `}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleCodeEditor?.();
-          }}
-          onMouseEnter={() => setIsHovered("codeEditor")}
-          onMouseLeave={() => setIsHovered(null)}
-        >
-          <Icons.Code className="h-5 w-5" />
-          {isHovered === "codeEditor" && (
-            <ControlTooltip
-              text={isCodeEditorOpen ? "Hide code editor" : "Open code editor"}
-              isHovered
-            />
-          )}
-        </button>
-      </div>
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleAssessment?.();
+            }}
+            onMouseEnter={() => setIsHovered("assessment")}
+            onMouseLeave={() => setIsHovered(null)}
+          >
+            <Codesandbox className="h-5 w-5" />
+            {isHovered === "assessment" && (
+              <ControlTooltip
+                text={isAssessmentOpen ? "Hide assessment" : "Open assessment"}
+                isHovered
+              />
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Middle group: Settings and theme */}
       <div className="flex items-center gap-4">

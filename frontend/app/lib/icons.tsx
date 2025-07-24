@@ -16,6 +16,7 @@ import {
   VideoOffIcon,
   Video,
   Settings,
+  Notebook,
 } from "lucide-react";
 import ClientOnly from "@/app/components/client-only";
 
@@ -38,6 +39,7 @@ export const Icons = {
   Code: Code,
   PhoneOff: PhoneOff,
   Settings: Settings,
+  Notebook: Notebook,
   Mic: () => {
     return (
       <svg

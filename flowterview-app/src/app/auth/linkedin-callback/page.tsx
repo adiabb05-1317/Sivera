@@ -193,15 +193,19 @@ export default function LinkedInCallbackPage() {
 
           <div className="flex flex-col space-y-3">
             {status === "success" ? (
-              <Button onClick={handleGoToSettings} className="w-full">
+              <Button
+                onClick={handleGoToSettings}
+                className="cursor-pointer text-xs"
+                variant="outline"
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Settings
               </Button>
             ) : (
               <Button
                 onClick={handleTryAgain}
+                className="cursor-pointer text-xs"
                 variant="outline"
-                className="w-full"
               >
                 Try Again
               </Button>

@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Dict, Optional
 
 from pipecat_flows import FlowArgs, FlowManager
@@ -42,34 +43,90 @@ async def process_background_info(
     return {"technical_background": technical_background, "key_skills": key_skills}
 
 
-async def present_coding_problem(
+async def present_assessment(
     args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
-    Present a coding problem to the candidate.
+    Present an assessment (coding problem or jupyter notebook) to the candidate.
     """
-    problem_description = args["problem_description"]
-    problem_constraints = args["problem_constraints"]
+    id = str(uuid.uuid4())
+    assessment_type = args["assessment_type"]  # "code-editor" or "notebook"
+    title = args["title"]
+    description = args["description"]
+    
+    # Common payload
+    payload = {
+        "id": id,
+        "title": title,
+        "description": description,
+        "open_assessment": True,
+    }
+    
+    # Add type-specific fields
+    if assessment_type == "code-editor":
+        payload.update({
+            "languages": args.get("languages", ["python", "javascript", "java"]),
+            "starter_code": args.get("starter_code", {}),
+        })
+    elif assessment_type == "notebook":
+        payload.update({
+            "language": args.get("language", "python"),
+            "initial_cells": args.get("initial_cells", []),
+        })
 
     try:
         message = {
-            "type": "coding-problem",
-            "payload": {
-                "problem_description": problem_description,
-                "problem_constraints": problem_constraints,
-                "open_editor": True,
-            },
+            "type": assessment_type,
+            "payload": payload,
         }
         await send_message_to_client(message)
 
     except Exception as e:
-        logger.error(f"Failed to send coding problem to client: {e}")
+        logger.error(f"Failed to send assessment to client: {e}")
 
     return {
-        "problem_description": problem_description,
-        "problem_constraints": problem_constraints,
+        "assessment_type": assessment_type,
+        "title": title,
+        "description": description,
     }
 
+
+# Backward compatibility function
+async def present_coding_problem(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present a coding problem to the candidate. (Backward compatibility wrapper)
+    """
+    # Convert old format to new assessment format
+    assessment_args = FlowArgs({
+        "assessment_type": "code-editor",
+        "title": "Coding Challenge",
+        "description": args["problem_description"],
+        "languages": args.get("languages", ["python", "javascript", "java"]),
+        "starter_code": args.get("starter_code", {}),
+    })
+    
+    return await present_assessment(assessment_args, flow_manager, result)
+
+
+async def present_jupyter_notebook(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Present a jupyter notebook assessment to the candidate.
+    Note: JupyterLite only supports Python via Pyodide.
+    """
+    # Convert to new assessment format
+    assessment_args = FlowArgs({
+        "assessment_type": "notebook",
+        "title": args.get("title", "Python Jupyter Assessment"),
+        "description": args["description"],
+        "language": "python",  # Only Python supported in JupyterLite
+        "initial_cells": args.get("initial_cells", []),
+    })
+        
+    return await present_assessment(assessment_args, flow_manager, result)
 
 async def evaluate_problem_solving(
     args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None

@@ -1,8 +1,15 @@
+from email.mime.text import MIMEText
+import json
+import os
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+import aiosmtplib
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from loguru import logger
+from pydantic import BaseModel, EmailStr
 
+from src.core.config import Config
+from src.utils.auth_middleware import require_organization
 from storage.db_manager import DatabaseError, DatabaseManager
 
 router = APIRouter(prefix="/api/v1/organizations", tags=["organizations"])
@@ -23,8 +30,141 @@ class OrganizationOut(BaseModel):
     id: str
     name: str
     logo_url: Optional[str] = None
+    domain: Optional[str] = None
     created_at: str
     updated_at: str
+
+
+class UserOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    organization_id: str
+    created_at: str
+
+
+class BulkRecruiterInviteRequest(BaseModel):
+    emails: List[EmailStr]
+
+
+async def send_loops_email(to_email: str, template_id: str, variables: dict) -> None:
+    """Send email via Loops transactional API using SMTP"""
+    try:
+        logger.info(f"Sending Loops email to {to_email} with template {template_id}")
+
+        payload = {"transactionalId": template_id, "email": to_email, "dataVariables": variables}
+
+        msg = MIMEText(json.dumps(payload), "plain")
+        msg["From"] = "team@sivera.io"
+        msg["To"] = to_email
+        msg["Subject"] = "ignored by Loops"  # Subject is handled by Loops template
+
+        await aiosmtplib.send(
+            msg,
+            hostname=Config.SMTP_HOST,
+            port=Config.SMTP_PORT,
+            start_tls=True,
+            username=Config.SMTP_USER,
+            password=Config.SMTP_PASS,
+        )
+
+        logger.info(f"Loops email sent successfully to {to_email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send Loops email to {to_email}: {e}")
+        raise
+
+
+async def send_recruiter_invite_email(
+    email: str,
+    company_name: str,
+    recruiter_url: str,
+) -> None:
+    """Background task to send recruiter invitation email via Loops"""
+    try:
+        logger.info(f"Sending recruiter invite email to {email}")
+
+        # Prepare variables for Loops template
+        variables = {
+            "url": recruiter_url,
+            "company": company_name,
+        }
+
+        await send_loops_email(email, Config.LOOPS_RECRUITER_INVITE_TEMPLATE, variables)
+        logger.info(f"Recruiter invite email sent successfully to {email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send recruiter invite email to {email}: {e}")
+        raise
+
+
+async def process_bulk_recruiter_invites(
+    emails: List[str],
+    organization_id: str,
+    company_name: str,
+) -> None:
+    """Background task to process bulk recruiter invites"""
+    try:
+        logger.info(f"Processing bulk recruiter invites for {len(emails)} emails")
+
+        recruiter_url = os.getenv("RECRUITER_FRONTEND_URL", "https://recruiter.sivera.io")
+
+        # Send emails to all recruiters
+        for email in emails:
+            try:
+                await send_recruiter_invite_email(email, company_name, recruiter_url)
+            except Exception as e:
+                logger.error(f"Failed to send invite to {email}: {e}")
+                # Continue with other emails even if one fails
+
+        logger.info(f"Bulk recruiter invites processed for organization {organization_id}")
+
+    except Exception as e:
+        logger.error(f"Error processing bulk recruiter invites: {str(e)}")
+
+
+@router.post("/{org_id}/invite-recruiters")
+async def invite_recruiters_bulk(
+    org_id: str, request: BulkRecruiterInviteRequest, background_tasks: BackgroundTasks, app_request: Request
+):
+    """Send bulk recruiter invitation emails"""
+    try:
+        # Require authentication with organization context
+        user_context = require_organization(app_request)
+
+        # Verify the user has access to this organization
+        if user_context.organization_id != org_id:
+            raise HTTPException(status_code=403, detail="Access denied: Not authorized for this organization")
+
+        # Get organization details
+        org = db.fetch_one("organizations", {"id": org_id})
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+
+        company_name = org.get("name", "Company")
+
+        # Queue the processing as a background task
+        background_tasks.add_task(
+            process_bulk_recruiter_invites,
+            request.emails,
+            org_id,
+            company_name,
+        )
+
+        logger.info(f"Bulk recruiter invite processing queued for {len(request.emails)} emails")
+
+        return {
+            "success": True,
+            "message": f"Invitations are being sent to {len(request.emails)} recruiter(s)",
+            "emails_count": len(request.emails),
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error in bulk recruiter invite: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/", response_model=List[OrganizationOut])
@@ -102,3 +242,12 @@ async def create_organization(org: OrganizationIn, request: Request):
         return created_org
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{org_id}/users", response_model=List[UserOut])
+async def get_organization_users(org_id: str, request: Request):
+    try:
+        users = db.fetch_all("users", {"organization_id": org_id})
+        return users
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))

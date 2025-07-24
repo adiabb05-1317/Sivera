@@ -5,7 +5,7 @@ import { Icons } from "@/app/lib/icons";
 import usePathStore from "@/app/store/PathStore";
 import ConclusionSection from "./conclusion-section";
 import Controls from "./controls";
-import CodeEditor from "./CodeEditor";
+import AssessmentContainer from "./AssessmentContainer";
 import TranscriptionInterface from "@/components/ui/transcription-interface";
 
 const UserTile = ({
@@ -53,7 +53,7 @@ const UserTile = ({
         )}
       </div>
 
-      {/* Header similar to coding challenge */}
+      {/* Header similar to assessment */}
       <div className="absolute top-0 left-0 right-0 flex justify-between items-center py-3 px-4 bg-app-blue-50/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-app-blue-200/60 dark:border-slate-600/60">
         <h3 className="text-app-blue-800 dark:text-slate-100 font-semibold text-sm flex items-center gap-2 tracking-tight">
           <Icons.Video className="w-4 h-4 text-app-blue-500 dark:text-app-blue-400" />
@@ -147,15 +147,15 @@ const Presentation = () => {
     callStatus,
     connectionStatus,
     participants,
-    isCodeEditorOpen,
-    setIsCodeEditorOpen,
-    codingProblem,
+    isAssessmentOpen,
+    setIsAssessmentOpen,
+    currentAssessment,
     localVideoStream,
     transportState,
   } = usePathStore();
 
-  const toggleCodeEditor = () => {
-    setIsCodeEditorOpen(!isCodeEditorOpen);
+  const toggleAssessment = () => {
+    setIsAssessmentOpen(!isAssessmentOpen);
   };
 
   const joinAndLeaveCallHandler = async (state: "join" | "leave") => {
@@ -201,7 +201,7 @@ const Presentation = () => {
         videoRef.current.srcObject = localVideoStream;
       }
     }
-  }, [localVideoStream, isCameraOn, isCodeEditorOpen]);
+  }, [localVideoStream, isCameraOn, isAssessmentOpen]);
 
   return (
     <div className="flex flex-col h-full w-full transition-all duration-300 relative">
@@ -219,10 +219,10 @@ const Presentation = () => {
         <section className="relative flex-grow w-full h-full overflow-hidden bg-transparent">
           <div
             className={`absolute inset-0 p-6 z-10 transition-all duration-500 ease-in-out ${
-              isCodeEditorOpen ? "left-0 right-0" : "left-0 right-0"
+              isAssessmentOpen ? "left-0 right-0" : "left-0 right-0"
             }`}
           >
-            {!isCodeEditorOpen ? (
+            {!isAssessmentOpen ? (
               // Normal Mode Layout
               <div className="w-full h-full grid grid-cols-12 grid-rows-12 gap-6">
                 {/* Transcriptions - Left side, smaller width */}
@@ -250,15 +250,15 @@ const Presentation = () => {
                 <div className="col-span-9 row-span-2 flex items-center justify-center">
                   <Controls
                     participants={participants}
-                    isCodeEditorOpen={isCodeEditorOpen}
-                    toggleCodeEditor={toggleCodeEditor}
+                    isAssessmentOpen={isAssessmentOpen}
+                    toggleAssessment={toggleAssessment}
                     style={{ overflow: "visible" }}
                     joinAndLeaveCallHandler={joinAndLeaveCallHandler}
                   />
                 </div>
               </div>
             ) : (
-              // Coding Mode Layout
+              // Assessment Mode Layout
               <div className="w-full h-full grid grid-cols-12 grid-rows-12 gap-6">
                 {/* Left Column - Video Feed (top) + Transcriptions (bottom) */}
                 <div className="col-span-3 row-span-12 flex flex-col gap-3">
@@ -269,7 +269,7 @@ const Presentation = () => {
                         .filter((p) => p.id === "user")
                         .map((p) => (
                           <UserTile
-                            key={`coding-${p.id}`}
+                            key={`assessment-${p.id}`}
                             participant={p}
                             isUserSpeaking={isUserSpeaking}
                             isCameraOn={isCameraOn}
@@ -286,11 +286,11 @@ const Presentation = () => {
                   </div>
                 </div>
 
-                {/* Code Editor - Right side, more space */}
+                {/* Assessment - Right side, more space */}
                 <div className="col-span-9 row-span-10">
-                  <CodeEditor
-                    isOpen={isCodeEditorOpen}
-                    onClose={() => setIsCodeEditorOpen(false)}
+                  <AssessmentContainer
+                    isOpen={isAssessmentOpen}
+                    onClose={() => setIsAssessmentOpen(false)}
                   />
                 </div>
 
@@ -298,8 +298,8 @@ const Presentation = () => {
                 <div className="col-span-9 row-span-2 flex items-center justify-center">
                   <Controls
                     participants={participants}
-                    isCodeEditorOpen={isCodeEditorOpen}
-                    toggleCodeEditor={toggleCodeEditor}
+                    isAssessmentOpen={isAssessmentOpen}
+                    toggleAssessment={toggleAssessment}
                     style={{ overflow: "visible" }}
                     joinAndLeaveCallHandler={joinAndLeaveCallHandler}
                   />

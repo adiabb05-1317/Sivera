@@ -22,8 +22,10 @@ router = APIRouter(
 @router.post("/connect")
 async def rtvi_connect(request: Request):
     manager = request.app.state.manager
+
     room_url, bot_token = await manager.create_room_and_token()
     session_id = str(uuid.uuid4())
+
     body = await request.json()
     job_id = body.get("job_id", None)
     candidate_id = body.get("candidate_id", None)

@@ -15,24 +15,24 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 198 55% 52%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 201 100% 14%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 198 55% 52%;
-    --accent-foreground: 210 40% 98%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 98%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 198 55% 52%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
     --radius: 0.5rem;
 
     /* Custom Meet Variables */
@@ -58,25 +58,25 @@
   }
 
   .dark {
-    --background: 235 100% 8%;
-    --foreground: 235 20% 98%;
-    --card: 235 50% 12%;
-    --card-foreground: 235 20% 98%;
-    --popover: 235 50% 12%;
-    --popover-foreground: 235 20% 98%;
-    --primary: 235 50% 60%;
-    --primary-foreground: 235 20% 98%;
-    --secondary: 235 80% 18%;
-    --secondary-foreground: 235 20% 98%;
-    --muted: 235 50% 15%;
-    --muted-foreground: 235 20% 65%;
-    --accent: 235 50% 60%;
-    --accent-foreground: 235 20% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 235 20% 98%;
-    --border: 235 50% 20%;
-    --input: 235 50% 20%;
-    --ring: 235 50% 60%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
 
     /* Custom Dark Mode Meet Variables */
     --meet-background: #0a1426;
@@ -120,45 +120,6 @@ html.dark {
 body.dark {
   background: var(--meet-background);
   color: var(--meet-text-primary);
-}
-
-.meet-button {
-  @apply px-4 py-2 rounded-full transition-all duration-200 font-medium flex items-center justify-center gap-2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  transform: translateY(0);
-}
-
-.meet-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.meet-button:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-.meet-button-primary {
-  background: linear-gradient(
-    135deg,
-    var(--meet-primary),
-    var(--meet-secondary)
-  );
-  @apply text-white font-medium;
-}
-
-.meet-button-secondary {
-  @apply bg-[--meet-surface-light] text-[--meet-text-secondary] hover:bg-[--meet-hover] border border-[--meet-border];
-}
-
-.meet-button-icon {
-  @apply p-3 rounded-full flex items-center justify-center transition-all duration-200;
-  background: rgba(72, 138, 181, 0.1);
-  border: 1px solid rgba(72, 138, 181, 0.15);
-}
-
-.meet-button-icon:hover {
-  background: rgba(72, 138, 181, 0.2);
 }
 
 .meet-dropdown {

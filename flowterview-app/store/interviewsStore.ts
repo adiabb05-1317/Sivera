@@ -211,6 +211,17 @@ export const useInterviewsStore = create<InterviewsState>()(
             Date.now() - currentDetails.lastFetched > cacheTTL);
 
         if (!needsFetch && currentDetails && !currentDetails.isLoading) {
+          console.log(
+            `🚫 Skipping fetch for interview ${interviewId} - already have fresh data`
+          );
+          return;
+        }
+
+        // Prevent concurrent fetches for the same interview
+        if (currentDetails && currentDetails.isLoading) {
+          console.log(
+            `⏳ Already fetching interview ${interviewId} - skipping duplicate request`
+          );
           return;
         }
 
@@ -356,23 +367,42 @@ export const useInterviewsStore = create<InterviewsState>()(
       },
 
       updateInterviewStatusAction: async (interviewId, status) => {
+        // Get current interview for rollback if needed
+        const currentInterview = get().getInterviewById(interviewId);
+        const previousStatus = currentInterview?.status;
+
+        // Optimistic update - update UI immediately
+        set((state) => ({
+          interviews: {
+            ...state.interviews,
+            data: state.interviews.data.map((interview) =>
+              interview.id === interviewId
+                ? { ...interview, status }
+                : interview
+            ),
+          },
+        }));
+
+        get().applyFilters();
+
         try {
           await updateInterviewStatus(interviewId, status);
-
-          // Update local state
-          set((state) => ({
-            interviews: {
-              ...state.interviews,
-              data: state.interviews.data.map((interview) =>
-                interview.id === interviewId
-                  ? { ...interview, status }
-                  : interview
-              ),
-            },
-          }));
-
-          get().applyFilters();
         } catch (error) {
+          // Rollback optimistic update on error
+          if (previousStatus) {
+            set((state) => ({
+              interviews: {
+                ...state.interviews,
+                data: state.interviews.data.map((interview) =>
+                  interview.id === interviewId
+                    ? { ...interview, status: previousStatus }
+                    : interview
+                ),
+              },
+            }));
+
+            get().applyFilters();
+          }
           throw error;
         }
       },

@@ -9,13 +9,15 @@ import uvicorn
 
 from src.core.config import Config
 from src.lib.manager import ConnectionManager
+from src.router.analytics_router import router as analytics_router
 from src.router.candidate_router import router as candidate_router
 from src.router.interview_router import router as interview_router
 from src.router.invites_router import router as invites_router
 from src.router.linkedin_oauth_router import router as linkedin_oauth_router
 from src.router.organization_router import router as organization_router
+from src.router.phone_screen_router import router as phone_screen_router
+from src.router.round_router import router as round_router
 from src.router.user_router import router as user_router
-from src.router.analytics_router import router as analytics_router
 from src.utils.logger import intercept_standard_logging
 
 intercept_standard_logging()
@@ -89,6 +91,9 @@ app.include_router(candidate_router)
 app.include_router(invites_router)
 app.include_router(linkedin_oauth_router)
 app.include_router(analytics_router)
+app.include_router(phone_screen_router)
+app.include_router(round_router)
+
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:

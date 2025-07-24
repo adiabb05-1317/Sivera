@@ -27,6 +27,22 @@ export default function DashboardPage() {
     refreshAll,
   } = useDashboard();
 
+  // Status badge color mapping
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-app-blue-500/90 text-white border-app-blue-600/80";
+      case "completed":
+        return "bg-app-blue-100/90 text-app-blue-800 border-app-blue-300/80";
+      case "draft":
+        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+      case "expired":
+        return "bg-app-blue-900/20 text-app-blue-400 border-app-blue-700/50";
+      default:
+        return "bg-app-blue-100/60 text-app-blue-700 border-app-blue-400/60";
+    }
+  };
+
   // Calculate stats from store data
   const stats = [
     {
@@ -44,7 +60,8 @@ export default function DashboardPage() {
     {
       id: 3,
       name: "Average Interview Score",
-      value: analytics.getOrganizationAverageScore()?.toString() || "0",
+      value:
+        analytics.getOrganizationAverageScore()?.toFixed(2).toString() || "0",
       icon: Star,
     },
   ];
@@ -57,7 +74,11 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading dashboard data</p>
-          <Button onClick={refreshAll} variant="outline">
+          <Button
+            onClick={refreshAll}
+            className="cursor-pointer text-xs"
+            variant="outline"
+          >
             Try Again
           </Button>
         </div>
@@ -124,22 +145,23 @@ export default function DashboardPage() {
                       {interview.title}
                     </h3>
                     <Badge
-                      variant={
-                        interview.status === "active" ? "secondary" : "outline"
-                      }
-                      className={`${
-                        interview.status !== "active"
-                          ? "bg-app-blue-100/90 dark:bg-app-blue-900/40"
-                          : ""
-                      } font-normal text-xs`}
+                      variant="outline"
+                      className={`${getStatusBadgeClass(
+                        interview.status
+                      )} font-normal text-xs border-[0.5px] opacity-80`}
                     >
-                      {interview.status}
+                      {interview.status.charAt(0).toUpperCase() +
+                        interview.status.slice(1)}
                     </Badge>
                   </div>
                   <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
                     <span>{interview.candidates || 0} candidates</span>
-                    <span className="mx-1">&middot;</span>
-                    <span>{interview.date}</span>
+                    <span className="mx-2">&middot;</span>
+                    <span className="text-xs opacity-90">{interview.date}</span>
+                    <span className="mx-2">&middot;</span>
+                    <span className="text-xs opacity-90">
+                      {interview.created_by}
+                    </span>
                   </div>
                 </div>
                 <div className="ml-4 flex-shrink-0">
@@ -155,7 +177,8 @@ export default function DashboardPage() {
           {recentInterviews.length === 4 && !isLoading && (
             <Button
               onClick={() => router.push("/dashboard/interviews")}
-              className="cursor-pointer w-full h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 border-0"
+              className="cursor-pointer text-xs w-full"
+              variant="outline"
             >
               View all
             </Button>
@@ -175,7 +198,7 @@ export default function DashboardPage() {
           <CardFooter className="flex justify-between">
             <Button
               onClick={() => router.push("/dashboard/candidates/invite")}
-              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              className="cursor-pointer text-xs"
               variant="outline"
             >
               Invite Now
@@ -197,7 +220,7 @@ export default function DashboardPage() {
               onClick={() =>
                 router.push("/dashboard/interviews/from-description")
               }
-              className="cursor-pointer border border-app-blue-500/80 dark:border-app-blue-400/80 hover:bg-app-blue-500/10 dark:hover:bg-app-blue-900/20 text-app-blue-5/00 dark:text-app-blue-3/00 hover:text-app-blue-6/00 dark:hover:text-app-blue-2/00 focus:ring-app-blue-5/00 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              className="cursor-pointer text-xs"
               variant="outline"
             >
               Create Interview

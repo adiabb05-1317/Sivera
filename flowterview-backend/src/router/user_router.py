@@ -16,14 +16,13 @@ class UserIn(BaseModel):
     name: str
     email: str
     organization_name: str
-    role: Literal["admin", "interviewer", "candidate"] = "interviewer"
 
 
 class UserOut(BaseModel):
     id: str
     email: str
     organization_id: str
-    role: Literal["admin", "interviewer", "candidate"]
+    role: Literal["admin", "recruiter", "candidate"]
     created_at: datetime
 
 
@@ -78,6 +77,7 @@ async def create_user(user: UserIn, request: Request):
         # Check if organization exists by name
 
         org = db.fetch_one("organizations", {"domain": org_name})
+        role = None
         if org:
             organization_id = org["id"]
         else:
@@ -85,9 +85,11 @@ async def create_user(user: UserIn, request: Request):
             try:
                 org = db.execute_query("organizations", {"domain": org_name, "email": user.email})
                 organization_id = org["id"]
+                role = "admin"
             except DatabaseError as org_err:
                 # If org already exists, fetch it
                 org = db.fetch_one("organizations", {"domain": org_name})
+                role = "recruiter"
                 if not org:
                     raise HTTPException(
                         status_code=400, detail=f"Failed to create or fetch organization: {org_err}"
@@ -99,7 +101,7 @@ async def create_user(user: UserIn, request: Request):
             "name": user.name,
             "email": user.email,
             "organization_id": organization_id,
-            "role": user.role,
+            "role": role,
         }
         created_user = db.execute_query("users", user_data)
         return created_user
@@ -113,6 +115,23 @@ async def get_user(user_id: str, request: Request):
         user = db.fetch_one("users", {"id": user_id})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{user_id}/role", response_model=UserOut)
+async def update_user_role(
+    user_id: str,
+    role: Literal["admin", "recruiter", "candidate"],
+    request: Request,
+):
+    try:
+        user = db.fetch_one("users", {"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user["role"] = role
+        db.update_one("users", {"id": user_id}, user)
         return user
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))

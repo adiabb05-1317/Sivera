@@ -387,10 +387,9 @@ function InterviewContent() {
                       </div>
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         onClick={() => removeLink(index)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2 border-red-200 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="cursor-pointer text-xs"
+                        variant="outline"
                       >
                         Remove
                       </Button>
@@ -436,7 +435,7 @@ function InterviewContent() {
                   variant="outline"
                   onClick={addLink}
                   disabled={!newLink.name.trim() || !newLink.url.trim()}
-                  className="w-full"
+                  className="w-full cursor-pointer text-xs"
                 >
                   Add Link
                 </Button>
@@ -448,7 +447,8 @@ function InterviewContent() {
             )}
             <Button
               onClick={completeRegistration}
-              className="w-full bg-app-blue-600 hover:bg-app-blue-700 dark:bg-app-blue-500 dark:hover:bg-app-blue-600 text-white"
+              className="cursor-pointer text-xs w-full"
+              variant="outline"
               disabled={isLoading || !formData.name.trim()}
             >
               {isLoading
@@ -530,7 +530,8 @@ function InterviewContent() {
 
             <Button
               onClick={() => setCurrentStep("permissions")}
-              className="w-full bg-app-blue-600 hover:bg-app-blue-700 dark:bg-app-blue-500 dark:hover:bg-app-blue-600 text-white"
+              className="cursor-pointer text-xs w-full"
+              variant="outline"
             >
               Start Interview
             </Button>
@@ -567,14 +568,9 @@ function InterviewContent() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {cameraGranted ? (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700">
-                      Access Granted
-                    </Badge>
+                    <Badge variant="outline">Access Granted</Badge>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
-                    >
+                    <Badge variant="outline" className="bg-red-50">
                       Permission Required
                     </Badge>
                   )}
@@ -589,14 +585,9 @@ function InterviewContent() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {micGranted ? (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700">
-                      Access Granted
-                    </Badge>
+                    <Badge variant="outline">Access Granted</Badge>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
-                    >
+                    <Badge variant="outline" className="bg-red-50">
                       Permission Required
                     </Badge>
                   )}
@@ -607,7 +598,8 @@ function InterviewContent() {
             {(!cameraGranted || !micGranted) && (
               <Button
                 onClick={requestPermissions}
-                className="w-full bg-app-blue-600 hover:bg-app-blue-700 dark:bg-app-blue-500 dark:hover:bg-app-blue-600 text-white"
+                className="cursor-pointer text-xs w-full"
+                variant="outline"
               >
                 Grant Access
               </Button>
@@ -616,7 +608,8 @@ function InterviewContent() {
             {cameraGranted && micGranted && (
               <Button
                 onClick={proceedToInterview}
-                className="w-full bg-app-blue-600 hover:bg-app-blue-700 dark:bg-app-blue-500 dark:hover:bg-app-blue-600 text-white"
+                className="cursor-pointer text-xs w-full"
+                variant="outline"
               >
                 Continue to Interview
               </Button>

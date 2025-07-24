@@ -1,10 +1,11 @@
 "use client";
 
 import usePathStore from "@/app/store/PathStore";
-import { RTVIClient, RTVIEvent } from "@pipecat-ai/client-js";
+import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Message } from "@/lib/types/general";
+import { useEffect, useRef, useState } from "react";
+import { Assessment, Message } from "@/lib/types/general";
+import { Button } from "@/components/ui/button";
 
 export interface AudioClientProps {
   onClearTranscripts: () => void;
@@ -23,6 +24,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const { isSpeakerOn, isMicMuted } = usePathStore();
   const { connectionStatus, setConnectionStatus } = usePathStore();
   const {
+    jobId,
+    candidateId,
+    linkedin_profile,
+    additional_links,
     callStatus,
     permissionGranted,
     setPermissionGranted,
@@ -32,19 +37,20 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     setJoiningCall,
     setShowStarterQuestions,
     setTransportState,
-    codingProblem,
-    setCodingProblem,
-    isCodeEditorOpen,
-    setIsCodeEditorOpen,
+    currentAssessment,
+    setCurrentAssessment,
+    isAssessmentOpen,
+    setIsAssessmentOpen,
     setRtviClient,
     setLocalVideoStream,
+    roundNumber,
   } = usePathStore();
   const [toasts, setToasts] = useState<
     Array<{ message: string; type: "info" | "error" }>
   >([]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const rtviClientRef = useRef<RTVIClient | null>(null);
+  const rtviClientRef = useRef<PipecatClient | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -165,7 +171,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     }
   };
 
-  const setupEventListeners = (client: RTVIClient) => {
+  const setupEventListeners = (client: PipecatClient) => {
     client.on(RTVIEvent.TrackStarted, (track, participant) => {
       if (track.kind === "audio" && !participant?.local) {
         setupAudioTrack(track);
@@ -268,7 +274,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     });
 
     client.on(RTVIEvent.TransportStateChanged, (state) => {
-      setTransportState(state);
+      setTransportState(state as any);
     });
   };
 
@@ -310,27 +316,18 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       const pipecat_base_url =
         process.env.NEXT_PUBLIC_PIPECAT_BASE_URL || "https://core.sivera.io";
 
-      const rtviClient = new RTVIClient({
-        params: {
-          baseUrl: `${pipecat_base_url}/api/v1`,
-          audioElement: audioRef.current,
-          audioTrack: microphoneTrack,
-          videoTrack: videoTrack,
-          requestData: {
-            job_id: usePathStore.getState().jobId,
-            candidate_id: usePathStore.getState().candidateId,
-            linkedin_profile: usePathStore.getState().linkedin_profile,
-            additional_links: usePathStore.getState().additional_links,
-          },
-        },
+      const rtviClient = new PipecatClient({
         transport: new DailyTransport({
-          dailyFactoryOptions: {
-            subscribeToTracksAutomatically: true,
-            audioSource: microphoneTrack,
-            videoSource: videoTrack,
-            dailyConfig: {
-              micAudioMode: "speech",
-              userMediaAudioConstraints: {
+          subscribeToTracksAutomatically: true,
+          audioSource: microphoneTrack,
+          startVideoOff: false,
+          startAudioOff: false,
+          dailyConfig: {
+            micAudioMode: "speech",
+          },
+          inputSettings: {
+            audio: {
+              settings: {
                 echoCancellation: { ideal: true },
                 noiseSuppression: { ideal: true },
                 autoGainControl: { ideal: true },
@@ -342,25 +339,24 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         enableCam: true,
         callbacks: {
           onConnected: () => {
-            showToast("Connected to AI service");
             setConnectionStatus("service_connected");
           },
           onDisconnected: () => {
-            showToast("Disconnected from AI service");
             setConnectionStatus("disconnected");
           },
           onBotConnected: () => {
-            showToast("AI assistant connected");
             setConnectionStatus("bot_connected");
+          },
+          onBotReady: async () => {
+            // Don't automatically enable screenshare here
+            console.log(
+              "Bot is ready, waiting for bot to start speaking to request screenshare"
+            );
           },
           onError: (err: any) => {
             console.error("RTVIClient error:", err);
-            showToast(
-              `Connection error: ${err instanceof Error ? err.message : String(err)}`,
-              "error"
-            );
           },
-          onGenericMessage: (data: any) => {
+          onServerMessage: (data: any) => {
             try {
               const message =
                 typeof data === "string" ? JSON.parse(data) : data;
@@ -376,62 +372,88 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                   setCurrentChatHistory(message.chatHistory);
                 }
 
-                // Handle coding problem messages - check both direct and wrapped formats
+                // Handle assessment messages (coding problems and notebooks)
                 const messageData = message.message || message;
 
                 if (
                   messageData &&
                   typeof messageData === "object" &&
-                  messageData.type === "coding-problem"
+                  (messageData.type === "code-editor" ||
+                    messageData.type === "notebook")
                 ) {
                   const {
-                    problem_description,
-                    problem_constraints,
-                    open_editor,
+                    title,
+                    description,
+                    open_assessment,
+                    ...typeSpecificProps
                   } = messageData.payload;
 
-                  // Store the coding problem in the PathStore
-                  setCodingProblem({
-                    description: problem_description,
-                    constraints: problem_constraints,
-                  });
-
-                  // Open the code editor if requested
-                  if (open_editor) {
-                    setIsCodeEditorOpen(true);
+                  // Create assessment object based on type
+                  let assessment;
+                  if (messageData.type === "code-editor") {
+                    assessment = {
+                      id: messageData.id,
+                      type: "code-editor",
+                      title,
+                      description,
+                      open_assessment,
+                      languages: typeSpecificProps.languages || [
+                        "python",
+                        "javascript",
+                        "java",
+                      ],
+                      starterCode: typeSpecificProps.starter_code || {},
+                    };
+                  } else if (messageData.type === "notebook") {
+                    assessment = {
+                      id: messageData.id,
+                      type: "notebook",
+                      title,
+                      description,
+                      open_assessment,
+                      language: typeSpecificProps.language || "python",
+                      initialCells: typeSpecificProps.initial_cells || [],
+                    };
                   }
-                  const problemMessage: Message = {
-                    role: "assistant",
-                    content: `**Coding Problem:**\n\n${problem_description}\n\n**Constraints:**\n\n${problem_constraints}`,
-                  };
+
+                  if (assessment) {
+                    setCurrentAssessment(assessment as Assessment);
+
+                    if (open_assessment) {
+                      setIsAssessmentOpen(true);
+                    }
+                  }
                 }
               }
             } catch (error) {
               console.error("Error processing generic message:", error);
-              if (error instanceof Error) {
-                console.error("Error details:", error.message);
-                console.error("Error stack:", error.stack);
-              }
             }
           },
           onTransportStateChanged: (state) => {
-            setTransportState(state);
+            setTransportState(state as any);
           },
         },
       });
-      setRtviClient(rtviClient);
-      rtviClientRef.current = rtviClient;
 
+      rtviClientRef.current = rtviClient;
+      setRtviClient(rtviClient);
       setupEventListeners(rtviClient);
-      await rtviClient.connect();
+
+      // Connect to the service
+      await rtviClient.connect({
+        endpoint: `${pipecat_base_url}/api/v1/connect`,
+        requestData: {
+          job_id: jobId,
+          candidate_id: candidateId,
+          linkedin_profile: linkedin_profile,
+          additional_links: additional_links,
+        },
+      });
+
+      // Initialize devices
+      await rtviClient.initDevices();
     } catch (error) {
-      console.error("Connection failed:", error);
-      showToast(
-        `Connection failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        "error"
-      );
+      console.error("Error connecting:", error);
       setConnectionStatus("disconnected");
     }
   };
@@ -517,10 +539,84 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     };
   }, [callStatus]);
 
+  // Sample assessments for testing
+  const sampleNotebookAssessment: Assessment = {
+    id: "test-notebook-1",
+    type: "notebook",
+    title: "Data Analysis Challenge",
+    description:
+      "Analyze the given dataset and create visualizations to identify trends and patterns.",
+    open_assessment: true,
+    language: "python",
+    initialCells: [
+      {
+        id: "cell-1",
+        type: "markdown",
+        content:
+          "# Data Analysis Challenge\n\nYour task is to analyze the dataset and create meaningful visualizations.",
+      },
+      {
+        id: "cell-2",
+        type: "code",
+        content:
+          "import pandas as pd\nimport matplotlib.pyplot as plt\nimport numpy as np\n\n# Load sample data\ndata = pd.DataFrame({\n    'x': np.random.randn(100),\n    'y': np.random.randn(100)\n})\n\nprint(\"Dataset loaded successfully!\")\ndata.head()",
+      },
+    ],
+  };
+
+  const sampleCodingAssessment: Assessment = {
+    id: "test-coding-1",
+    type: "code-editor",
+    title: "Algorithm Implementation",
+    description:
+      "Implement a function to solve the two-sum problem. Given an array of integers and a target sum, return the indices of two numbers that add up to the target.",
+    open_assessment: true,
+    languages: ["python", "javascript", "java"],
+    starterCode: {
+      python:
+        'def two_sum(nums, target):\n    """\n    Find two numbers in the array that add up to target\n    \n    Args:\n        nums: List of integers\n        target: Target sum\n        \n    Returns:\n        List of two indices\n    """\n    # Your implementation here\n    pass\n\n# Test cases\nprint(two_sum([2, 7, 11, 15], 9))  # Expected: [0, 1]\nprint(two_sum([3, 2, 4], 6))       # Expected: [1, 2]',
+      javascript:
+        "function twoSum(nums, target) {\n    /*\n     * Find two numbers in the array that add up to target\n     * \n     * @param {number[]} nums - Array of integers\n     * @param {number} target - Target sum\n     * @returns {number[]} Array of two indices\n     */\n    // Your implementation here\n}\n\n// Test cases\nconsole.log(twoSum([2, 7, 11, 15], 9)); // Expected: [0, 1]\nconsole.log(twoSum([3, 2, 4], 6));      // Expected: [1, 2]",
+      java: "public class Solution {\n    /**\n     * Find two numbers in the array that add up to target\n     * \n     * @param nums Array of integers\n     * @param target Target sum\n     * @return Array of two indices\n     */\n    public int[] twoSum(int[] nums, int target) {\n        // Your implementation here\n        return new int[0];\n    }\n    \n    public static void main(String[] args) {\n        Solution solution = new Solution();\n        int[] result1 = solution.twoSum(new int[]{2, 7, 11, 15}, 9);\n        int[] result2 = solution.twoSum(new int[]{3, 2, 4}, 6);\n        \n        System.out.println(java.util.Arrays.toString(result1)); // Expected: [0, 1]\n        System.out.println(java.util.Arrays.toString(result2)); // Expected: [1, 2]\n    }\n}",
+    },
+  };
+
+  const handleTestAssessments = () => {
+    if (!currentAssessment) {
+      // Show notebook assessment first
+      setCurrentAssessment(sampleNotebookAssessment);
+      setIsAssessmentOpen(true);
+      showToast("Loaded Jupyter Notebook Assessment", "info");
+    } else if (currentAssessment.type === "notebook") {
+      // Switch to coding assessment
+      setCurrentAssessment(sampleCodingAssessment);
+      setIsAssessmentOpen(true);
+      showToast("Loaded Coding Assessment", "info");
+    } else {
+      // Close assessments
+      setCurrentAssessment(null);
+      setIsAssessmentOpen(false);
+      showToast("Closed Assessment", "info");
+    }
+  };
+
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      {/* Remove video element here if it exists - we'll show it in Presentation instead */}
+      <Button
+        onClick={handleTestAssessments}
+        className="fixed top-4 right-4 z-50 shadow-lg"
+        style={{
+          pointerEvents: "auto",
+          zIndex: 9999,
+        }}
+      >
+        {!currentAssessment
+          ? "Test Jupyter Notebook"
+          : currentAssessment.type === "notebook"
+            ? "Test Coding Assessment"
+            : "Close Assessments"}
+      </Button>
     </div>
   );
 }

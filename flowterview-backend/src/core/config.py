@@ -24,7 +24,11 @@ class Config:
     # Loops Template IDs
     LOOPS_INTERVIEW_TEMPLATE = os.getenv("LOOPS_INTERVIEW_TEMPLATE", "cmc0gq2b80cj2xs0iqhal1tj6")
     LOOPS_REJECTION_TEMPLATE = os.getenv("LOOPS_REJECTION_TEMPLATE", "cmcqp3id80bgazd0ihgb1jh98")
+    LOOPS_ACCEPTANCE_TEMPLATE = os.getenv("LOOPS_ACCEPTANCE_TEMPLATE", "cmd6vyzvg09kzw50jfkcz2gwi")
     LOOPS_CUSTOM_TEMPLATE = os.getenv("LOOPS_CUSTOM_TEMPLATE", "cmcqph48u02skz00i40rwwxzk")
+    LOOPS_NORMAL_INTERVIEW_TEMPLATE = os.getenv("LOOPS_NORMAL_INTERVIEW_TEMPLATE", "cmdcndmam3dsuzm0ic9togvr6")
+    LOOPS_RECRUITER_INVITE_TEMPLATE = os.getenv("LOOPS_RECRUITER_INVITE_TEMPLATE", "cmdaadhyn85jj1z0iycwre0q1")
+    LOOPS_RECRUITER_INTERVIEW_TEMPLATE = os.getenv("LOOPS_RECRUITER_INTERVIEW_TEMPLATE", "cmdbn981u0svk2t0jqmjp47le")
 
     # Frontend URL for generating links
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.sivera.io")

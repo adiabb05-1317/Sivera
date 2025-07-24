@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request
@@ -18,9 +18,10 @@ class CandidateIn(BaseModel):
     name: str
     organization_id: str
     job_id: str
-    resume_url: str = None
+    resume_url: Optional[str] = None
     status: str = "Applied"
-    phone: str = None
+    phone: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class BulkCandidateIn(BaseModel):
@@ -33,10 +34,11 @@ class CandidateOut(BaseModel):
     name: str
     organization_id: str
     job_id: str
-    resume_url: str = None
+    resume_url: Optional[str] = None
     status: str = "Applied"
     created_at: str
     updated_at: str
+    notes: Optional[str] = None
 
 
 class BulkCandidateResponse(BaseModel):
@@ -44,6 +46,15 @@ class BulkCandidateResponse(BaseModel):
     created_count: int
     candidates: List[CandidateOut]
     failed_candidates: List[dict] = []
+
+
+class CandidateUpdate(BaseModel):
+    status: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    resume_url: Optional[str] = None
+    notes: Optional[str] = None
 
 
 @router.get("/", response_model=List[CandidateOut])
@@ -64,7 +75,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
         jobs = {job["id"]: job["title"] for job in db.fetch_all("jobs")}
         # Attach job object to each candidate if job_id exists
         for c in candidates:
-            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-")}
+            c["jobs"] = {"title": jobs.get(c.get("job_id"), "-"), "id": c.get("job_id"), "status": c.get("status")}
 
         def parse_created_at(dt_str):
             try:
@@ -78,7 +89,7 @@ async def fetch_candidates_sorted_by_job(request: Request):
                     except Exception:
                         return float("-inf")
 
-        candidates.sort(key=lambda x: (x.get("job_id"), -parse_created_at(x["created_at"])))
+        candidates.sort(key=lambda x: (x.get("jobs", {}).get("id"), -parse_created_at(x["created_at"])))
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -118,6 +129,40 @@ async def get_candidates_by_job(job_id: str, request: Request):
         return candidates
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{candidate_id}", response_model=CandidateOut)
+async def update_candidate(candidate_id: str, updates: CandidateUpdate, request: Request):
+    try:
+        # Verify organization access
+        organization_id = require_organization(request).organization_id
+
+        # Fetch the current candidate record
+        current = db.fetch_one("candidates", {"id": candidate_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+
+        # Verify the candidate belongs to the requesting organization
+        if current.get("organization_id") != organization_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Build update dictionary with only non-None values
+        update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No valid updates provided")
+
+        # Add updated timestamp
+        update_dict["updated_at"] = datetime.now().isoformat()
+
+        # Update the candidate
+        db.update("candidates", update_dict, {"id": candidate_id})
+
+        # Fetch and return the updated record
+        updated = db.fetch_one("candidates", {"id": candidate_id})
+        return updated
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/bulk", response_model=BulkCandidateResponse)

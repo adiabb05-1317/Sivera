@@ -86,7 +86,7 @@ export async function extractSkillsFromJobDetails(
     }
 
     // Call your backend service
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/extract-skills`,
       {
         method: "POST",
@@ -97,7 +97,8 @@ export async function extractSkillsFromJobDetails(
           role: role,
           job_description: jobDescription,
         }),
-      }
+      },
+      false
     );
 
     const data = await response.json();
@@ -263,11 +264,15 @@ export async function addBulkCandidates({
   jobId: string;
   interviewId: string;
 }) {
+  console.log(
+    "Inside addBulkCandidates, calling getOrganizationIdForCurrentUser"
+  );
   const organization_id = await getOrganizationIdForCurrentUser();
   if (!organization_id)
     throw new Error("Could not determine organization_id for current user.");
   if (!jobId) throw new Error("Could not determine job_id for selected job.");
 
+  console.log("Inside addBulkCandidates, calling uploadResume");
   // Step 1: Upload all resumes in parallel
   const resumeUploadPromises = candidates.map(async (candidate, index) => {
     if (candidate.resumeFile && !candidate.resume_url) {
@@ -283,8 +288,13 @@ export async function addBulkCandidates({
     }
   });
 
+  console.log(
+    "Inside addBulkCandidates, calling Promise.all(resumeUploadPromises)"
+  );
+
   const resumeResults = await Promise.all(resumeUploadPromises);
 
+  console.log("Inside addBulkCandidates, calling candidates.map");
   // Step 2: Create all candidates using bulk API
   const candidatesData = candidates.map((candidate, index) => {
     const resumeResult = resumeResults.find((r) => r.index === index);
@@ -299,6 +309,7 @@ export async function addBulkCandidates({
     };
   });
 
+  console.log("Inside addBulkCandidates, calling authenticatedFetch");
   const bulkResponse = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/bulk`,
     {
@@ -308,12 +319,17 @@ export async function addBulkCandidates({
     }
   );
 
+  console.log("Inside addBulkCandidates, calling bulkResponse.json");
+
   if (!bulkResponse.ok) {
     const err = await bulkResponse.json();
     throw new Error(err.detail || "Failed to create candidates in bulk");
   }
 
+  console.log("Inside addBulkCandidates, calling bulkResult.json");
   const bulkResult = await bulkResponse.json();
+
+  console.log("Inside addBulkCandidates, calling bulkResult.failed_candidates");
 
   if (bulkResult.failed_candidates.length > 0) {
     console.warn(
@@ -324,6 +340,7 @@ export async function addBulkCandidates({
 
   // Step 3: Update interview with all candidate IDs using bulk API
   if (interviewId && bulkResult.candidates.length > 0) {
+    console.log("Inside addBulkCandidates, calling bulkResult.candidates.map");
     const candidateIds = bulkResult.candidates.map((c: any) => c.id);
 
     const addResp = await authenticatedFetch(
@@ -334,9 +351,11 @@ export async function addBulkCandidates({
         body: JSON.stringify({ candidate_ids: candidateIds }),
       }
     );
+    console.log("addResp", addResp.ok);
 
     if (!addResp.ok) {
       // Fallback to individual updates if bulk endpoint fails
+      console.log("Inside addBulkCandidates, calling candidateIds.map");
       const updatePromises = candidateIds.map((candidateId: string) =>
         authenticatedFetch(
           `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
@@ -348,9 +367,11 @@ export async function addBulkCandidates({
         )
       );
 
+      console.log(
+        "Inside addBulkCandidates, calling Promise.all(updatePromises)"
+      );
+
       await Promise.all(updatePromises);
-    } else {
-      const addResult = await addResp.json();
     }
   }
 

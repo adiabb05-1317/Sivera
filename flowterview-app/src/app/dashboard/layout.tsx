@@ -40,17 +40,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { showCompanySetupModal, setShowCompanySetupModal } = useAuthStore();
   const { getInterviewDetails, fetchInterviewDetails } = useInterviewsStore();
 
+  // Extract interviewId and interviewDetails for use in breadcrumbs
+  const pathSegments = pathname.split("/").filter(Boolean);
+  const interviewId =
+    pathSegments[1] === "interviews" && pathSegments[2]
+      ? pathSegments[2]
+      : undefined;
+  const interviewDetails = interviewId
+    ? getInterviewDetails(interviewId)
+    : undefined;
+
   // Fetch interview details if we're on an interview page
   useEffect(() => {
-    const pathSegments = pathname.split("/").filter(Boolean);
-    if (pathSegments[1] === "interviews" && pathSegments[2]) {
-      const interviewId = pathSegments[2];
+    if (interviewId) {
       // Only fetch if it's a valid UUID (actual interview ID)
       if (isValidUUID(interviewId)) {
         fetchInterviewDetails(interviewId);
       }
     }
-  }, [pathname, fetchInterviewDetails]);
+  }, [interviewId, fetchInterviewDetails]);
 
   // Helper function to check if a string is a valid UUID
   const isValidUUID = (str: string) => {
@@ -61,7 +69,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Generate breadcrumb items based on pathname - memoized to update when data changes
   const breadcrumbs = useMemo(() => {
-    const pathSegments = pathname.split("/").filter(Boolean);
     const breadcrumbs = [];
 
     // Always start with Dashboard
@@ -89,7 +96,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           // Check if this is a UUID (interview ID) or a route path
           if (isValidUUID(pathSegments[i])) {
             // This is an interview ID, try to get the interview title
-            const interviewDetails = getInterviewDetails(pathSegments[i]);
             if (interviewDetails?.job?.title) {
               label = interviewDetails.job.title;
             } else {
@@ -114,7 +120,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     return breadcrumbs;
-  }, [pathname, getInterviewDetails(pathname.split("/")[2] || "")]);
+  }, [pathname, interviewDetails]);
 
   const handleCompanySetupCompleted = async () => {
     setShowCompanySetupModal(false);

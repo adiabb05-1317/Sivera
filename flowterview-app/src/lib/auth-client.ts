@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "./supabase";
+import { config } from "./config";
 
 // Store imports for cache invalidation
 let useCandidatesStore: any = null;
@@ -33,7 +34,7 @@ const getStores = async () => {
   return { useCandidatesStore, useInterviewsStore, useJobsStore, useAuthStore };
 };
 
-// Cache invalidation helper
+// Cache invalidation helper with cross-store coordination
 const invalidateRelevantCaches = async (url: string, method: string) => {
   try {
     const {
@@ -49,21 +50,48 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
     const jobsStore = useJobsStore.getState();
     const authStore = useAuthStore.getState();
 
-    // Invalidate based on URL patterns
+    // Advanced invalidation with cross-store coordination
     if (url.includes("/candidates")) {
       candidatesStore.invalidateCache();
+      
+      // Candidates affect interview counts and analytics
+      if (method === "POST" || method === "PATCH") {
+        interviewsStore.invalidateCache();
+        
+        // Try to invalidate analytics store if available
+        try {
+          const { useAnalyticsStore } = await import("../../store/analyticsStore");
+          useAnalyticsStore.getState().invalidateCache();
+        } catch (error) {
+          console.warn("Analytics store not available for invalidation");
+        }
+      }
     }
 
     if (url.includes("/interviews")) {
       interviewsStore.invalidateCache();
-      const interviewIdMatch = url.match(/\/interviews\/([^\/\?]+)/);
+      const interviewIdMatch = url.match(/\/interviews\/([^/?]+)/);
       if (interviewIdMatch) {
         interviewsStore.invalidateInterviewDetails(interviewIdMatch[1]);
+      }
+      
+      // Interviews affect candidate data and analytics
+      candidatesStore.invalidateCache();
+      
+      try {
+        const { useAnalyticsStore } = await import("../../store/analyticsStore");
+        useAnalyticsStore.getState().invalidateCache();
+      } catch (error) {
+        console.warn("Analytics store not available for invalidation");
       }
     }
 
     if (url.includes("/jobs")) {
       jobsStore.invalidateCache();
+      
+      // Jobs affect candidates and interviews
+      candidatesStore.invalidateCache();
+      interviewsStore.invalidateCache();
     }
 
     if (url.includes("/users") || url.includes("/organizations")) {
@@ -71,7 +99,20 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
       authStore.fetchUserProfile();
     }
 
-    console.log("🔄 Cache invalidated for:", url);
+    // Global invalidation for certain operations
+    if (url.includes("/status") || url.includes("/bulk") || url.includes("/invite")) {
+      candidatesStore.invalidateCache();
+      interviewsStore.invalidateCache();
+      
+      try {
+        const { useAnalyticsStore } = await import("../../store/analyticsStore");
+        useAnalyticsStore.getState().invalidateCache();
+      } catch (error) {
+        console.warn("Analytics store not available for invalidation");
+      }
+    }
+
+    console.log("🔄 Cache invalidated for:", url, "method:", method);
   } catch (error) {
     console.warn("⚠️ Failed to invalidate caches:", error);
   }
@@ -82,20 +123,14 @@ export const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
 
-  // For production, use .sivera.io domain for cross-subdomain compatibility
-  const isProduction = window.location.hostname.includes("sivera.io");
-  const domain = isProduction ? ".sivera.io" : "";
-  const sameSite = isProduction ? "None" : "Lax"; // None required for cross-origin
-  const secure = isProduction || window.location.protocol === "https:";
+  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=${config.auth.cookieSameSite}`;
 
-  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=${sameSite}`;
-
-  if (secure) {
+  if (config.auth.cookieSecure) {
     cookieString += ";Secure";
   }
 
-  if (domain) {
-    cookieString += `;Domain=${domain}`;
+  if (config.auth.cookieDomain) {
+    cookieString += `;Domain=${config.auth.cookieDomain}`;
   }
 
   document.cookie = cookieString;
@@ -113,9 +148,8 @@ export const getCookie = (name: string): string | null => {
 };
 
 export const deleteCookie = (name: string) => {
-  const isProduction = window.location.hostname.includes("sivera.io");
-  const domain = isProduction ? ".sivera.io" : "";
-
+  if (typeof window === 'undefined') return;
+  
   // Multiple attempts to ensure cookie is deleted across different configurations
   const expiredDate = "Thu, 01 Jan 1970 00:00:01 GMT";
 
@@ -129,9 +163,26 @@ export const deleteCookie = (name: string) => {
   document.cookie = `${name}=;expires=${expiredDate};path=/;domain=.${window.location.hostname}`;
 
   // Delete with production domain if applicable
-  if (domain) {
-    document.cookie = `${name}=;expires=${expiredDate};path=/;domain=${domain}`;
+  if (config.auth.cookieDomain) {
+    document.cookie = `${name}=;expires=${expiredDate};path=/;domain=${config.auth.cookieDomain}`;
   }
+
+  // Extra cleanup for stubborn cookies
+  const cookieVariations = [
+    `${name}=; path=/; expires=${expiredDate}`,
+    `${name}=; path=/; domain=${window.location.hostname}; expires=${expiredDate}`,
+    `${name}=; path=/; domain=.${window.location.hostname}; expires=${expiredDate}`,
+  ];
+
+  if (config.auth.cookieDomain) {
+    cookieVariations.push(
+      `${name}=; path=/; domain=${config.auth.cookieDomain}; expires=${expiredDate}`
+    );
+  }
+
+  cookieVariations.forEach(cookieString => {
+    document.cookie = cookieString;
+  });
 };
 
 // User context interface
@@ -150,7 +201,7 @@ export const setUserContext = async (
   let organization_id: string | null = null;
 
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${
         process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
       }/api/v1/organizations/by-user-email/${encodeURIComponent(email)}`,
@@ -160,7 +211,8 @@ export const setUserContext = async (
           "Content-Type": "application/json",
         },
         credentials: "include",
-      }
+      },
+      false
     );
     if (response.ok) {
       const data = await response.json();
@@ -218,17 +270,67 @@ export const getUserContext = (): UserContext | null => {
 
 // Clear user context from cookies
 export const clearUserContext = () => {
+  console.log("🧹 Clearing user context...");
+  
+  if (typeof window === 'undefined') {
+    console.warn("Cannot clear cookies on server side");
+    return;
+  }
+  
+  // Delete our custom cookies
   deleteCookie("user_id");
   deleteCookie("user_email");
   deleteCookie("organization_id");
   deleteCookie("user_context");
-  localStorage.clear();
+  
+  // Get all existing cookies and delete them
+  const allCookies = document.cookie.split(';');
+  console.log("🍪 Found cookies to clear:", allCookies.length);
+  
+  allCookies.forEach(cookie => {
+    const cookieName = cookie.split('=')[0].trim();
+    if (cookieName) {
+      // Delete all cookies, especially Supabase ones
+      deleteCookie(cookieName);
+      
+      // Extra aggressive deletion for Supabase cookies
+      if (cookieName.startsWith('sb-')) {
+        // Try multiple deletion methods for stubborn Supabase cookies
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        if (config.auth.cookieDomain) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${config.auth.cookieDomain}`;
+        }
+      }
+    }
+  });
+  
+  // Clear all storage
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log("✅ Storage cleared");
+  } catch (error) {
+    console.warn("Storage clear error:", error);
+  }
+  
+  // Verify cookies are cleared
+  const remainingCookies = document.cookie.split(';').filter(c => c.trim()).length;
+  console.log("🔍 Remaining cookies after clear:", remainingCookies);
+  
+  if (remainingCookies > 0) {
+    console.warn("⚠️ Some cookies may not have been cleared:", document.cookie);
+  } else {
+    console.log("✅ All cookies successfully cleared");
+  }
 };
 
 // Enhanced API fetch function that includes authentication headers
 export const authenticatedFetch = async (
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  reload: boolean = true
 ): Promise<Response> => {
   const userContext = getUserContext();
 
@@ -288,7 +390,8 @@ export const authenticatedFetch = async (
   const method = (options.method || "GET").toUpperCase();
   if (
     response.ok &&
-    (method === "POST" || method === "PUT" || method === "PATCH")
+    (method === "POST" || method === "PUT" || method === "PATCH") &&
+    reload
   ) {
     // Run cache invalidation asynchronously to avoid blocking the response
     invalidateRelevantCaches(url, method).catch((error) => {
@@ -372,25 +475,74 @@ export const signup = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
-  // 1. Supabase logout (this should clear all sb-* localStorage)
-  const { error } = await supabase.auth.signOut();
-
-  // 2. Clear our custom cookies
-  clearUserContext();
-
-  // 3. Clear session from Zustand store
+  console.log("🚪 Starting logout process...");
+  
   try {
-    const { useAuthStore } = await import("../../store/authStore");
-    useAuthStore.getState().setSession(null);
-  } catch (storeError) {
-    console.warn("Failed to clear session from Zustand:", storeError);
-  }
+    // 1. Supabase logout (this should clear all sb-* localStorage)
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.warn("Supabase logout error:", error);
+    }
 
-  if (error) {
-    console.warn("Supabase logout error:", error);
-  }
+    // 2. Clear our custom cookies
+    clearUserContext();
 
-  return { error };
+    // 3. Clear all localStorage data
+    if (typeof window !== 'undefined') {
+      // Clear all localStorage
+      localStorage.clear();
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+    }
+
+    // 4. Clear session from Zustand store and reset all stores
+    try {
+      const [
+        { useAuthStore },
+        { useCandidatesStore },
+        { useInterviewsStore },
+        { useJobsStore },
+        { useAnalyticsStore },
+        { resetInitialization }
+      ] = await Promise.all([
+        import("../../store/authStore"),
+        import("../../store/candidatesStore"),
+        import("../../store/interviewsStore"),
+        import("../../store/jobsStore"),
+        import("../../store/analyticsStore"),
+        import("../../store").then(m => ({ resetInitialization: m.resetInitialization }))
+      ]);
+
+      // Clear all store states
+      useAuthStore.getState().logout();
+      useCandidatesStore.getState().invalidateCache();
+      useInterviewsStore.getState().invalidateCache();
+      useJobsStore.getState().invalidateCache();
+      useAnalyticsStore.getState().invalidateCache();
+      
+      // Reset store initialization
+      resetInitialization();
+      
+    } catch (storeError) {
+      console.warn("Failed to clear stores:", storeError);
+    }
+
+    console.log("✅ Logout completed successfully");
+    return { error: null };
+
+  } catch (logoutError) {
+    console.error("❌ Logout process failed:", logoutError);
+    
+    // Even if logout fails, clear what we can
+    clearUserContext();
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+    
+    return { error: logoutError };
+  }
 };
 
 // Get current user

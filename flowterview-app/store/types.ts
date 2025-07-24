@@ -3,7 +3,7 @@ export interface User {
   id: string;
   email: string;
   organization_id: string;
-  role: "admin" | "interviewer" | "candidate";
+  role: "admin" | "recruiter" | "candidate";
   created_at: string;
   updated_at: string;
 }
@@ -11,6 +11,7 @@ export interface User {
 export interface Organization {
   id: string;
   name: string;
+  domain?: string;
   logo_url?: string;
   created_at: string;
   updated_at: string;

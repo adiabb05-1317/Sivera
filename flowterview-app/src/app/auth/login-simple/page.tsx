@@ -94,9 +94,9 @@ export default function SimpleLoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col items-center">
             <Button
+              className="cursor-pointer text-xs"
               variant="outline"
               onClick={() => setSuccess(false)}
-              className="dark:border-zinc-700 dark:text-gray-200"
             >
               Back to login
             </Button>
@@ -152,16 +152,16 @@ export default function SimpleLoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full dark:border-zinc-700 dark:text-gray-200"
+              className="cursor-pointer text-xs"
             >
               {loading ? "Sending..." : "Send Magic Link"}
             </Button>
           </form>
           <div className="mt-4 border-t border-gray-200 dark:border-zinc-700 pt-4">
             <Button
+              className="cursor-pointer text-xs"
               variant="outline"
               onClick={handleDashboardClick}
-              className="w-full dark:border-zinc-700 dark:text-gray-200"
             >
               Go to Dashboard
             </Button>
