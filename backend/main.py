@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
         logger.error("Some resources may not have been properly cleaned up")
 
 
-app = FastAPI(title="Flow AI", version="1.0.1", lifespan=lifespan)
+app = FastAPI(title="Flow AI", version="1.0.2", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

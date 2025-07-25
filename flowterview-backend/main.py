@@ -100,7 +100,7 @@ async def health_check() -> Dict[str, Any]:
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "version": "1.0.0",
+        "version": "1.0.2",
         "supabase_connected": supabase is not None,
         "manager_initialized": (hasattr(app.state, "manager") if hasattr(app, "state") else False),
     }
