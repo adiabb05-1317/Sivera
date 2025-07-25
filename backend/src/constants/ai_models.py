@@ -12,3 +12,15 @@ class LLMModels:
     GPT_4_1 = "gpt-4.1-2025-04-14"
     GPT_4_1_MINI = "gpt-4.1-mini-2025-04-14"
     GPT_4_1_NANO = "gpt-4.1-nano-2025-04-14"
+
+    # Groq Models (Llama)
+    LLAMA_3_3_70B_VERSATILE = "llama-3.3-70b-versatile"
+    LLAMA_4_SCOUT = "llama-4-scout"
+    LLAMA_4_MAVERICK = "llama-4-maverick"
+    
+    # Groq Models (DeepSeek)
+    DEEPSEEK_R1_DISTILL_LLAMA_70B = "deepseek-r1-distill-llama-70b"
+    DEEPSEEK_R1_DISTILL_QWEN_32B = "deepseek-r1-distill-qwen-32b"
+    
+    # Groq Models (Qwen)
+    QWEN_2_5_32B = "qwen-2.5-32b"

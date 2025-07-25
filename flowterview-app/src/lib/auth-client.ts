@@ -330,7 +330,7 @@ export const clearUserContext = () => {
 export const authenticatedFetch = async (
   url: string,
   options: RequestInit = {},
-  reload: boolean = true
+  reload: boolean = false
 ): Promise<Response> => {
   const userContext = getUserContext();
 
