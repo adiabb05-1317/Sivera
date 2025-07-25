@@ -2,6 +2,7 @@ from enum import Enum
 import os
 
 from dotenv import load_dotenv
+from src.constants.ai_models import LLMModels
 
 
 class Environment(str, Enum):
@@ -86,8 +87,8 @@ class Config:
     KEYWORD_WEIGHT = 0.3
 
     # LLM Configuration
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
-    LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
+    LLM_MODEL = os.getenv("LLM_MODEL", LLMModels.GPT_4_1)
 
     # CORS Configuration
     CORS_ORIGINS = [
