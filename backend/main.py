@@ -57,7 +57,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def root():
-    return {"message": "Server is healthy", "version": "1.0.1"}
+    return {"message": "Server is healthy", "version": "1.0.2"}
 
 
 app.include_router(router)
