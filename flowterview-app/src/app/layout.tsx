@@ -12,9 +12,8 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sivera · AI Powered Interview Platform",
-  description:
-    "AI-driven interview platform for technical and non-technical interviews",
+  title: "Sivera · Let Sia handle the first round",
+  description: "AI-driven interview platform for AI roles",
 };
 
 export default function RootLayout({

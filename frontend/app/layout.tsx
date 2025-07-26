@@ -16,9 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sivera · AI Powered meeting assistant",
-  description:
-    "Help you with your meetings by answering questions, providing insights, and enabling seamless collaboration.",
+  title: "Sivera · Meet Sia, ready to interview",
+  description: "AI-driven interview platform for AI roles",
 };
 
 export default function RootLayout({
