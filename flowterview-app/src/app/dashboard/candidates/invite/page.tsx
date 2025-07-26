@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAddCandidate, useBulkAddCandidates } from "./supabase-hooks";
 import { useJobs, useCandidates, useInterviews } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
@@ -41,9 +41,22 @@ export default function InviteCandidatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const interviewIdFromQuery = searchParams.get("interview");
+
+  // CRITICAL: Use ref to track current request and prevent race conditions
+  const currentJobSelectionRef = useRef<string | null>(null);
+
   const [selectedInterview, setSelectedInterview] = useState("");
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [isLoadingJobSelection, setIsLoadingJobSelection] = useState(false);
   const [interviewError, setInterviewError] = useState("");
+  const [csvError, setCsvError] = useState("");
+  const [formError, setFormError] = useState("");
+
+  // Store job-interview pair atomically to prevent mismatches
+  const [jobInterviewPair, setJobInterviewPair] = useState<{
+    jobId: string;
+    interviewId: string;
+  } | null>(null);
   type CandidateRow = {
     name: string;
     email: string;
@@ -113,7 +126,7 @@ export default function InviteCandidatesPage() {
   };
 
   const removeCandidateRow = (id: number) => {
-    if (candidates.length <= 0) return;
+    if (candidates.length <= 1) return; // Fixed: prevent removing all candidates
     setCandidates(candidates.filter((candidate) => candidate.id !== id));
   };
 
@@ -137,11 +150,76 @@ export default function InviteCandidatesPage() {
     );
   };
 
+  // Fixed: Better validation that checks all required fields, not just resumes
+  const validateCandidates = () => {
+    const errors: string[] = [];
+    const emails = new Set<string>();
+
+    for (const candidate of candidates) {
+      // Check required fields
+      if (!candidate.name.trim()) {
+        errors.push("All candidates must have a name");
+        break;
+      }
+
+      if (!candidate.email.trim()) {
+        errors.push("All candidates must have an email address");
+        break;
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(candidate.email)) {
+        errors.push("All email addresses must be valid");
+        break;
+      }
+
+      // Check for duplicate emails
+      if (emails.has(candidate.email.toLowerCase())) {
+        errors.push("Duplicate email addresses are not allowed");
+        break;
+      }
+      emails.add(candidate.email.toLowerCase());
+
+      // Check resume requirement
+      if (!candidate.resume && !candidate.resume_url.trim()) {
+        errors.push("All candidates must have a resume file or URL");
+        break;
+      }
+    }
+
+    return errors;
+  };
+
+  // Helper function to parse CSV properly handling quoted fields
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result.map((field) => field.replace(/^"|"$/g, "")); // Remove surrounding quotes
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
+    setCsvError(""); // Clear previous errors
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -150,16 +228,15 @@ export default function InviteCandidatesPage() {
         const lines = csv.split("\n").filter((line) => line.trim());
 
         if (lines.length < 2) {
-          setInterviewError(
+          setCsvError(
             "CSV file must contain at least a header row and one data row. Expected format: full_name, email_address, phone_number, resume_url"
           );
           setIsUploading(false);
           return;
         }
 
-        // Parse CSV (expecting: full_name, email_address, phone_number, resume_url format)
-        const header = lines[0].toLowerCase();
-        const headerColumns = header.split(",").map((col) => col.trim());
+        // Parse CSV with proper quoted field handling
+        const headerColumns = parseCSVLine(lines[0].toLowerCase());
 
         // Look for exact matches first, then fallback to partial matches
         const findColumnIndex = (
@@ -187,12 +264,10 @@ export default function InviteCandidatesPage() {
         const resumeUrlIndex = findColumnIndex(["resume_url"], ["resume"]);
 
         const newCandidates: CandidateRow[] = [];
+        const processedEmails = new Set<string>();
 
         for (let i = 1; i < lines.length && i <= 101; i++) {
-          // Limit to 100 candidates + header
-          const values = lines[i]
-            .split(",")
-            .map((v) => v.trim().replace(/"/g, ""));
+          const values = parseCSVLine(lines[i]);
 
           // Check if we have at least name and email (required fields)
           if (
@@ -201,6 +276,20 @@ export default function InviteCandidatesPage() {
             values[nameIndex] &&
             values[emailIndex]
           ) {
+            const email = values[emailIndex].toLowerCase();
+
+            // Skip duplicates
+            if (processedEmails.has(email)) {
+              continue;
+            }
+            processedEmails.add(email);
+
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(values[emailIndex])) {
+              continue; // Skip invalid emails
+            }
+
             newCandidates.push({
               name: values[nameIndex],
               email: values[emailIndex],
@@ -217,12 +306,12 @@ export default function InviteCandidatesPage() {
         if (newCandidates.length > 0) {
           setCandidates(newCandidates);
         } else {
-          setInterviewError(
-            "No valid candidates found in CSV. Please ensure the format is: full_name, email_address, phone_number, resume_url"
+          setCsvError(
+            "No valid candidates found in CSV. Please ensure the format is: full_name, email_address, phone_number, resume_url and that email addresses are valid."
           );
         }
       } catch (error) {
-        setInterviewError(
+        setCsvError(
           "Error parsing CSV file. Please ensure the format is: full_name, email_address, phone_number, resume_url"
         );
       } finally {
@@ -235,26 +324,62 @@ export default function InviteCandidatesPage() {
 
   // Dropdown handler: when a job is selected, fetch the interview ID for that job
   const handleJobSelect = async (jobId: string) => {
+    // Clear all errors and previous state
     setInterviewError("");
-    setIsSubmitting(true);
+    setCsvError("");
+    setFormError("");
+    setIsLoadingJobSelection(true);
+
+    // CRITICAL: Set current request ID to track this specific request
+    const requestId = `${jobId}-${Date.now()}`;
+    currentJobSelectionRef.current = requestId;
+
+    // Clear previous state immediately to prevent stale data
+    setSelectedInterview("");
+    setSelectedJobId("");
+    setJobInterviewPair(null);
+
     try {
       const interviewId = await fetchInterviewIdFromJobId(jobId);
+
+      // CRITICAL: Check if this request is still the current one
+      // If user selected another job while this was loading, ignore this result
+      if (currentJobSelectionRef.current !== requestId) {
+        console.log(`Ignoring stale job selection result for ${jobId}`);
+        return;
+      }
+
       if (interviewId) {
+        // CRITICAL: Set all related state atomically to prevent mismatches
+        const pair = { jobId, interviewId };
+        setJobInterviewPair(pair);
         setSelectedInterview(interviewId);
-        setSelectedJobId(jobId); // Store the selected job ID
+        setSelectedJobId(jobId);
+
+        console.log(
+          `Successfully selected job ${jobId} with interview ${interviewId}`
+        );
       } else {
         setInterviewError(
           "No active interview found for this job. Please create one first."
         );
         setSelectedInterview("");
-        setSelectedJobId(""); // Clear job ID if no interview found
+        setSelectedJobId("");
+        setJobInterviewPair(null);
       }
     } catch (err) {
-      setInterviewError("Failed to fetch interview for selected job.");
-      setSelectedInterview("");
-      setSelectedJobId(""); // Clear job ID on error
+      // Only show error if this is still the current request
+      if (currentJobSelectionRef.current === requestId) {
+        setInterviewError("Failed to fetch interview for selected job.");
+        setSelectedInterview("");
+        setSelectedJobId("");
+        setJobInterviewPair(null);
+      }
     } finally {
-      setIsSubmitting(false);
+      // Only clear loading if this is still the current request
+      if (currentJobSelectionRef.current === requestId) {
+        setIsLoadingJobSelection(false);
+      }
     }
   };
 
@@ -262,72 +387,102 @@ export default function InviteCandidatesPage() {
     console.log("handleSubmit");
     e.preventDefault();
     setInterviewError("");
+    setFormError("");
+
+    // Validate candidates before submitting
+    const validationErrors = validateCandidates();
+    if (validationErrors.length > 0) {
+      setFormError(validationErrors[0]);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       console.log("Submitting candidates");
-      // Require interview selection if not from query
-      if (!selectedInterview) {
-        setInterviewError("Please select an interview/job before submitting.");
-        setIsSubmitting(false);
-        return;
-      }
 
+      // CRITICAL: Determine jobId and interviewId with bulletproof validation
       let jobId = "";
+      let interviewId = "";
 
-      // If we have a selectedJobId (from job selection), use it directly
-      if (selectedJobId) {
-        jobId = selectedJobId;
+      if (jobInterviewPair) {
+        // Use atomic pair for job selection
+        jobId = jobInterviewPair.jobId;
+        interviewId = jobInterviewPair.interviewId;
+
+        // CRITICAL: Double-check that the pair is still valid
+        if (jobId !== selectedJobId || interviewId !== selectedInterview) {
+          throw new Error(
+            "Job-Interview mismatch detected. Please reselect the job."
+          );
+        }
+
+        console.log(`Using job-interview pair: ${jobId} -> ${interviewId}`);
       } else if (
         interviewIdFromQuery &&
         selectedInterview === interviewIdFromQuery
       ) {
-        // For direct interview links, we need to fetch the job info
+        // For direct interview links, fetch the job info
         const interview = await fetchInterviewById(selectedInterview);
         if (interview && interview.job_id) {
           jobId = interview.job_id;
+          interviewId = selectedInterview;
+          console.log(`Using interview from query: ${jobId} -> ${interviewId}`);
+        } else {
+          throw new Error("Could not fetch job information for the interview.");
         }
+      } else {
+        throw new Error("Please select an interview/job before submitting.");
       }
 
-      console.log("Job ID:", jobId);
+      if (!jobId || !interviewId) {
+        throw new Error("Could not determine both job ID and interview ID.");
+      }
 
-      if (!jobId) {
-        setInterviewError(
-          "Could not determine job for the selected interview."
+      // CRITICAL: Final validation - ensure we have matching job and interview
+      console.log(
+        `Final validation - Job ID: ${jobId}, Interview ID: ${interviewId}`
+      );
+
+      // Additional safety check: verify the interview belongs to this job
+      const verificationInterview = await fetchInterviewById(interviewId);
+      if (verificationInterview && verificationInterview.job_id !== jobId) {
+        throw new Error(
+          `Interview ${interviewId} does not belong to job ${jobId}. This is a critical error.`
         );
-        setIsSubmitting(false);
-        return;
       }
 
-      // Use bulk submission for much better performance
-      console.log("Candidates:", candidates);
       const candidatesData = candidates.map((candidate) => ({
         name: candidate.name,
         email: candidate.email,
         phone: candidate.phone,
         resumeFile: candidate.resume || undefined,
         resume_url: candidate.resume_url,
-        status: candidate.status as any, // Convert to CandidateStatus
+        status: candidate.status as any,
       }));
 
-      console.log("Submitting bulk candidates");
+      console.log("Submitting bulk candidates with verified IDs:", {
+        jobId,
+        interviewId,
+      });
       await submitBulkCandidates({
         candidates: candidatesData,
         jobId,
-        interviewId: selectedInterview,
+        interviewId,
       });
-      console.log("Bulk candidates submitted");
+      console.log("Bulk candidates submitted successfully");
 
       setIsSent(true);
-
       refreshCandidates();
       refreshInterviews();
 
       console.log("Refreshing candidates and interviews");
     } catch (err) {
       console.error("Error in handleSubmit:", err);
-      setInterviewError(
-        bulkError || "Failed to submit candidates. Please try again."
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "Failed to submit candidates. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -390,9 +545,18 @@ export default function InviteCandidatesPage() {
               <div className="flex flex-row gap-5">
                 {!interviewIdFromQuery && (
                   <div className="flex flex-col">
-                    <Select onValueChange={handleJobSelect}>
+                    <Select
+                      onValueChange={handleJobSelect}
+                      disabled={isLoadingJobSelection}
+                    >
                       <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
-                        <SelectValue placeholder="Select Interview" />
+                        <SelectValue
+                          placeholder={
+                            isLoadingJobSelection
+                              ? "Loading..."
+                              : "Select Interview"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                         <SelectGroup>
@@ -414,6 +578,16 @@ export default function InviteCandidatesPage() {
                     {interviewError && (
                       <span className="text-red-500 text-xs mt-1">
                         {interviewError}
+                      </span>
+                    )}
+                    {csvError && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {csvError}
+                      </span>
+                    )}
+                    {formError && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {formError}
                       </span>
                     )}
                   </div>
@@ -578,7 +752,7 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                       Phone number of the candidate
                     </span>
                     <Input
-                      type="text"
+                      type="tel"
                       placeholder="+1 234 567 8900"
                       value={candidate.phone}
                       onChange={(e) =>
@@ -637,7 +811,7 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                         <Input
                           id={`resume-upload-${candidate.id}`}
                           type="file"
-                          accept=".pdf,.doc,.docx"
+                          accept=".pdf"
                           onChange={(e) =>
                             updateCandidate(
                               candidate.id,
@@ -678,8 +852,9 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                 disabled={
                   isSubmitting ||
                   bulkLoading ||
-                  (!interviewIdFromQuery && !selectedInterview) ||
-                  !allCandidatesHaveResumes()
+                  isLoadingJobSelection ||
+                  (!interviewIdFromQuery && !jobInterviewPair) ||
+                  validateCandidates().length > 0
                 }
                 variant="outline"
                 className="cursor-pointer text-xs"

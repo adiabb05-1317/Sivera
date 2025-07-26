@@ -1642,7 +1642,6 @@ async def get_interview(interview_id: str, request: Request):
         for candidate in job_candidates:
             candidate_id = candidate["id"]
             interview_details = candidate_interview_map.get(candidate_id)
-            print(f"Interview details: {interview_details}")
 
             enhanced_candidate = {
                 **candidate,
@@ -1681,9 +1680,6 @@ async def get_interview(interview_id: str, request: Request):
         # Separate invited and available candidates
         invited_candidates = [c for c in enhanced_candidates if c["is_invited"]]
         available_candidates = [c for c in enhanced_candidates if not c["is_invited"]]
-
-        print(f"Invited candidates: {invited_candidates}")
-        print(f"Available candidates: {available_candidates}")
 
         # Build optimized response
         response = {

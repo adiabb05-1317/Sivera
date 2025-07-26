@@ -2,32 +2,44 @@ import { supabase } from "./supabase";
 import { authenticatedFetch, getUserContext } from "./auth-client";
 import { useInterviewsStore } from "../../store";
 
-// Utility: Upload resume to Supabase Storage
+// DEPRECATED: Use backend endpoint instead
 export async function uploadResume(
   file: File,
   candidateName: string
 ): Promise<string | null> {
+  console.log("Inside uploadResume, file", file);
+  console.log("Inside uploadResume, candidateName", candidateName);
   const fileExt = file.name.split(".").pop();
+  console.log("Inside uploadResume, fileExt", fileExt);
   // Upload directly to the root of the bucket (no subfolder!)
   const filePath = `${candidateName
     .replace(/\s+/g, "_")
     .toLowerCase()}_${Date.now()}.${fileExt}`;
+  console.log("Inside uploadResume, filePath", filePath);
   const { error } = await supabase.storage
     .from("resumes")
     .upload(filePath, file);
+  console.log("Inside uploadResume, error", error);
   if (error) {
     console.error("Error uploading file:", error);
     return null;
   }
   // Generate a signed URL valid for 1 year (365 days)
+  console.log("Inside uploadResume, calling createSignedUrl");
   const secondsInYear = 60 * 60 * 24 * 365;
+  console.log("Inside uploadResume, secondsInYear", secondsInYear);
   const { data: signedData, error: signedError } = await supabase.storage
     .from("resumes")
     .createSignedUrl(filePath, secondsInYear);
+  console.log("Inside uploadResume, signedData", signedData);
   if (signedError) {
     console.error("Error creating signed URL:", signedError);
     return null;
   }
+  console.log(
+    "Inside uploadResume, returning signedData?.signedUrl",
+    signedData?.signedUrl
+  );
   return signedData?.signedUrl || null;
 }
 
@@ -200,14 +212,11 @@ export async function fetchInterviewIdFromJobId(jobId: string) {
   const response = await authenticatedFetch(
     `${
       process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
-    }/api/v1/interviews?job_id=${encodeURIComponent(jobId)}&status=active`
+    }/api/v1/interviews/by-job/${encodeURIComponent(jobId)}`
   );
   if (!response.ok) throw new Error("Failed to fetch interview id");
   const data = await response.json();
-  if (Array.isArray(data) && data.length > 0) {
-    return data[0].id;
-  }
-  return null;
+  return data.interview.id;
 }
 
 export async function fetchInterviewById(
@@ -276,11 +285,25 @@ export async function addBulkCandidates({
   // Step 1: Upload all resumes in parallel
   const resumeUploadPromises = candidates.map(async (candidate, index) => {
     if (candidate.resumeFile && !candidate.resume_url) {
-      const resume_url = await uploadResume(
-        candidate.resumeFile,
-        candidate.name
+      const formData = new FormData();
+      formData.append("file", candidate.resumeFile);
+      formData.append("candidate_name", candidate.name);
+
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/upload-resume`,
+        {
+          method: "POST",
+          body: formData,
+        }
       );
-      return { index, resume_url };
+
+      if (!response.ok) {
+        return { index, resume_url: null, error: "Failed to upload resume" };
+      }
+
+      const data = await response.json();
+
+      return { index, resume_url: data.signed_url };
     } else if (candidate.resume_url) {
       return { index, resume_url: candidate.resume_url };
     } else {
