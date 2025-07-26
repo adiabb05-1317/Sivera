@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import List, Optional
 import uuid
+import time
+import re
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, File, UploadFile, Form
 from pydantic import BaseModel
 
 from src.utils.auth_middleware import require_organization
@@ -204,4 +206,82 @@ async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request
     except DatabaseError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.post("/upload-resume")
+async def upload_resume(
+    request: Request,
+    file: UploadFile = File(...),
+    candidate_name: str = Form(...)
+):
+    try:
+        require_organization(request)
+        supabase = request.app.state.supabase
+
+        # Sanitize filename
+        safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", candidate_name.strip().lower())
+        ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "pdf"
+        file_path = f"{safe_name}_{int(time.time() * 1000)}.{ext}"
+
+        # Read bytes and validate
+        file_bytes = await file.read()
+        print(f"[DEBUG] file_bytes type: {type(file_bytes)}, size: {len(file_bytes) if isinstance(file_bytes, bytes) else 'N/A'}")
+        
+        if not isinstance(file_bytes, bytes) or len(file_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Invalid file content")
+
+        # Upload PDF file with correct content-type
+        upload_response = supabase.storage.from_("resumes").upload(
+            file_path,
+            file_bytes,
+            {"content-type": "application/pdf"}
+        )
+        
+        print(f"[DEBUG] upload_response type: {type(upload_response)}")
+        print(f"[DEBUG] upload_response: {upload_response}")
+
+        # Check for upload errors - handle different response types
+        if hasattr(upload_response, 'error') and upload_response.error:
+            print(f"[UPLOAD ERROR] {upload_response.error}")
+            raise HTTPException(status_code=400, detail=f"Upload failed: {upload_response.error}")
+
+        # Create signed URL
+        signed_response = supabase.storage.from_("resumes").create_signed_url(
+            file_path,
+            60 * 60 * 24 * 365
+        )
+        
+        print(f"[DEBUG] signed_response type: {type(signed_response)}")
+        print(f"[DEBUG] signed_response: {signed_response}")
+
+        # Check for signed URL errors - handle different response types  
+        if hasattr(signed_response, 'error') and signed_response.error:
+            print(f"[SIGNED URL ERROR] {signed_response.error}")
+            raise HTTPException(status_code=400, detail=f"Signed URL creation failed: {signed_response.error}")
+
+        # Extract signed URL - handle multiple possible response structures
+        signed_url = None
+        if hasattr(signed_response, 'data') and signed_response.data:
+            # Try both possible property names
+            signed_url = signed_response.data.get("signedUrl") or signed_response.data.get("signedURL")
+        elif isinstance(signed_response, dict):
+            # Direct dict response
+            signed_url = signed_response.get("signedUrl") or signed_response.get("signedURL")
+        elif isinstance(signed_response, str):
+            # Direct string response
+            signed_url = signed_response
+            
+        if not signed_url:
+            print(f"[ERROR] Could not extract signed URL from response: {signed_response}")
+            raise HTTPException(status_code=400, detail="Failed to generate signed URL")
+
+        return {
+            "signed_url": signed_url,
+            "file_path": file_path,
+            "filename": file.filename,
+            "content_type": file.content_type
+        }
+
+    except Exception as e:
+        print(f"[EXCEPTION] {repr(e)}")  # This should stop showing bool.encode
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
