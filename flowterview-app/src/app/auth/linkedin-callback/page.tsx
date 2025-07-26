@@ -18,12 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function LinkedInCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading"
@@ -44,10 +43,8 @@ export default function LinkedInCallbackPage() {
       // LinkedIn OAuth error
       setStatus("error");
       setMessage(errorDescription || `LinkedIn authorization failed: ${error}`);
-      toast({
-        title: "LinkedIn Connection Failed",
+      toast.error("LinkedIn Connection Failed", {
         description: errorDescription || `Authorization failed: ${error}`,
-        variant: "destructive",
       });
     } else if (success === "true" && code && state) {
       // Success case - Backend processed successfully and redirected here
@@ -56,8 +53,7 @@ export default function LinkedInCallbackPage() {
         "LinkedIn integration successful! You can now sync job postings and access candidate profiles."
       );
 
-      toast({
-        title: "LinkedIn Connected",
+      toast.success("LinkedIn Connected", {
         description: "Your LinkedIn account has been successfully connected.",
       });
     } else if (code && state) {
@@ -68,8 +64,7 @@ export default function LinkedInCallbackPage() {
         "LinkedIn authorization received. Please check your settings to confirm the integration."
       );
 
-      toast({
-        title: "LinkedIn Authorization Received",
+      toast.info("LinkedIn Authorization Received", {
         description:
           "Please check your settings to confirm the integration status.",
       });
@@ -80,7 +75,7 @@ export default function LinkedInCallbackPage() {
         "No LinkedIn callback data found. Please try connecting again from the settings page."
       );
     }
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
   // Handle redirect timer - separate from status detection
   useEffect(() => {

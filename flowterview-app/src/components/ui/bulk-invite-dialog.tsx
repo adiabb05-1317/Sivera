@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Loader2, Check, ArrowRight } from "lucide-react";
 import { authenticatedFetch } from "@/lib/auth-client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Candidate {
   id: string;
@@ -75,7 +75,6 @@ export function BulkInviteDialog({
     null
   );
   const [showStatus, setShowStatus] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!open) {
@@ -90,8 +89,7 @@ export function BulkInviteDialog({
 
   const moveToNextStage = async () => {
     if (selectedCandidates.length === 0) {
-      toast({
-        title: "No candidates selected",
+      toast.error("No candidates selected", {
         description: "Please select at least one candidate to move.",
       });
       return;
@@ -106,10 +104,8 @@ export function BulkInviteDialog({
       console.error("Error moving candidates:", error);
       const errorMessage =
         error instanceof Error ? error.message : "An unexpected error occurred";
-      toast({
-        title: "Failed to move candidates",
+      toast.error("Failed to move candidates", {
         description: errorMessage,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

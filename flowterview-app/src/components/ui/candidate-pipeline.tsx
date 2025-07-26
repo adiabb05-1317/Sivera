@@ -52,10 +52,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { DrawerHeader } from "./drawer";
 import { Checkbox } from "./checkbox";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 interface Candidate {
   id: string;
@@ -474,7 +474,6 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
   jobTitle,
   onClose,
 }) => {
-  const { toast } = useToast();
   const [originalStages, setOriginalStages] = useState<PipelineStage[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
@@ -665,12 +664,10 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
       direction === "next" ? currentStageIndex + 1 : currentStageIndex - 1;
 
     if (targetIndex < 0 || targetIndex >= stages.length) {
-      toast({
-        title: "Cannot move",
+      toast.error("Cannot move", {
         description: `Cannot move ${
           direction === "next" ? "forward" : "backward"
         } from this stage`,
-        variant: "destructive",
       });
       return;
     }
@@ -703,8 +700,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
       .map((candidate) => candidate.id);
 
     setSelectedCandidates(new Set(candidatesAboveScore));
-    toast({
-      title: "Bulk selection",
+    toast.success("Bulk selection", {
       description: `Selected ${candidatesAboveScore.length} candidates with score ≥ ${scoreThreshold}`,
     });
   };
@@ -723,17 +719,14 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
           if (nextStage) {
             stageMoveCandidate(candidate, currentStage.id, nextStage.id);
           } else {
-            toast({
-              title: "Cannot move",
+            toast.error("Cannot move", {
               description: "No next stage available",
-              variant: "destructive",
             });
           }
         }
         break;
       case "schedule":
-        toast({
-          title: "Schedule Interview",
+        toast.success("Schedule Interview", {
           description: `Scheduling interview for ${candidate.name}`,
         });
         break;
@@ -829,14 +822,12 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
 
     // Check if there are candidates in this stage
     if (stageToRemove.candidates.length > 0) {
-      toast({
-        title: "Cannot remove round",
+      toast.error("Cannot remove round", {
         description: `Cannot remove round with ${
           stageToRemove.candidates.length
         } candidate${
           stageToRemove.candidates.length !== 1 ? "s" : ""
         }. Move candidates first.`,
-        variant: "destructive",
       });
       return;
     }
@@ -930,8 +921,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
 
   const saveAllChanges = async () => {
     if (pendingChanges.length === 0) {
-      toast({
-        title: "No changes",
+      toast.error("No changes", {
         description: "No changes to save",
       });
       return;
@@ -974,8 +964,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
       description = details.join(", ");
     }
 
-    toast({
-      title: "Changes saved",
+    toast.success("Changes saved", {
       description: description,
     });
   };
@@ -986,8 +975,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     setPendingChanges([]);
     setSelectedCandidates(new Set());
 
-    toast({
-      title: "Changes discarded",
+    toast.success("Changes discarded", {
       description: "All pending changes have been discarded",
     });
   };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Work_Sans } from "next/font/google";
 import "./globals.css";
 import AuthListener from "./auth-listener";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import StoreInitializer from "./store-initializer";
 
@@ -29,7 +29,7 @@ export default function RootLayout({
           <StoreInitializer>
             <AuthListener>{children}</AuthListener>
           </StoreInitializer>
-          <Toaster />
+          <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

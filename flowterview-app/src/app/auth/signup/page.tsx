@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { authenticatedFetch, signup } from "@/lib/auth-client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -25,7 +25,6 @@ function extractOrgFromEmail(email: string): string {
 
 export default function SignupPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -46,8 +45,7 @@ export default function SignupPage() {
       const signupResult = await signup(email, password);
       const { error: signupError } = signupResult;
       if (signupError) {
-        toast({
-          title: "Error signing up",
+        toast.error("Error signing up", {
           description: "Please try again",
         });
         return;
@@ -56,8 +54,7 @@ export default function SignupPage() {
       // Call backend to create user (organization row will be created if needed)
       const userId = signupResult.data.user?.id;
       if (!userId) {
-        toast({
-          title: "Error creating user",
+        toast.error("Error creating user", {
           description: "Please try again",
         });
         return;
@@ -79,8 +76,7 @@ export default function SignupPage() {
         }
       );
       if (!resp.ok) {
-        toast({
-          title: "Error creating user",
+        toast.error("Error creating user", {
           description: "Please try again",
         });
         return;

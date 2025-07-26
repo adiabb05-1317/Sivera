@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/carousel";
 import { Calendar } from "@/components/ui/calendar";
 import { updateInterviewStatus } from "@/lib/supabase-candidates";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { BulkInviteDialog } from "@/components/ui/bulk-invite-dialog";
 import { BulkPhoneScreenScheduler } from "@/components/ui/bulk-phone-screen-scheduler";
 import { BulkSelectDialog } from "@/components/ui/bulk-select-dialog";
@@ -237,7 +237,6 @@ const HumanInterviewSchedulingDialog = ({
   data: HumanInterviewDialogData | null;
   onComplete: (schedules: InterviewSchedule[]) => void;
 }) => {
-  const { toast } = useToast();
   const siveraBackendUrl =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
   const [currentPage, setCurrentPage] = useState<"assignments" | "scheduling">(
@@ -303,10 +302,8 @@ const HumanInterviewSchedulingDialog = ({
           }
         } catch (error) {
           console.error("Error fetching interviewers:", error);
-          toast({
-            title: "Error loading interviewers",
+          toast.error("Error loading interviewers", {
             description: "Could not load available interviewers",
-            variant: "destructive",
           });
         } finally {
           setIsLoadingInterviewers(false);
@@ -315,7 +312,7 @@ const HumanInterviewSchedulingDialog = ({
     };
 
     fetchInterviewers();
-  }, [open, data, siveraBackendUrl, toast]);
+  }, [open, data, siveraBackendUrl]);
 
   // Initialize assignments and schedules when data changes
   useEffect(() => {
@@ -1103,6 +1100,10 @@ export default function InterviewDetailsPage() {
   const { candidates: allCandidates, refresh: refreshCandidates } =
     useCandidates();
 
+  // Local state for interview status to enable immediate UI updates
+  const [currentInterviewStatus, setCurrentInterviewStatus] = useState<
+    "draft" | "active" | "completed"
+  >("draft");
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
   const [hasReadWarning, setHasReadWarning] = useState(false);
@@ -1165,8 +1166,6 @@ export default function InterviewDetailsPage() {
     useState(false);
   const [humanInterviewDialogData, setHumanInterviewDialogData] =
     useState<HumanInterviewDialogData | null>(null);
-
-  const { toast } = useToast();
 
   const siveraBackendUrl =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
@@ -1470,8 +1469,7 @@ export default function InterviewDetailsPage() {
       } else {
         // Limit to 15 skills maximum
         if (prev.length >= 15) {
-          toast({
-            title: "Maximum skills reached",
+          toast.error("Maximum skills reached", {
             description: "You can select up to 15 skills maximum.",
           });
           return prev;
@@ -1485,8 +1483,7 @@ export default function InterviewDetailsPage() {
     if (newSkill.trim() && !selectedSkills.includes(newSkill.trim())) {
       // Limit to 15 skills maximum
       if (selectedSkills.length >= 15) {
-        toast({
-          title: "Maximum skills reached",
+        toast.error("Maximum skills reached", {
           description: "You can select up to 15 skills maximum.",
         });
         return;
@@ -1742,12 +1739,10 @@ export default function InterviewDetailsPage() {
       direction === "next" ? currentStageIndex + 1 : currentStageIndex - 1;
 
     if (targetIndex < 0 || targetIndex >= stages.length) {
-      toast({
-        title: "Cannot move",
+      toast.error("Cannot move", {
         description: `Cannot move ${
           direction === "next" ? "forward" : "backward"
         } from this stage`,
-        variant: "destructive",
       });
       return;
     }
@@ -1777,8 +1772,7 @@ export default function InterviewDetailsPage() {
   ) => {
     setSelectedCandidates(new Set(candidateIds));
 
-    toast({
-      title: "Bulk selection",
+    toast.info("Bulk selection", {
       description: `Selected ${candidateIds.length} candidates with score ≥ ${scoreThreshold} from ${stageTitle}`,
     });
   };
@@ -1797,17 +1791,14 @@ export default function InterviewDetailsPage() {
           if (nextStage) {
             stageMoveCandidate(candidate, currentStage.id, nextStage.id);
           } else {
-            toast({
-              title: "Cannot move",
+            toast.error("Cannot move", {
               description: "No next stage available",
-              variant: "destructive",
             });
           }
         }
         break;
       case "schedule":
-        toast({
-          title: "Schedule Interview",
+        toast.info("Schedule Interview", {
           description: `Scheduling interview for ${candidate.name}`,
         });
         break;
@@ -1819,16 +1810,13 @@ export default function InterviewDetailsPage() {
         if (candidate.resume_url) {
           // Open resume in new tab
           window.open(candidate.resume_url, "_blank", "noopener,noreferrer");
-          toast({
-            title: "Resume opened",
+          toast.success("Resume opened", {
             description: `Opened resume for ${candidate.name}`,
           });
         } else {
           // Show message that no resume is available
-          toast({
-            title: "No resume available",
+          toast.error("No resume available", {
             description: `${candidate.name} has not uploaded a resume yet.`,
-            variant: "destructive",
           });
         }
         break;
@@ -1912,14 +1900,12 @@ export default function InterviewDetailsPage() {
 
     // Check if there are candidates in this stage
     if (stageToRemove.candidates.length > 0) {
-      toast({
-        title: "Cannot remove round",
+      toast.error("Cannot remove round", {
         description: `Cannot remove round with ${
           stageToRemove.candidates.length
         } candidate${
           stageToRemove.candidates.length !== 1 ? "s" : ""
         }. Move candidates first.`,
-        variant: "destructive",
       });
       return;
     }
@@ -2001,8 +1987,7 @@ export default function InterviewDetailsPage() {
         });
 
         // Show success message
-        toast({
-          title: "Note saved",
+        toast.success("Note saved", {
           description: `Note has been updated for ${noteDialog.candidate.name}`,
         });
 
@@ -2011,8 +1996,7 @@ export default function InterviewDetailsPage() {
         setIsSavingNote(false);
       } catch (error) {
         console.error("Failed to save note:", error);
-        toast({
-          title: "Failed to save note",
+        toast.error("Failed to save note", {
           description: "Please try again or save changes later.",
         });
 
@@ -2056,8 +2040,7 @@ export default function InterviewDetailsPage() {
 
   const saveAllChanges = async () => {
     if (pendingChanges.length === 0) {
-      toast({
-        title: "No changes",
+      toast.info("No changes", {
         description: "No changes to save",
       });
       return;
@@ -2069,8 +2052,7 @@ export default function InterviewDetailsPage() {
         (c) => c.type === "update_status"
       );
       if (statusChanges.length > 0) {
-        toast({
-          title: "Processing changes...",
+        toast.info("Processing changes...", {
           description: `Updating ${statusChanges.length} candidate statuses and sending emails...`,
         });
 
@@ -2101,8 +2083,7 @@ export default function InterviewDetailsPage() {
       const noteChanges = pendingChanges.filter((c) => c.type === "add_note");
       if (noteChanges.length > 0) {
         if (statusChanges.length === 0) {
-          toast({
-            title: "Processing changes...",
+          toast.info("Processing changes...", {
             description: `Saving ${noteChanges.length} note${
               noteChanges.length !== 1 ? "s" : ""
             }...`,
@@ -2169,8 +2150,7 @@ export default function InterviewDetailsPage() {
           noteChanges.length === 0 &&
           numRoundsChanges.length === 0
         ) {
-          toast({
-            title: "Processing changes...",
+          toast.info("Processing changes...", {
             description: `Sending ${emailChanges.length} emails...`,
           });
         }
@@ -2311,16 +2291,13 @@ export default function InterviewDetailsPage() {
         description = details.join(", ");
       }
 
-      toast({
-        title: "Changes saved",
+      toast.success("Changes saved", {
         description: description,
       });
     } catch (error) {
       console.error("Error saving changes:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to save some changes. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -2339,8 +2316,7 @@ export default function InterviewDetailsPage() {
       }
     }, 0);
 
-    toast({
-      title: "Changes discarded",
+    toast.info("Changes discarded", {
       description: "All pending changes have been discarded",
     });
   };
@@ -2351,6 +2327,9 @@ export default function InterviewDetailsPage() {
   useEffect(() => {
     if (details) {
       setJob(details.job);
+
+      // Update current interview status from details
+      setCurrentInterviewStatus(details.interview.status || "draft");
 
       // Merge invited candidates from interview details with complete candidate data
       if (details.candidates.invited && allCandidates) {
@@ -2434,8 +2413,7 @@ export default function InterviewDetailsPage() {
     const organization_id = getCookie("organization_id");
 
     if (!user_id || !organization_id) {
-      toast({
-        title: "Authentication Error",
+      toast.error("Authentication Error", {
         description: "Missing user or organization information",
       });
       return;
@@ -2520,8 +2498,7 @@ export default function InterviewDetailsPage() {
         );
       }
 
-      toast({
-        title: "Success!",
+      toast.success("Success!", {
         description: "Interview settings updated successfully",
       });
 
@@ -2530,8 +2507,7 @@ export default function InterviewDetailsPage() {
       refreshCandidates();
     } catch (error) {
       console.error("Error updating interview:", error);
-      toast({
-        title: "Error updating interview",
+      toast.error("Error updating interview", {
         description:
           error instanceof Error ? error.message : "Unknown error occurred",
       });
@@ -2601,8 +2577,7 @@ export default function InterviewDetailsPage() {
   // Prepare candidates for bulk invite based on selection
   const prepareSelectedCandidatesForInvite = () => {
     if (selectedCandidates.size === 0) {
-      toast({
-        title: "No candidates selected",
+      toast.error("No candidates selected", {
         description: "Please select candidates to move.",
       });
       return;
@@ -2654,8 +2629,7 @@ export default function InterviewDetailsPage() {
     }
 
     if (candidatesByNextStage.length === 0) {
-      toast({
-        title: "No next stage",
+      toast.error("No next stage", {
         description: "Selected candidates are already at the final stage.",
       });
       return;
@@ -2697,10 +2671,8 @@ export default function InterviewDetailsPage() {
       );
 
       if (!currentStage) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Could not find candidate's current stage",
-          variant: "destructive",
         });
         return;
       }
@@ -2708,10 +2680,8 @@ export default function InterviewDetailsPage() {
       // Get the next stage for this candidate
       const nextStage = getNextStageForStage(currentStage.id);
       if (!nextStage) {
-        toast({
-          title: "No next stage",
+        toast.error("No next stage", {
           description: "This candidate is already at the final stage",
-          variant: "destructive",
         });
         return;
       }
@@ -2719,18 +2689,15 @@ export default function InterviewDetailsPage() {
       // Move the candidate to the next stage (this will queue the email)
       stageMoveCandidate(candidate, currentStage.id, nextStage.id);
 
-      toast({
-        title: "Candidate moved",
+      toast.success("Candidate moved", {
         description: `${candidate.name} moved to ${nextStage.title}. Click 'Save Changes' to send email.`,
       });
 
       // Close the dialog
       setSelectedCandidate(null);
     } catch (err: any) {
-      toast({
-        title: "Failed to move candidate",
+      toast.error("Failed to move candidate", {
         description: err.message,
-        variant: "destructive",
       });
     }
   };
@@ -2847,8 +2814,7 @@ export default function InterviewDetailsPage() {
     // Clear selection
     setSelectedCandidates(new Set());
 
-    toast({
-      title: "Candidates moved to pipeline",
+    toast.success("Candidates moved to pipeline", {
       description:
         "All selected candidates have been moved. Click 'Save Changes' to update statuses and send emails.",
     });
@@ -2886,8 +2852,7 @@ export default function InterviewDetailsPage() {
     });
 
     // Show success message
-    toast({
-      title: "Interviews scheduled",
+    toast.success("Interviews scheduled", {
       description: `${humanInterviewDialogData.candidates.length} candidate${
         humanInterviewDialogData.candidates.length !== 1 ? "s" : ""
       } scheduled for ${
@@ -2951,27 +2916,33 @@ export default function InterviewDetailsPage() {
                   </div>
                   <div className="flex flex-row items-center gap-3">
                     <Select
-                      value={
-                        details?.interview.status
-                          ? String(details.interview.status)
-                          : "draft"
-                      }
+                      value={currentInterviewStatus}
                       onValueChange={async (
                         value: "draft" | "active" | "completed"
                       ) => {
                         try {
+                          // Update local state immediately for instant UI feedback
+                          setCurrentInterviewStatus(value);
+
                           await updateInterviewStatus(id as string, value);
-                          toast({
-                            title: "Interview status updated",
+
+                          // Refresh interview details to ensure consistency
+                          refreshInterviewDetails();
+
+                          toast.success("Interview status updated", {
                             description: `Status set to ${value}`,
                           });
                         } catch (err) {
+                          // Revert local state on error
+                          setCurrentInterviewStatus(
+                            details?.interview.status || "draft"
+                          );
+
                           const errorMessage =
                             err instanceof Error
                               ? err.message
                               : "Failed to update status";
-                          toast({
-                            title: "Failed to update status",
+                          toast.error("Failed to update status", {
                             description: errorMessage,
                           });
                         }
@@ -2979,12 +2950,8 @@ export default function InterviewDetailsPage() {
                     >
                       <SelectTrigger className="w-[8rem] cursor-pointer">
                         <SelectValue>
-                          {details?.interview.status &&
-                          typeof details.interview.status === "string" &&
-                          details.interview.status.length > 0
-                            ? details.interview.status.charAt(0).toUpperCase() +
-                              details.interview.status.slice(1)
-                            : "Draft"}
+                          {currentInterviewStatus.charAt(0).toUpperCase() +
+                            currentInterviewStatus.slice(1)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -3400,7 +3367,7 @@ export default function InterviewDetailsPage() {
             )}
 
             {/* Candidate Section - Pipeline for Active, List for Draft/Completed */}
-            {details?.interview.status === "active" ? (
+            {currentInterviewStatus === "active" ? (
               /* Candidate Pipeline Section - Active Interview */
               <div className="rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800 max-w-full overflow-hidden">
                 <div className="border-b border-gray-200 dark:border-gray-800 p-6">
@@ -3655,7 +3622,7 @@ export default function InterviewDetailsPage() {
                         {invitedCandidates.length} candidate
                         {invitedCandidates.length !== 1 ? "s" : ""}
                         <span className="mx-2">•</span>
-                        Interview is {details?.interview.status || "draft"}
+                        Interview is {currentInterviewStatus}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

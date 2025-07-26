@@ -35,9 +35,9 @@ import {
   UserCheck,
   Phone as PhoneIcon,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
 import { CheckboxIndicator } from "@radix-ui/react-checkbox";
+import { toast } from "sonner";
 
 // Status badge color mapping using only app colors
 const getCandidateStatusBadgeClass = (status: string) => {
@@ -128,7 +128,6 @@ export function BulkPhoneScreenScheduler({
     hasPhone: true,
   });
 
-  const { toast } = useToast();
   const siveraBackendUrl =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
 
@@ -166,8 +165,7 @@ export function BulkPhoneScreenScheduler({
       if (response.ok) {
         const data = await response.json();
         setCandidates(data.eligible_candidates || []);
-        toast({
-          title: "Candidates Loaded",
+        toast.success("Candidates Loaded", {
           description: `Found ${data.eligible_count} eligible candidates for phone screening`,
         });
       } else {
@@ -175,10 +173,8 @@ export function BulkPhoneScreenScheduler({
       }
     } catch (error) {
       console.error("Error fetching candidates:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load candidates",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -222,10 +218,8 @@ export function BulkPhoneScreenScheduler({
 
   const handleSchedulePhoneScreens = async () => {
     if (!selectedDate || !startTime || selectedCandidates.size === 0) {
-      toast({
-        title: "Missing Information",
+      toast.error("Missing Information", {
         description: "Please select date, time, and candidates",
-        variant: "destructive",
       });
       return;
     }
@@ -256,16 +250,13 @@ export function BulkPhoneScreenScheduler({
         setScheduledCandidates(data.scheduled_screens || []);
         setStep("confirm");
 
-        toast({
-          title: "Phone Screens Scheduled",
+        toast.success("Phone Screens Scheduled", {
           description: `Successfully scheduled ${data.scheduled_count} phone screens`,
         });
 
         if (data.failed_count > 0) {
-          toast({
-            title: "Some Scheduling Failed",
+          toast.error("Some Scheduling Failed", {
             description: `${data.failed_count} candidates could not be scheduled`,
-            variant: "destructive",
           });
         }
       } else {
@@ -274,13 +265,11 @@ export function BulkPhoneScreenScheduler({
       }
     } catch (error) {
       console.error("Error scheduling phone screens:", error);
-      toast({
-        title: "Scheduling Failed",
+      toast.error("Scheduling Failed", {
         description:
           error instanceof Error
             ? error.message
             : "Failed to schedule phone screens",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
