@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useInterviews, useCandidates } from "@/hooks/useStores";
 import { useState, useMemo } from "react";
 import {
@@ -25,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface Interview {
   id: string;
@@ -46,7 +46,6 @@ interface Candidate {
 
 export default function InterviewsPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   // Use our store hooks instead of manual API calls
   const { interviews, isLoading: loading, error } = useInterviews();

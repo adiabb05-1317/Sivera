@@ -5,13 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
 
   const [verifying, setVerifying] = useState(true);
   const [tokenData, setTokenData] = useState<any>(null);
@@ -22,11 +21,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!token) {
-      toast({
-        title: "Invalid token",
+      toast.error("Invalid token", {
         description:
           "No verification token provided. Please check your email link.",
-        variant: "destructive",
       });
       return;
     }
@@ -47,24 +44,19 @@ export default function RegisterPage() {
 
         if (data.valid) {
           setTokenData(data);
-          toast({
-            title: "Email verified",
+          toast.success("Email verified", {
             description: "Your email has been verified successfully.",
           });
         } else {
-          toast({
-            title: "Invalid token",
+          toast.error("Invalid token", {
             description:
               data.message || "Invalid or expired verification token.",
-            variant: "destructive",
           });
         }
       } catch (error: any) {
-        toast({
-          title: "Verification failed",
+        toast.error("Verification failed", {
           description:
             "An error occurred during verification. Please try again.",
-          variant: "destructive",
         });
         console.error("Verification error:", error);
       } finally {
@@ -93,8 +85,7 @@ export default function RegisterPage() {
 
       if (data.success) {
         setCompleted(true);
-        toast({
-          title: "Registration complete",
+        toast.success("Registration complete", {
           description:
             "Your registration is complete. Redirecting to your interview.",
         });
@@ -104,17 +95,13 @@ export default function RegisterPage() {
           router.push(data.interview_url);
         }, 3000);
       } else {
-        toast({
-          title: "Registration failed",
+        toast.error("Registration failed", {
           description: data.message || "An error occurred during registration.",
-          variant: "destructive",
         });
       }
     } catch (error: any) {
-      toast({
-        title: "Registration failed",
+      toast.error("Registration failed", {
         description: "An error occurred during registration. Please try again.",
-        variant: "destructive",
       });
       console.error("Registration error:", error);
     } finally {

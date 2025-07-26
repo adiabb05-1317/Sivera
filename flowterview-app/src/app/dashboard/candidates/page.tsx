@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ToastAction } from "@/components/ui/toast";
 import {
   Popover,
@@ -64,7 +64,6 @@ const CandidateViewDialog = ({
   onClose: () => void;
   handleSendInvite: (candidate: any) => void;
 }) => {
-  const { toast } = useToast();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
@@ -76,10 +75,8 @@ const CandidateViewDialog = ({
     try {
       // We need to find the interview ID for this candidate's job
       if (!candidate.job_id) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "No job information found for this candidate",
-          variant: "destructive",
         });
         return;
       }
@@ -99,10 +96,8 @@ const CandidateViewDialog = ({
       const interviewId = interviewData.interview?.id;
 
       if (!interviewId) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "No interview found for this job",
-          variant: "destructive",
         });
         return;
       }
@@ -119,16 +114,13 @@ const CandidateViewDialog = ({
       const data = await analytics.json();
       setAnalyticsData(data.analytics);
 
-      toast({
-        title: "Analytics",
+      toast.success("Analytics", {
         description: "Analytics loaded successfully",
       });
     } catch (error) {
       console.error("Error fetching analytics:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load analytics",
-        variant: "destructive",
       });
     } finally {
       setLoadingAnalytics(false);
@@ -136,8 +128,7 @@ const CandidateViewDialog = ({
   };
 
   const handleViewMoreDetails = () => {
-    toast({
-      title: "More Details",
+    toast.info("More Details", {
       description: "Detailed analytics view coming soon!",
     });
   };
@@ -211,7 +202,6 @@ const CandidateViewDialog = ({
 };
 
 export default function CandidatesPage() {
-  const { toast } = useToast();
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
@@ -384,8 +374,7 @@ export default function CandidatesPage() {
 
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
-    toast({
-      title: "Sending invitation...",
+    toast.info("Sending invitation...", {
       description: `Sending invitation to ${candidate.email}`,
     });
 
@@ -397,8 +386,7 @@ export default function CandidatesPage() {
       const senderId = userContext?.user_id;
 
       if (!organizationId) {
-        toast({
-          title: "Organization not found",
+        toast.error("Organization not found", {
           description:
             "Your organization information is missing. Please log in again.",
         });
@@ -424,8 +412,7 @@ export default function CandidatesPage() {
 
       if (data.success) {
         // Update the existing toast with success message
-        toast({
-          title: "Interview invitation sent",
+        toast.success("Interview invitation sent", {
           description: `Interview invitation sent to ${candidate.email}`,
           action: (
             <ToastAction altText="Undo" onClick={() => {}}>
@@ -435,8 +422,7 @@ export default function CandidatesPage() {
         });
       } else {
         // Update the same toast with error message
-        toast({
-          title: "Failed to send invite",
+        toast.error("Failed to send invite", {
           description: data.error || "Unknown error",
           action: (
             <ToastAction
@@ -450,8 +436,7 @@ export default function CandidatesPage() {
       }
     } catch (err: any) {
       // Update the same toast with error message
-      toast({
-        title: "Failed to send invite",
+      toast.error("Failed to send invite", {
         description: err.message,
         action: (
           <ToastAction

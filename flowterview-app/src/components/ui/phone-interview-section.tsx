@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 // Utility function to format status text consistently
 const formatStatusText = (status: string) => {
@@ -129,7 +129,6 @@ export function PhoneInterviewSection({
     scheduled_at: "",
   });
   const [newQuestion, setNewQuestion] = useState("");
-  const { toast } = useToast();
 
   const siveraBackendUrl =
     process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
@@ -172,8 +171,7 @@ export function PhoneInterviewSection({
       );
 
       if (response.ok) {
-        toast({
-          title: "Status Updated",
+        toast.success("Status Updated", {
           description: `Phone screen status updated to ${status}`,
         });
         fetchPhoneScreens();
@@ -181,10 +179,8 @@ export function PhoneInterviewSection({
         throw new Error("Failed to update status");
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update phone screen status",
-        variant: "destructive",
       });
     }
   };
@@ -201,8 +197,7 @@ export function PhoneInterviewSection({
       );
 
       if (response.ok) {
-        toast({
-          title: "Phone Screen Scheduled",
+        toast.success("Phone Screen Scheduled", {
           description: "Phone screen has been scheduled successfully",
         });
         setShowScheduleDialog(false);
@@ -217,13 +212,11 @@ export function PhoneInterviewSection({
         throw new Error(errorData.detail || "Failed to schedule phone screen");
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error instanceof Error
             ? error.message
             : "Failed to schedule phone screen",
-        variant: "destructive",
       });
     }
   };
@@ -238,17 +231,14 @@ export function PhoneInterviewSection({
       );
 
       if (response.ok) {
-        toast({
-          title: "Processing Triggered",
+        toast.success("Processing Triggered", {
           description: "Scheduled phone screens are being processed",
         });
         fetchPhoneScreens();
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to trigger processing",
-        variant: "destructive",
       });
     }
   };

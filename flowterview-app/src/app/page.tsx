@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getUserContext } from "@/lib/auth-client";
 
 export default function Home() {
   const router = useRouter();
@@ -12,8 +13,9 @@ export default function Home() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      const userContext = getUserContext();
 
-      if (session) {
+      if (session && userContext) {
         router.push("/dashboard");
       } else {
         router.push("/auth/login");
@@ -21,7 +23,7 @@ export default function Home() {
     };
 
     checkSession();
-  }, [router]);
+  }, [router, getUserContext]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:from-gray-900 dark:to-gray-800 p-4">

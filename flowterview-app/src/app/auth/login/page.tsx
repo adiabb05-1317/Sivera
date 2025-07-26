@@ -17,13 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const emailSchema = z.string().email();
 
 export default function LoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +52,7 @@ export default function LoginPage() {
 
     try {
       if (!email || !emailSchema.safeParse(email).success) {
-        toast({
-          title: "Invalid email",
+        toast.error("Invalid email", {
           description: "Please enter a valid email address",
         });
         return;
@@ -68,8 +66,7 @@ export default function LoginPage() {
         });
 
         if (error) {
-          toast({
-            title: "Error logging in",
+          toast.error("Error logging in", {
             description: error.message,
           });
           return;
@@ -95,8 +92,7 @@ export default function LoginPage() {
       });
 
       if (error) {
-        toast({
-          title: "Error sending magic link",
+        toast.error("Error sending magic link", {
           description: "Please try again",
         });
         return;

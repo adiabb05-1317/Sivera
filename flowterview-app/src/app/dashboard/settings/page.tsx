@@ -52,11 +52,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
 import { useAuthStore } from "../../../../store";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // LinkedIn integration types
 interface LinkedInIntegrationStatus {
@@ -84,7 +84,6 @@ interface OrganizationMember {
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { toast } = useToast();
   const searchParams = useSearchParams();
 
   // Auth store for organization data
@@ -178,10 +177,8 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Error fetching organization members:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load organization members",
-        variant: "destructive",
       });
     } finally {
       setMembersLoading(false);
@@ -209,10 +206,8 @@ export default function SettingsPage() {
 
   const handleAddMembers = async () => {
     if (!organization?.id || !newMemberEmails.trim()) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter email addresses",
-        variant: "destructive",
       });
       return;
     }
@@ -224,10 +219,8 @@ export default function SettingsPage() {
       .filter((email) => email.length > 0);
 
     if (emailList.length === 0) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter valid email addresses",
-        variant: "destructive",
       });
       return;
     }
@@ -237,8 +230,7 @@ export default function SettingsPage() {
       (email) => !validateEmailDomain(email)
     );
     if (invalidEmails.length > 0) {
-      toast({
-        title: "Invalid Email Domain",
+      toast.error("Invalid Email Domain", {
         description: `The following emails don't match your organization domain (${
           organization.domain
         }): ${invalidEmails.join(", ")}`,
@@ -259,8 +251,7 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const result = await response.json();
-        toast({
-          title: "Invitations Sent",
+        toast.success("Invitations Sent", {
           description: `Successfully sent invitations to ${result.emails_count} member(s)`,
         });
 
@@ -278,11 +269,9 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Error sending invitations:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error instanceof Error ? error.message : "Failed to send invitations",
-        variant: "destructive",
       });
     } finally {
       setInvitingMembers(false);
@@ -292,8 +281,7 @@ export default function SettingsPage() {
   // Promote user to admin
   const promoteToAdmin = async (userId: string) => {
     if (!user || user.role !== "admin") {
-      toast({
-        title: "Access Denied",
+      toast.error("Access Denied", {
         description: "Only admins can promote other users",
       });
       return;
@@ -311,18 +299,15 @@ export default function SettingsPage() {
       );
 
       if (response.ok) {
-        toast({
-          title: "User Promoted",
+        toast.success("User Promoted", {
           description: "User has been promoted to admin successfully",
         });
         fetchOrganizationMembers();
       }
     } catch (error) {
       console.error("Error promoting user:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to promote user",
-        variant: "destructive",
       });
     } finally {
       setPromotingUser(null);
@@ -346,8 +331,7 @@ export default function SettingsPage() {
         // Check if user just returned from OAuth flow
         const linkedinConnected = searchParams.get("linkedin_connected");
         if (linkedinConnected === "true") {
-          toast({
-            title: "LinkedIn Connected",
+          toast.success("LinkedIn Connected", {
             description:
               "Your LinkedIn integration has been successfully activated.",
           });
@@ -361,10 +345,8 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.error("Error initializing LinkedIn status:", error);
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to check LinkedIn integration status",
-          variant: "destructive",
         });
       } finally {
         setCheckingStatus(false);
@@ -410,10 +392,8 @@ export default function SettingsPage() {
   // Handle LinkedIn connect
   const handleLinkedInConnect = async () => {
     if (!organizationId) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
       });
       return;
     }
@@ -443,8 +423,7 @@ export default function SettingsPage() {
       const { authorization_url } = await response.json();
 
       // Step 2: Redirect to LinkedIn authorization
-      toast({
-        title: "Redirecting to LinkedIn",
+      toast.info("Redirecting to LinkedIn", {
         description:
           "You will be redirected to LinkedIn to complete the connection.",
       });
@@ -457,10 +436,8 @@ export default function SettingsPage() {
       console.error("LinkedIn connect error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      toast({
-        title: "Connection Failed",
+      toast.error("Connection Failed", {
         description: `Failed to connect to LinkedIn: ${errorMessage}`,
-        variant: "destructive",
       });
       setLinkedInLoading(false);
     }
@@ -469,10 +446,8 @@ export default function SettingsPage() {
   // Handle LinkedIn disconnect
   const handleLinkedInDisconnect = async () => {
     if (!organizationId) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
       });
       return;
     }
@@ -494,8 +469,7 @@ export default function SettingsPage() {
 
       const result = await response.json();
 
-      toast({
-        title: "LinkedIn Disconnected",
+      toast.success("LinkedIn Disconnected", {
         description:
           result.message || "Successfully disconnected from LinkedIn",
       });
@@ -509,10 +483,8 @@ export default function SettingsPage() {
       console.error("LinkedIn disconnect error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      toast({
-        title: "Disconnect Failed",
+      toast.error("Disconnect Failed", {
         description: `Failed to disconnect from LinkedIn: ${errorMessage}`,
-        variant: "destructive",
       });
     } finally {
       setLinkedInLoading(false);
@@ -522,10 +494,8 @@ export default function SettingsPage() {
   // Handle LinkedIn complete removal
   const handleLinkedInRemove = async () => {
     if (!organizationId) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
       });
       return;
     }
@@ -558,8 +528,7 @@ export default function SettingsPage() {
 
       const result = await response.json();
 
-      toast({
-        title: "LinkedIn Integration Removed",
+      toast.success("LinkedIn Integration Removed", {
         description:
           result.message || "LinkedIn integration has been completely removed",
       });
@@ -573,10 +542,8 @@ export default function SettingsPage() {
       console.error("LinkedIn remove error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      toast({
-        title: "Remove Failed",
+      toast.error("Remove Failed", {
         description: `Failed to remove LinkedIn integration: ${errorMessage}`,
-        variant: "destructive",
       });
     } finally {
       setLinkedInRemoving(false);
@@ -586,10 +553,8 @@ export default function SettingsPage() {
   // Test LinkedIn integration
   const testLinkedInIntegration = async () => {
     if (!organizationId) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
       });
       return;
     }
@@ -602,25 +567,20 @@ export default function SettingsPage() {
       const result = await response.json();
 
       if (response.ok) {
-        toast({
-          title: "LinkedIn Test Successful",
+        toast.success("LinkedIn Test Successful", {
           description: `Integration is working correctly. Profile: ${
             result.test_api_call?.profile_name || "N/A"
           }`,
         });
       } else {
-        toast({
-          title: "LinkedIn Test Failed",
+        toast.error("LinkedIn Test Failed", {
           description: result.error || "Integration test failed",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("LinkedIn test error:", error);
-      toast({
-        title: "Test Failed",
+      toast.error("Test Failed", {
         description: "Failed to test LinkedIn integration",
-        variant: "destructive",
       });
     }
   };
@@ -1018,16 +978,6 @@ export default function SettingsPage() {
               <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between mb-0">
                   <h3 className="text-sm font-medium">Add Team Members</h3>
-                  <Button
-                    onClick={() => {
-                      setShowAddMembers(false);
-                      setNewMemberEmails("");
-                    }}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
 
                 <div className="space-y-3 mt-0">
@@ -1037,7 +987,7 @@ export default function SettingsPage() {
                   </p>
                   <div className="px-1">
                     <Textarea
-                      className="w-full min-h-[120px]"
+                      className="w-full min-h-[120px] text-xs"
                       placeholder={`Enter email addresses...${
                         organization?.domain
                           ? `\ne.g., johndoe@${organization.domain}, jane@${organization.domain}`

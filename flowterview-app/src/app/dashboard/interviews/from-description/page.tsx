@@ -23,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { extractSkillsFromJobDetails } from "@/lib/supabase-candidates";
 import { authenticatedFetch, getCookie } from "@/lib/auth-client";
 import { useInterviews } from "@/hooks/useStores";
@@ -34,6 +33,7 @@ import {
 } from "@/components/ui/carousel";
 import { useRouter } from "next/navigation";
 import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
+import { toast } from "sonner";
 
 interface FormData {
   title: string;
@@ -41,7 +41,6 @@ interface FormData {
 }
 
 export default function GenerateFromDescriptionPage() {
-  const { toast } = useToast();
   const router = useRouter();
   const { refresh: refreshInterviews } = useInterviews();
   const [showInterviewEditor, setShowInterviewEditor] = useState(false);
@@ -97,8 +96,7 @@ export default function GenerateFromDescriptionPage() {
       } else {
         // Limit to 15 skills maximum
         if (prev.length >= 15) {
-          toast({
-            title: "Maximum skills reached",
+          toast.error("Maximum skills reached", {
             description: "You can select up to 15 skills maximum.",
           });
           return prev;
@@ -112,8 +110,7 @@ export default function GenerateFromDescriptionPage() {
     if (newSkill.trim() && !selectedSkills.includes(newSkill.trim())) {
       // Limit to 15 skills maximum
       if (selectedSkills.length >= 15) {
-        toast({
-          title: "Maximum skills reached",
+        toast.error("Maximum skills reached", {
           description: "You can select up to 15 skills maximum.",
         });
         return;
@@ -134,8 +131,7 @@ export default function GenerateFromDescriptionPage() {
 
       const user_id = getCookie("user_id");
       if (!user_id) {
-        toast({
-          title: "Could not determine current user",
+        toast.error("Could not determine current user", {
           description: "Please try again.",
         });
         setLoading(false);
@@ -153,8 +149,7 @@ export default function GenerateFromDescriptionPage() {
       }
 
       if (response.error || !response.skills) {
-        toast({
-          title: "Error generating interview flow",
+        toast.error("Error generating interview flow", {
           description: response.message || "Please try again.",
         });
         return;
@@ -168,8 +163,7 @@ export default function GenerateFromDescriptionPage() {
       setShowInterviewEditor(true);
     } catch (error) {
       console.error("Error generating flow:", error);
-      toast({
-        title: "Error generating interview flow",
+      toast.error("Error generating interview flow", {
         description: "Please try again.",
       });
     } finally {
@@ -187,8 +181,7 @@ export default function GenerateFromDescriptionPage() {
     const organization_id = getCookie("organization_id");
 
     if (!user_id || !organization_id) {
-      toast({
-        title: "Authentication Error",
+      toast.error("Authentication Error", {
         description: "Missing user or organization information",
       });
       return;
@@ -245,8 +238,7 @@ export default function GenerateFromDescriptionPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        toast({
-          title: "Error creating interview",
+        toast.error("Error creating interview", {
           description: `Server responded with: ${response.status}`,
         });
         return;
@@ -254,11 +246,7 @@ export default function GenerateFromDescriptionPage() {
 
       const data = await response.json();
 
-
-   
-
-      toast({
-        title: "Success!",
+      toast.success("Success!", {
         description: "Interview created successfully",
       });
       refreshInterviews();
@@ -266,8 +254,7 @@ export default function GenerateFromDescriptionPage() {
       // Redirect to interviews page
       router.push("/dashboard/interviews");
     } catch (error) {
-      toast({
-        title: "Error creating interview",
+      toast.error("Error creating interview", {
         description:
           error instanceof Error ? error.message : "Unknown error occurred",
       });
