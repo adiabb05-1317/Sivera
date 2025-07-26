@@ -62,7 +62,7 @@ export default function DashboardPage() {
       id: 3,
       name: "Average Interview Score",
       value:
-        analytics.getOrganizationAverageScore()?.toFixed(2).toString() || "0",
+        analytics.getOrganizationAverageScore()?.toFixed(2).toString() || "N/A",
       icon: Star,
     },
   ];

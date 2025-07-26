@@ -978,16 +978,6 @@ export default function SettingsPage() {
               <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between mb-0">
                   <h3 className="text-sm font-medium">Add Team Members</h3>
-                  <Button
-                    onClick={() => {
-                      setShowAddMembers(false);
-                      setNewMemberEmails("");
-                    }}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
 
                 <div className="space-y-3 mt-0">
@@ -997,7 +987,7 @@ export default function SettingsPage() {
                   </p>
                   <div className="px-1">
                     <Textarea
-                      className="w-full min-h-[120px]"
+                      className="w-full min-h-[120px] text-xs"
                       placeholder={`Enter email addresses...${
                         organization?.domain
                           ? `\ne.g., johndoe@${organization.domain}, jane@${organization.domain}`
