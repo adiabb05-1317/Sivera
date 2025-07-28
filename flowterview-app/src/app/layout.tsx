@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { Work_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import AuthListener from "./auth-listener";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import StoreInitializer from "./store-initializer";
 
-const workSans = Work_Sans({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-manrope",
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${workSans.variable} antialiased`}>
+      <body className={`${manrope.variable} ${manrope.className}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <StoreInitializer>
             <AuthListener>{children}</AuthListener>

@@ -110,7 +110,7 @@ export default function DashboardPage() {
                   <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
-                  <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-wide uppercase">
+                  <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-widest uppercase">
                     {stat.name}
                   </dt>
                   <dd className="mt-2 text-2xl font-bold text-gray-700 dark:text-white">
@@ -191,8 +191,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
           <CardHeader>
-            <CardTitle className="dark:text-white">Invite Candidates</CardTitle>
-            <CardDescription className="dark:text-gray-300">
+            <CardTitle className="dark:text-white text-sm">
+              Invite Candidates
+            </CardTitle>
+            <CardDescription className="dark:text-gray-300 text-xs">
               Send interview invitations to candidates via email.
             </CardDescription>
           </CardHeader>
@@ -208,10 +210,10 @@ export default function DashboardPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
           <CardHeader>
-            <CardTitle className="dark:text-white">
+            <CardTitle className="dark:text-white text-sm">
               Create from Job Description
             </CardTitle>
-            <CardDescription className="dark:text-gray-300">
+            <CardDescription className="dark:text-gray-300 text-xs">
               Generate an AI-powered interview workflow using your job
               description.
             </CardDescription>

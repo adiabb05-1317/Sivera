@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:legacy": "next dev",
-    "dev:turbo": "next dev --turbo",
+    "dev": "next dev --turbopack -p 3001",
+    "dev:legacy": "next dev -p 3001",
+    "dev:turbo": "next dev --turbo -p 3001",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "next lint",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "dev:clean": "npm run clean && npm run dev"
