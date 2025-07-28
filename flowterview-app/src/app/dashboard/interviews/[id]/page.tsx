@@ -1308,7 +1308,10 @@ export default function InterviewDetailsPage() {
                 (a: any) => a.candidate_id === candidate.id
               );
 
-              if (analytics && analytics.data?.overall_score) {
+              if (
+                analytics &&
+                typeof analytics.data?.overall_score === "number"
+              ) {
                 return {
                   ...candidate,
                   ai_score: analytics.data.overall_score,

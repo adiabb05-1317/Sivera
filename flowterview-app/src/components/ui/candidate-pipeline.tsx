@@ -241,52 +241,56 @@ const CandidateCard: React.FC<{
       </div>
 
       {/* Score positioned at bottom right */}
-      {candidate.ai_score && candidate.status === "Interviewed" && (
-        <div className="absolute bottom-3.5 right-3.5">
-          <div className="w-10 h-10">
-            <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
-              {/* Background circle */}
-              <path
-                d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-slate-200 dark:text-slate-700"
-              />
-              {/* Progress circle */}
-              <path
-                d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeDasharray={`${(candidate.ai_score / 10) * 100}, 100`}
-                strokeLinecap="round"
-                className={
-                  candidate.ai_score >= 8
-                    ? "text-emerald-500"
-                    : candidate.ai_score >= 6
-                    ? "text-amber-500"
-                    : "text-rose-500"
-                }
-              />
-            </svg>
-            {/* Score text */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span
-                className={`text-sm font-bold tracking-tight ${
-                  candidate.ai_score >= 8
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : candidate.ai_score >= 6
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-rose-600 dark:text-rose-400"
-                }`}
+      {typeof candidate.ai_score === "number" &&
+        candidate.status === "Interviewed" && (
+          <div className="absolute bottom-3.5 right-3.5">
+            <div className="w-10 h-10">
+              <svg
+                className="w-10 h-10 transform -rotate-90"
+                viewBox="0 0 36 36"
               >
-                {candidate.ai_score}
-              </span>
+                {/* Background circle */}
+                <path
+                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  className="text-slate-200 dark:text-slate-700"
+                />
+                {/* Progress circle */}
+                <path
+                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={`${(candidate.ai_score / 10) * 100}, 100`}
+                  strokeLinecap="round"
+                  className={
+                    candidate.ai_score >= 8
+                      ? "text-emerald-500"
+                      : candidate.ai_score >= 6
+                      ? "text-amber-500"
+                      : "text-rose-500"
+                  }
+                />
+              </svg>
+              {/* Score text */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  className={`text-sm font-bold tracking-tight ${
+                    candidate.ai_score >= 8
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : candidate.ai_score >= 6
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
+                  {candidate.ai_score}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 
@@ -538,7 +542,10 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
                   (a: any) => a.candidate_id === candidate.id
                 );
 
-                if (analytics && analytics.data?.overall_score) {
+                if (
+                  analytics &&
+                  typeof analytics.data?.overall_score === "number"
+                ) {
                   return {
                     ...candidate,
                     ai_score: analytics.data.overall_score,
