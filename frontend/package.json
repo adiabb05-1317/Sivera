@@ -8,7 +8,9 @@
     "dev:turbo": "next dev --turbo -p 3001",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
-    "start": "next start -p 3001",
+    "start": "PORT=3001 node server.js",
+    "start:local": "next start -p 3001",
+    "start:standalone": "cd .next/standalone && PORT=3001 node server.js",
     "lint": "next lint",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "dev:clean": "npm run clean && npm run dev"
