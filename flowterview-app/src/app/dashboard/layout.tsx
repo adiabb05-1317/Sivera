@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "react-hot-toast";
-import { useAuthStore, useInterviewsStore } from "../../../store";
+import { useAuthStore } from "../../../store";
 import CompanySetupModal from "@/components/CompanySetupModal";
 import { Loader2 } from "lucide-react";
 
-import { useAuth, useAppLoadingState } from "@/hooks/useStores";
+import { useAuth, useInterviewDetails } from "@/hooks/useStores";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -33,32 +33,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Use auth for authentication state and user data
+  // Use TanStack Query auth for authentication state and user data
   const { user, organization, isLoading: authLoading } = useAuth();
-  const { stage, isLoading: appLoading } = useAppLoadingState();
-  const isLoading = authLoading || appLoading;
+  const isLoading = authLoading;
   const { showCompanySetupModal, setShowCompanySetupModal } = useAuthStore();
-  const { getInterviewDetails, fetchInterviewDetails } = useInterviewsStore();
-
-  // Extract interviewId and interviewDetails for use in breadcrumbs
-  const pathSegments = pathname.split("/").filter(Boolean);
-  const interviewId =
-    pathSegments[1] === "interviews" && pathSegments[2]
-      ? pathSegments[2]
-      : undefined;
-  const interviewDetails = interviewId
-    ? getInterviewDetails(interviewId)
-    : undefined;
-
-  // Fetch interview details if we're on an interview page
-  useEffect(() => {
-    if (interviewId) {
-      // Only fetch if it's a valid UUID (actual interview ID)
-      if (isValidUUID(interviewId)) {
-        fetchInterviewDetails(interviewId);
-      }
-    }
-  }, [interviewId, fetchInterviewDetails]);
 
   // Helper function to check if a string is a valid UUID
   const isValidUUID = (str: string) => {
@@ -66,6 +44,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   };
+
+  // Extract interviewId for use in breadcrumbs
+  const pathSegments = pathname.split("/").filter(Boolean);
+  const interviewId =
+    pathSegments[1] === "interviews" && pathSegments[2] && isValidUUID(pathSegments[2])
+      ? pathSegments[2]
+      : undefined;
+  
+  // Use TanStack Query for interview details when needed
+  const { interviewDetails } = useInterviewDetails(interviewId || "");
 
   // Generate breadcrumb items based on pathname - memoized to update when data changes
   const breadcrumbs = useMemo(() => {
@@ -96,8 +84,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           // Check if this is a UUID (interview ID) or a route path
           if (isValidUUID(pathSegments[i])) {
             // This is an interview ID, try to get the interview title
-            if (interviewDetails?.job?.title) {
-              label = interviewDetails.job.title;
+            if (interviewDetails?.title) {
+              label = interviewDetails.title;
             } else {
               // Fallback to a more user-friendly format of the ID
               label = "Interview";
@@ -114,111 +102,99 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         breadcrumbs.push({
           label,
           href: fullPath,
-          isCurrent: isLast,
+          isCurrent: pathname === fullPath,
         });
       }
     }
 
     return breadcrumbs;
-  }, [pathname, interviewDetails]);
+  }, [pathname, pathSegments, interviewDetails]);
 
-  const handleCompanySetupCompleted = async () => {
-    setShowCompanySetupModal(false);
-    // Refresh organization data after setup
-    if (user?.organization_id) {
-      // Organization will be refetched automatically through auth hooks
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/auth/login");
     }
+  }, [user, isLoading, router]);
+
+  useEffect(() => {
+    if (user && user.role === "candidate") {
+      router.push("/dashboard/candidate");
+    }
+  }, [user, router]);
+
+  // Helper function to handle organization update completion
+  const handleCompanySetupCompleted = async () => {
+    // Close the modal
+    setShowCompanySetupModal(false);
+    
+    // Refetch user and organization data to get latest info
+    // This will be handled automatically by TanStack Query
   };
 
+  // Helper function to handle organization setup cancel
   const handleCompanySetupCancel = () => {
-    // Simply hide the modal without refreshing data
     setShowCompanySetupModal(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-app-blue-600" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Loading dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
-    <SidebarProvider
-      defaultOpen={true}
-      style={
-        {
-          "--sidebar-width": "16rem",
-          "--sidebar-width-icon": "4.5rem",
-        } as React.CSSProperties
-      }
-    >
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          success: { duration: 3000 },
-          error: { duration: 4000 },
-          style: {
-            background: "#F9FAFB",
-            color: "#111827",
-            border: "1px solid #E5E7EB",
-          },
-        }}
-      />
-
-      {/* Company Setup Modal */}
-      {showCompanySetupModal && user?.organization_id && (
-        <CompanySetupModal
-          open={showCompanySetupModal}
-          organizationId={user.organization_id}
-          onCompleted={handleCompanySetupCompleted}
-          onCancel={handleCompanySetupCancel}
-          isEditing={!!organization?.name}
-          existingName={organization?.name || ""}
-          existingLogoUrl={organization?.logo_url || ""}
-        />
-      )}
-
+    <SidebarProvider>
       <AppSidebar />
-
       <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-white dark:bg-gray-950">
-          <SidebarTrigger className="-ml-1 cursor-pointer" />
-          <Separator orientation="vertical" className="!h-6 mx-2" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              {breadcrumbs.map((crumb, index) => (
-                <div key={crumb.href} className="flex items-center gap-2">
-                  <BreadcrumbItem>
-                    {crumb.isCurrent ? (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link href={crumb.href}>{crumb.label}</Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                  {index < breadcrumbs.length - 1 && (
-                    <BreadcrumbSeparator key={`separator-${index}`} />
-                  )}
-                </div>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                {breadcrumbs.map((breadcrumb, index) => (
+                  <div key={breadcrumb.href} className="flex items-center">
+                    {index > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {breadcrumb.isCurrent ? (
+                        <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </div>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
         </header>
-
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-          {isLoading ? (
-            <div
-              className="flex flex-col items-center justify-center h-full min-h-[60vh] space-y-4 gap-2"
-              style={{
-                fontFamily: "KyivType Sans",
-              }}
-            >
-              <Loader2 className="h-8 w-8 animate-spin text-app-blue-300 opacity-70" />
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stage === "auth"
-                  ? "Authenticating..."
-                  : "Loading dashboard data..."}
-              </p>
-            </div>
-          ) : (
-            children
-          )}
-        </main>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
       </SidebarInset>
+             {showCompanySetupModal && user?.organization_id && (
+         <CompanySetupModal
+           open={showCompanySetupModal}
+           organizationId={user.organization_id}
+           onCompleted={handleCompanySetupCompleted}
+           onCancel={handleCompanySetupCancel}
+           isEditing={!!organization?.name}
+           existingName={organization?.name || ""}
+           existingLogoUrl={organization?.logo_url || ""}
+         />
+       )}
+      <Toaster />
     </SidebarProvider>
   );
 }

@@ -36,12 +36,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTheme } from "next-themes";
+// Analytics hooks will be added when API endpoints are ready
+// import { useAnalytics } from "@/hooks/queries/useAnalytics";
+// import { useCandidates } from "@/hooks/queries/useCandidates";
+// import { useInterviews } from "@/hooks/queries/useInterviews";
 
 export default function AnalyticsPage() {
   const { resolvedTheme } = useTheme ? useTheme() : { resolvedTheme: "light" };
   const [timeRange, setTimeRange] = useState("30");
 
-  // Placeholder data - in a real application, this would come from an API
+  // Static analytics data - will be replaced with TanStack Query when APIs are ready
+  // const analytics = useAnalytics();
+  // const candidates = useCandidates();
+  // const interviews = useInterviews();
+
+  // Static stats data
   const stats = [
     {
       label: "Total Interviews",
@@ -117,17 +126,17 @@ export default function AnalyticsPage() {
   const performanceData =
     resolvedTheme === "dark" ? performanceDataDark : performanceDataLight;
 
-  // Weekly time-to-hire trend (in days)
-  const timeToHireData = [
-    { week: "Week 1", time: 21 },
-    { week: "Week 2", time: 19 },
-    { week: "Week 3", time: 20 },
-    { week: "Week 4", time: 18 },
-    { week: "Week 5", time: 17 },
-    { week: "Week 6", time: 16 },
-    { week: "Week 7", time: 18 },
-    { week: "Week 8", time: 15 },
-  ];
+  // Weekly time-to-hire trend (in days) - static data for now
+  // const timeToHireData = [
+  //   { week: "Week 1", time: 21 },
+  //   { week: "Week 2", time: 19 },
+  //   { week: "Week 3", time: 20 },
+  //   { week: "Week 4", time: 18 },
+  //   { week: "Week 5", time: 17 },
+  //   { week: "Week 6", time: 16 },
+  //   { week: "Week 7", time: 18 },
+  //   { week: "Week 8", time: 15 },
+  // ];
 
   return (
     <div className="space-y-6">

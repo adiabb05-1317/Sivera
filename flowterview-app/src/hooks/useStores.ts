@@ -7,257 +7,261 @@ import {
   useAnalyticsStore,
 } from "../../store";
 
-// Auth hooks
+// Import React Query hooks
+import { useCandidates as useCandidatesQuery } from "./queries/useCandidates";
+import { useInterviews as useInterviewsQuery } from "./queries/useInterviews";
+import { useJobs as useJobsQuery } from "./queries/useJobs";
+import { useUserProfile, useOrganization } from "./queries/useAuth";
+import { useInterviewDetails as useInterviewDetailsQuery } from "./queries/useInterviews";
+
+// Auth hook - combines React Query with Zustand core auth state
 export const useAuth = () => {
-  const auth = useAuthStore();
+  const authStore = useAuthStore();
+  
+  useEffect(() => {
+    // Only initialize if not already authenticated or loading
+    if (!authStore.isAuthenticated && !authStore.isLoading) {
+      authStore.initialize();
+    }
+  }, [authStore.isAuthenticated, authStore.isLoading]);
 
-  // Remove auto-initialization to prevent redundant calls
-  // Auth will be initialized by AuthListener or StoreInitializer
+  // Use React Query for user profile and organization data
+  const userProfileQuery = useUserProfile(authStore.session?.user?.email);
+  const organizationQuery = useOrganization(userProfileQuery.data?.organization_id);
+
+  // Update Zustand store when React Query data changes
+  useEffect(() => {
+    if (userProfileQuery.data && userProfileQuery.data !== authStore.user) {
+      authStore.setUser(userProfileQuery.data);
+    }
+  }, [userProfileQuery.data, authStore.user, authStore.setUser]);
+
+  useEffect(() => {
+    if (organizationQuery.data && organizationQuery.data !== authStore.organization) {
+      authStore.setOrganization(organizationQuery.data);
+    }
+  }, [organizationQuery.data, authStore.organization, authStore.setOrganization]);
 
   return {
-    user: auth.user,
-    organization: auth.organization,
-    isAuthenticated: auth.isAuthenticated,
-    isLoading: auth.isLoading,
-    login: async (email: string, password: string) => {},
-    logout: auth.logout,
-    refresh: auth.fetchUserProfile,
+    // Core auth state from Zustand
+    session: authStore.session,
+    isAuthenticated: authStore.isAuthenticated,
+    
+    // Data from React Query
+    user: userProfileQuery.data || authStore.user,
+    organization: organizationQuery.data || authStore.organization,
+    isLoading: authStore.isLoading || userProfileQuery.isLoading || organizationQuery.isLoading,
+    
+    // UI state
+    showCompanySetupModal: authStore.showCompanySetupModal,
+    
+    // Actions
+    setUser: authStore.setUser,
+    setOrganization: authStore.setOrganization,
+    setSession: authStore.setSession,
+    setShowCompanySetupModal: authStore.setShowCompanySetupModal,
+    logout: authStore.logout,
+    initialize: authStore.initialize,
+    
+    // Query controls
+    refetchUser: userProfileQuery.refetch,
+    refetchOrganization: organizationQuery.refetch,
   };
 };
 
-// Candidates hooks
+// Candidates hooks - combines React Query with Zustand UI state
 export const useCandidates = () => {
-  const store = useCandidatesStore();
+  const uiStore = useCandidatesStore();
   const auth = useAuthStore();
-  const fetchTriggered = useRef(false);
-
-  useEffect(() => {
-    // Auto-fetch candidates when user is authenticated and data is stale
-    if (
-      auth.isAuthenticated &&
-      store.candidatesByJob.isStale &&
-      !store.candidatesByJob.isLoading &&
-      !fetchTriggered.current
-    ) {
-      fetchTriggered.current = true;
-      store.fetchCandidatesByJob().finally(() => {
-        fetchTriggered.current = false;
-      });
-    }
-  }, [
-    auth.isAuthenticated,
-    store.candidatesByJob.isStale,
-    store.candidatesByJob.isLoading,
-  ]);
+  
+  // Build filters from UI state
+  const filters = {
+    search: uiStore.localSearchTerm,
+    status: uiStore.localStatusFilter.length > 0 ? uiStore.localStatusFilter : undefined,
+  };
+  
+  // Use React Query for data fetching
+  const candidatesQuery = useCandidatesQuery(Object.keys(filters).length > 0 ? filters : undefined);
 
   return {
-    // Data
-    candidates: store.filteredCandidates,
-    candidatesByJob: store.candidatesByJob.data,
-    isLoading: store.candidatesByJob.isLoading,
-    error: store.candidatesByJob.error,
+    // Data from React Query
+    candidates: candidatesQuery.filteredCandidates || [],
+    candidatesByJob: candidatesQuery.candidatesGrouped,
+    allCandidates: candidatesQuery.allCandidates,
+    isLoading: candidatesQuery.isLoading || candidatesQuery.isLoadingFiltered,
+    error: candidatesQuery.error,
 
-    // Actions
-    fetchCandidates: store.fetchCandidatesByJob,
-    addCandidate: store.addSingleCandidate,
-    addMultipleCandidates: store.addMultipleCandidates,
-    updateCandidateStatus: store.updateCandidateStatus,
-    sendInvitation: store.sendInvitation,
+    // Actions from React Query
+    addCandidate: candidatesQuery.addCandidate,
+    addMultipleCandidates: candidatesQuery.addBulkCandidates,
+    updateCandidateStatus: candidatesQuery.updateCandidateStatus,
+    
+    // UI state from Zustand
+    selectedCandidateId: uiStore.selectedCandidateId,
+    showAddCandidateModal: uiStore.showAddCandidateModal,
+    showBulkImportModal: uiStore.showBulkImportModal,
+    localSearchTerm: uiStore.localSearchTerm,
+    localStatusFilter: uiStore.localStatusFilter,
 
-    // Filtering
-    setFilters: store.setFilters,
-    clearFilters: store.clearFilters,
-    filters: store.filters,
+    // UI actions from Zustand
+    setSelectedCandidate: uiStore.setSelectedCandidate,
+    setShowAddCandidateModal: uiStore.setShowAddCandidateModal,
+    setShowBulkImportModal: uiStore.setShowBulkImportModal,
+    setLocalSearchTerm: uiStore.setLocalSearchTerm,
+    setLocalStatusFilter: uiStore.setLocalStatusFilter,
+    clearFilters: uiStore.clearFilters,
 
-    // Selectors
-    getCandidatesByJobId: store.getCandidatesByJobId,
-    getCandidateById: store.getCandidateById,
-    getCandidatesCount: store.getCandidatesCount,
+    // Helper functions from React Query
+    getCandidatesByJobId: candidatesQuery.getCandidatesByJobId,
+    getCandidateById: candidatesQuery.getCandidateById,
+    getCandidatesCount: () => candidatesQuery.allCandidates?.length || 0,
 
-    // Cache management
-    refresh: () => store.fetchCandidatesByJob(true),
-    invalidateCache: store.invalidateCache,
+    // Query controls
+    refresh: candidatesQuery.refetch,
+    isAddingCandidate: candidatesQuery.isAddingCandidate,
+    isAddingBulkCandidates: candidatesQuery.isAddingBulkCandidates,
+    isUpdatingStatus: candidatesQuery.isUpdatingStatus,
   };
 };
 
-// Jobs hooks
+// Jobs hooks - combines React Query with Zustand UI state
 export const useJobs = () => {
-  const store = useJobsStore();
+  const uiStore = useJobsStore();
   const auth = useAuthStore();
-  const fetchTriggered = useRef(false);
 
-  useEffect(() => {
-    // Auto-fetch jobs when user is authenticated and data is stale
-    if (
-      auth.isAuthenticated &&
-      store.jobs.isStale &&
-      !store.jobs.isLoading &&
-      !fetchTriggered.current
-    ) {
-      fetchTriggered.current = true;
-      store.fetchJobs().finally(() => {
-        fetchTriggered.current = false;
-      });
-    }
-  }, [auth.isAuthenticated, store.jobs.isStale, store.jobs.isLoading]);
+  // Use React Query for data fetching
+  const jobsQuery = useJobsQuery();
 
   return {
-    // Data
-    jobs: store.jobs.data,
-    isLoading: store.jobs.isLoading,
-    error: store.jobs.error,
+    // Data from React Query
+    jobs: jobsQuery.jobs,
+    isLoading: jobsQuery.isLoading,
+    error: jobsQuery.error,
 
-    // Actions
-    fetchJobs: store.fetchJobs,
-    createJob: store.createJob,
-    updateJob: store.updateJob,
-    deleteJob: store.deleteJob,
+    // Actions from React Query
+    createJob: jobsQuery.createJob,
+    updateJob: jobsQuery.updateJob,
 
-    // Selectors
-    getJobById: store.getJobById,
-    getJobsCount: store.getJobsCount,
-    getJobsByOrganization: store.getJobsByOrganization,
+    // UI state from Zustand
+    selectedJobId: uiStore.selectedJobId,
+    localSearchTerm: uiStore.localSearchTerm,
+    localStatusFilter: uiStore.localStatusFilter,
 
-    // Cache management
-    refresh: () => store.fetchJobs(true),
-    invalidateCache: store.invalidateCache,
+    // UI actions from Zustand
+    setSelectedJob: uiStore.setSelectedJob,
+    setLocalSearchTerm: uiStore.setLocalSearchTerm,
+    setLocalStatusFilter: uiStore.setLocalStatusFilter,
+    clearFilters: uiStore.clearFilters,
+
+    // Helper functions from React Query
+    getJobById: jobsQuery.getJobById,
+    getJobsCount: () => jobsQuery.jobs?.length || 0,
+
+    // Query controls
+    refresh: jobsQuery.refetch,
+    isCreatingJob: jobsQuery.isCreatingJob,
+    isUpdatingJob: jobsQuery.isUpdatingJob,
   };
 };
 
-// Interviews hooks
+// Interviews hooks - combines React Query with Zustand UI state
 export const useInterviews = () => {
-  const store = useInterviewsStore();
+  const uiStore = useInterviewsStore();
   const auth = useAuthStore();
-  const fetchTriggered = useRef(false);
 
-  useEffect(() => {
-    // Auto-fetch interviews when user is authenticated and data is stale
-    if (
-      auth.isAuthenticated &&
-      store.interviews.isStale &&
-      !store.interviews.isLoading &&
-      !fetchTriggered.current
-    ) {
-      fetchTriggered.current = true;
-      store.fetchInterviews().finally(() => {
-        fetchTriggered.current = false;
-      });
-    }
-  }, [
-    auth.isAuthenticated,
-    store.interviews.isStale,
-    store.interviews.isLoading,
-  ]);
+  // Build filters from UI state
+  const filters = {
+    search: uiStore.localSearchTerm,
+    status: uiStore.localStatusFilter.length > 0 ? uiStore.localStatusFilter : undefined,
+    jobId: uiStore.localJobFilter,
+  };
+
+  // Use React Query for data fetching
+  const interviewsQuery = useInterviewsQuery(Object.keys(filters).length > 0 ? filters : undefined);
 
   return {
-    // Data
-    interviews: store.filteredInterviews,
-    allInterviews: store.interviews.data,
-    isLoading: store.interviews.isLoading,
-    error: store.interviews.error,
+    // Data from React Query
+    interviews: interviewsQuery.filteredInterviews || interviewsQuery.interviews,
+    allInterviews: interviewsQuery.interviews,
+    isLoading: interviewsQuery.isLoading || interviewsQuery.isLoadingFiltered,
+    error: interviewsQuery.error,
 
-    // Actions
-    fetchInterviews: store.fetchInterviews,
-    fetchInterviewDetails: store.fetchInterviewDetails,
-    createInterview: store.createInterview,
-    updateInterview: store.updateInterview,
-    updateInterviewStatus: store.updateInterviewStatusAction,
-    addCandidateToInterview: store.addCandidateToInterview,
-    addCandidatesToInterview: store.addCandidatesToInterview,
-    sendBulkInvitations: store.sendBulkInvitations,
+    // Actions from React Query
+    createInterview: interviewsQuery.createInterview,
+    updateInterviewStatus: interviewsQuery.updateInterviewStatus,
+    addCandidatesToInterview: interviewsQuery.addCandidatesToInterview,
 
-    // Filtering
-    setFilters: store.setFilters,
-    clearFilters: store.clearFilters,
-    filters: store.filters,
+    // UI state from Zustand
+    selectedInterviewId: uiStore.selectedInterviewId,
+    showCreateInterviewModal: uiStore.showCreateInterviewModal,
+    showDetailsModal: uiStore.showDetailsModal,
+    localSearchTerm: uiStore.localSearchTerm,
+    localStatusFilter: uiStore.localStatusFilter,
+    localJobFilter: uiStore.localJobFilter,
+    expandedInterviewId: uiStore.expandedInterviewId,
 
-    // Selectors
-    getInterviewById: store.getInterviewById,
-    getInterviewDetails: store.getInterviewDetails,
-    getInterviewsByJobId: store.getInterviewsByJobId,
-    getInterviewsCount: store.getInterviewsCount,
-    getActiveInterviews: store.getActiveInterviews,
+    // UI actions from Zustand
+    setSelectedInterview: uiStore.setSelectedInterview,
+    setShowCreateInterviewModal: uiStore.setShowCreateInterviewModal,
+    setShowDetailsModal: uiStore.setShowDetailsModal,
+    setLocalSearchTerm: uiStore.setLocalSearchTerm,
+    setLocalStatusFilter: uiStore.setLocalStatusFilter,
+    setLocalJobFilter: uiStore.setLocalJobFilter,
+    setExpandedInterview: uiStore.setExpandedInterview,
+    clearFilters: uiStore.clearFilters,
 
-    // Cache management
-    refresh: () => store.fetchInterviews(true),
-    invalidateCache: store.invalidateCache,
-    invalidateInterviewDetails: store.invalidateInterviewDetails,
+    // Helper functions from React Query
+    getInterviewById: interviewsQuery.getInterviewById,
+    getActiveInterviews: interviewsQuery.getActiveInterviews,
+    getInterviewsByJobId: interviewsQuery.getInterviewsByJobId,
+    getInterviewsCount: () => interviewsQuery.interviews?.length || 0,
+
+    // Query controls
+    refresh: interviewsQuery.refetch,
+    isCreatingInterview: interviewsQuery.isCreatingInterview,
+    isUpdatingStatus: interviewsQuery.isUpdatingStatus,
+    isAddingCandidates: interviewsQuery.isAddingCandidates,
   };
 };
 
-// Analytics hooks
+// Analytics hooks - combines React Query with Zustand UI state
 export const useAnalytics = () => {
-  const store = useAnalyticsStore();
+  const uiStore = useAnalyticsStore();
   const auth = useAuthStore();
-  const fetchTriggered = useRef(false);
-  const orgScoreFetchTriggered = useRef(false);
 
-  useEffect(() => {
-    // Auto-fetch analytics overview when user is authenticated and data is stale
-    if (
-      auth.isAuthenticated &&
-      store.overview.isStale &&
-      !store.overview.isLoading &&
-      !fetchTriggered.current
-    ) {
-      fetchTriggered.current = true;
-      store.fetchOverview().finally(() => {
-        fetchTriggered.current = false;
-      });
-    }
-  }, [auth.isAuthenticated, store.overview.isStale, store.overview.isLoading]);
-
-  useEffect(() => {
-    // Auto-fetch organization average score when user is authenticated and data is stale
-    if (
-      auth.isAuthenticated &&
-      store.organizationAverageScore.isStale &&
-      !store.organizationAverageScore.isLoading &&
-      !orgScoreFetchTriggered.current
-    ) {
-      orgScoreFetchTriggered.current = true;
-      store.fetchOrganizationAverageScore().finally(() => {
-        orgScoreFetchTriggered.current = false;
-      });
-    }
-  }, [
-    auth.isAuthenticated,
-    store.organizationAverageScore.isStale,
-    store.organizationAverageScore.isLoading,
-  ]);
-
+  // TODO: Implement React Query hooks for analytics when available
+  // For now, return UI state and placeholder data methods
   return {
-    // Data
-    overview: store.overview.data,
-    organizationAverageScore: store.organizationAverageScore.data,
-    isLoading:
-      store.overview.isLoading || store.organizationAverageScore.isLoading,
-    error: store.overview.error || store.organizationAverageScore.error,
+    // UI state from Zustand
+    selectedTimeRange: uiStore.selectedTimeRange,
+    selectedMetric: uiStore.selectedMetric,
+    showDetailedView: uiStore.showDetailedView,
+    expandedSectionId: uiStore.expandedSectionId,
+    chartType: uiStore.chartType,
+    showComparisons: uiStore.showComparisons,
+    selectedCandidateIds: uiStore.selectedCandidateIds,
+    selectedInterviewIds: uiStore.selectedInterviewIds,
+    showExportModal: uiStore.showExportModal,
+    showConfigModal: uiStore.showConfigModal,
 
-    // Actions
-    fetchOverview: store.fetchOverview,
-    fetchInterviewAnalytics: store.fetchInterviewAnalytics,
-    fetchCandidateAnalytics: store.fetchCandidateAnalytics,
-    fetchAverageScore: store.fetchAverageScore,
-    fetchOrganizationAverageScore: store.fetchOrganizationAverageScore,
-    analyzeInterview: store.analyzeInterview,
+    // UI actions from Zustand
+    setSelectedTimeRange: uiStore.setSelectedTimeRange,
+    setSelectedMetric: uiStore.setSelectedMetric,
+    setShowDetailedView: uiStore.setShowDetailedView,
+    setExpandedSection: uiStore.setExpandedSection,
+    setChartType: uiStore.setChartType,
+    setShowComparisons: uiStore.setShowComparisons,
+    setSelectedCandidates: uiStore.setSelectedCandidates,
+    setSelectedInterviews: uiStore.setSelectedInterviews,
+    setShowExportModal: uiStore.setShowExportModal,
+    setShowConfigModal: uiStore.setShowConfigModal,
+    clearSelections: uiStore.clearSelections,
 
-    // Cache management
-    invalidateCache: store.invalidateCache,
-    invalidateInterviewCache: store.invalidateInterviewCache,
-
-    // Selectors
-    getInterviewAnalytics: store.getInterviewAnalytics,
-    getCandidateAnalytics: store.getCandidateAnalytics,
-    getAverageScore: store.getAverageScore,
-    getOrganizationAverageScore: store.getOrganizationAverageScore,
-    getOverviewData: store.getOverviewData,
-
-    // Cache management
-    refresh: () => {
-      store.fetchOverview(true);
-      store.fetchOrganizationAverageScore(true);
-    },
+    // Placeholder data (to be replaced with React Query hooks)
+    isLoading: false,
+    error: null,
+    overview: null,
+    refresh: () => console.log('Analytics refresh - TODO: implement React Query hooks'),
   };
 };
 
@@ -270,8 +274,8 @@ export const useDashboard = () => {
   const analytics = useAnalytics();
 
   const isLoading =
-    candidates.isLoading || jobs.isLoading || interviews.isLoading;
-  const hasError = candidates.error || jobs.error || interviews.error;
+    auth.isLoading || candidates.isLoading || jobs.isLoading || interviews.isLoading || analytics.isLoading;
+  const hasError = candidates.error || jobs.error || interviews.error || analytics.error;
 
   return {
     auth,
@@ -282,32 +286,20 @@ export const useDashboard = () => {
     isLoading,
     hasError,
     refreshAll: () => {
+      auth.refetchUser();
+      auth.refetchOrganization();
       candidates.refresh();
       jobs.refresh();
       interviews.refresh();
+      analytics.refresh();
     },
   };
 };
 
 // Hook for specific interview details page
 export const useInterviewDetails = (interviewId: string) => {
-  const store = useInterviewsStore();
-
-  useEffect(() => {
-    if (interviewId) {
-      store.fetchInterviewDetails(interviewId);
-    }
-  }, [interviewId]);
-
-  const details = store.interviewDetails[interviewId];
-
-  return {
-    interview: store.getInterviewById(interviewId),
-    details: details?.data,
-    isLoading: details?.isLoading || false,
-    error: details?.error || null,
-    refresh: () => store.fetchInterviewDetails(interviewId, true),
-  };
+  // Use the dedicated interview details hook that makes a direct API call
+  return useInterviewDetailsQuery(interviewId);
 };
 
 // Hook for comprehensive app loading state

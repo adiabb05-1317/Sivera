@@ -563,7 +563,7 @@ export default function InviteCandidatesPage() {
                           <SelectLabel className="dark:text-gray-300">
                             Interviews
                           </SelectLabel>
-                          {jobs.map((job) => (
+                          {jobs.map((job: any) => (
                             <SelectItem
                               key={job.id}
                               value={job.id}

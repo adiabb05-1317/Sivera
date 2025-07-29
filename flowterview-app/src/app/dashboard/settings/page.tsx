@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
+import { useAuth } from "@/hooks/useStores";
 import { useAuthStore } from "../../../../store";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,9 +87,13 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
 
-  // Auth store for organization data
-  const { organization, user, fetchOrganization, setShowCompanySetupModal } =
-    useAuthStore();
+  // Route-based data fetching - only load auth data for this page
+  const auth = useAuth();
+  const organization = auth.organization;
+  const user = auth.user;
+  
+  // Global modal state (controlled by layout)
+  const { setShowCompanySetupModal } = useAuthStore();
 
   const openCompanyEdit = searchParams.get("openCompanyEdit");
 
@@ -1057,7 +1062,7 @@ export default function SettingsPage() {
                       .toLowerCase()
                       .includes(searchQuery.toLowerCase())
                   )
-                  .map((member, index) => (
+                  .map((member) => (
                     <div
                       key={member.id}
                       className={`flex items-center justify-between px-4 py-3 rounded-lg border ${

@@ -108,10 +108,8 @@ export const handleErrorWithToast = (
 
   const isRetryable = AppErrorHandler.isRetryableError(appError);
   
-  toast({
-    title: "Error",
+  toast.error("Error", {
     description: `${appError.message}${isRetryable ? " (This operation can be retried)" : ""}`,
-    variant: "destructive",
   });
 
   // Log error for debugging

@@ -4,7 +4,7 @@ import "./globals.css";
 import AuthListener from "./auth-listener";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import StoreInitializer from "./store-initializer";
+import { QueryProvider } from "./query-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -26,9 +26,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} ${manrope.className}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <StoreInitializer>
+          <QueryProvider>
             <AuthListener>{children}</AuthListener>
-          </StoreInitializer>
+          </QueryProvider>
           <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>

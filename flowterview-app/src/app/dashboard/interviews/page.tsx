@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useInterviews, useCandidates } from "@/hooks/useStores";
+import { useInterviews } from "@/hooks/queries/useInterviews";
+import { useCandidates } from "@/hooks/queries/useCandidates";
 import { useState, useMemo } from "react";
 import {
   DropdownMenu,
@@ -47,31 +48,39 @@ interface Candidate {
 export default function InterviewsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  // Use our store hooks instead of manual API calls
-  const { interviews, isLoading: loading, error } = useInterviews();
-  const { candidates } = useCandidates();
-  const [filterOpen, setFilterOpen] = useState(false);
-
+  
   // Filter and sort states
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"name" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // Route-based data fetching - only load what this page needs
+  const interviewsQuery = useInterviews({
+    status: selectedStatuses.length > 0 ? selectedStatuses : undefined,
+    createdBy: selectedUsers.length > 0 ? selectedUsers : undefined,
+    search: searchQuery || undefined,
+  });
+  
+  // Extract data from TanStack Query
+  const interviews = interviewsQuery.interviews;
+  const loading = interviewsQuery.isLoading;
+  const error = interviewsQuery.error;
+
   // Get unique users from interviews
   const uniqueUsers = useMemo(() => {
-    const users = interviews
+    const users = (interviews || [])
       .map((interview: any) => interview.created_by)
       .filter(Boolean);
-    return [...new Set(users)].sort();
+    return [...new Set(users)].sort() as string[];
   }, [interviews]);
 
   // Get unique statuses from interviews
   const uniqueStatuses = useMemo(() => {
-    const statuses = interviews
+    const statuses = (interviews || [])
       .map((interview: any) => interview.status)
       .filter(Boolean);
-    return [...new Set(statuses)].sort();
+    return [...new Set(statuses)].sort() as string[];
   }, [interviews]);
 
   // Filter and sort logic
@@ -274,7 +283,7 @@ export default function InterviewsPage() {
                 Filter by Status
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {uniqueStatuses.map((status) => (
+              {uniqueStatuses.map((status: string) => (
                 <DropdownMenuItem
                   key={status}
                   className="text-xs"
@@ -323,7 +332,7 @@ export default function InterviewsPage() {
                 Filter by User
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {uniqueUsers.map((user) => (
+              {uniqueUsers.map((user: string) => (
                 <DropdownMenuItem
                   key={user}
                   className="text-xs"
@@ -383,7 +392,7 @@ export default function InterviewsPage() {
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-500 dark:text-red-400">
-            {error}
+            {error.message}
           </div>
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-800">

@@ -17,16 +17,8 @@ import { useDashboard } from "@/hooks/useStores";
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Use our dashboard hook for comprehensive data
-  const {
-    candidates,
-    jobs,
-    interviews,
-    analytics,
-    isLoading,
-    hasError,
-    refreshAll,
-  } = useDashboard();
+  // Use combined dashboard hook for all data
+  const { auth, candidates, interviews, analytics, isLoading, hasError, refreshAll } = useDashboard();
 
   // Status badge color mapping
   const getStatusBadgeClass = (status: string) => {
@@ -44,7 +36,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate stats from store data
+  // Calculate stats from TanStack Query data
   const stats = [
     {
       id: 1,
@@ -55,20 +47,19 @@ export default function DashboardPage() {
     {
       id: 2,
       name: "Total Candidates",
-      value: candidates.getCandidatesCount().toString(),
+      value: candidates.allCandidates.length.toString(),
       icon: Users,
     },
     {
       id: 3,
       name: "Average Interview Score",
-      value:
-        analytics.getOrganizationAverageScore()?.toFixed(2).toString() || "N/A",
+      value: "N/A", // TODO: Implement with analytics hook when available
       icon: Star,
     },
   ];
 
   // Get recent interviews (limited to 4)
-  const recentInterviews = interviews.allInterviews.slice(0, 4);
+  const recentInterviews = interviews.interviews.slice(0, 4);
 
   if (hasError) {
     return (
@@ -132,7 +123,7 @@ export default function DashboardPage() {
         </div>
         <div>
           {recentInterviews.length > 0 ? (
-            recentInterviews.map((interview) => (
+            recentInterviews.map((interview: any) => (
               <div
                 key={interview.id}
                 className="flex items-center justify-between p-4 cursor-pointer border hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
