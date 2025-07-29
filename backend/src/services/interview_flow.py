@@ -10,7 +10,7 @@ import aiohttp
 from dotenv import load_dotenv
 from src.core.config import Config
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
-from pipecat.frames.frames import BotInterruptionFrame
+from pipecat.frames.frames import BotInterruptionFrame, LLMMessagesAppendFrame
 from pipecat.observers.base_observer import FramePushed
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -128,6 +128,7 @@ class InterviewFlow:
         self.task_running = False
         self.db = db_manager
         self.interview_start_time = None  # Track when interview starts
+        self.timer_task = None  # Track the timer background task
 
         # TODO: here call linkedin api to get the profile
         # also get the additional links and their important information
@@ -142,9 +143,11 @@ class InterviewFlow:
         if self.job_id:
             self.job = self.db.fetch_one("jobs", {"id": self.job_id})
             self.interview = self.db.fetch_one("interviews", {"job_id": self.job_id})
-            self.flow_config = self.db.fetch_one(
+            self.interview_flow = self.db.fetch_one(
                 "interview_flows", {"id": self.job.get("flow_id")}
-            )["flow_json"]
+            )
+            self.flow_config = self.interview_flow["flow_json"]
+            self.duration = self.interview_flow["duration"]
             self.skills = self.job.get("skills")
             logger.info(f"Skills: {self.skills}")
             self.candidate = self.db.fetch_one("candidates", {"id": candidate_id})
@@ -160,149 +163,20 @@ class InterviewFlow:
             self.job_title = "Google AI Platform, Cloud Engineer"
             self.resume_url = "https://glttawcpverjawfrbohm.supabase.co/storage/v1/object/sign/resumes/mithra_1751825465503.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8wMTYzZjAwNS0xZDVlLTQ3NDEtYjJhYi0yNjQ0MWYwYTg4MzYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyZXN1bWVzL21pdGhyYV8xNzUxODI1NDY1NTAzLnBkZiIsImlhdCI6MTc1MTg4NjIzNiwiZXhwIjoxNzgzNDIyMjM2fQ.2v2JMRGbAMVKAecynxbjC3oHsMDcQpYWZjBl6Tw6jig"
             self.skills = ["Java", "Python", "Langchain", "RabbitMQ", "AWS"]
+            self.duration = 20
 
         # Fetch resume content during initialization
         self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
+        tts_instructions = Config.TTS_CONFIG[Config.TTS_CONFIG.get("provider")]["instructions"]
         self.llm = LLMFactory.create_llm_service()
 
         # Get formatted links information
         links_info = self.get_formatted_links_info()
-
-        tts_instructions = ""
-        if Config.TTS_CONFIG["provider"] == "rime":
-            tts_instructions =   f"""
-                Punctuation serves many purposes in normal writing, it indicates sentence structural things like sentence breaks and questions, but it also serves to indicate pronunciation cues, such as commas for pauses and exclamation points for excitement.
-
-                Questions:
-                    1) what do you mean.	(a simple period at the end of the sentence renders it a non-question)
-                    2) what do you mean?	(a simple question mark indicates an unmarked question)
-                    3) what do you mean?!	(adding an exclamation point makes the question more excited)
-                    4) what do you mean!?	(changing the order of the exclamation point and question mark makes a different sort of question)
-                    5) what do you mean??	(multiple question marks can also change the type of question prosody)
-
-                False Starts
-                    1) i i think it’s pretty cool	(putting a word twice in a row can create more realistic, flawed human speech)
-                    2) i- i think it’s pretty cool	(adding a dash immediately after some words can give a cut-off, false start sort of realism)
-
-                Pauses
-                    1) so it’s kind of funny.	(without any comma, there will be no pause)
-                    2) so, it’s kind of funny.	(adding a comma creates a slight pause)
-                    3) so. it’s kind of funny.	(adding a period creates a longer pause)
-                
-                Numbers
-                    Ordinal Numbers
-                    Desired Output	(Input)
-                    1) One hundred and twenty-three	(123)
-                    2) Two thousand and twenty-two	(2,022)
-                    3) Four zero	(4 0)
-                    4) Forty	(40)
-
-                    Years
-                    Desired Output	(Input)
-                    1) Twenty twenty two	(2022)
-
-                    Cardinal Numbers
-                    Desired Output	(Input)
-                    1) Fifth	(5th)
-
-                    Phone Numbers
-                    Desired Output	(Input)
-                    1) Five five five, seven seven two, nine one four zero	((555)-265-9076)
-                    2) Five five five, seven seven two, nine one four zero	(555-772-9140)
-                    3) Five five five, seven seven two, nine one four zero	(5 5 5, 7 7 2, 9 1 4 0)
-
-                    Decimals
-                    Desired Output	(Input)
-                    1) Zero point seven five	(0.75)
-                    2) Zero point seven five	(0 point 7 5)
-
-                    Currency
-                    Desired Output	(Input)
-                    1) Seven dollars, ninety five cents	($7.95)
-                    2) One thousand and forty-five dollars, ninety six cents	($1,045.96)
-                    3) One thousand and forty-five dollars, ninety six cents	($1045.96)
-
-                    Units of Measurement
-                    Desired Output	(Input)
-                    1) Five kilograms	(5kg)
-                    2) Seventy degrees Fahrenheit	(70°F)
-
-                Dates & Times
-                    Desired Output	(Input)
-                    1) October twelfth, twenty twenty-four	(10/12/2024)
-                    2) March fifteenth, twenty twenty-three	(March 15, 2023)
-                    3) January first	(January 1st)
-                    4) January first	(Jan. 1)
-
-                    Times
-                    Desired Output	(Input)
-                    1) Ten thirty A M	(10:30 am)
-                    2) Ten thirty A M	(10:30am)
-                    3) Ten thirty A M	(10:30 AM)
-                    4) Two o’clock P M	(2 o’clock p. m.)
-
-                Abbreviations, Acronyms, and Initialisms
-                    Desired Output	(Input)
-                    1) Doctor Smith	(Dr. Smith)
-                    2) For example	(e.g.)
-                    3) Road	(rd.)
-                    4) Saint John	(St. John)
-
-                    Acronyms and Initialisms
-                    Acronyms are pronounced as a single word, for example, NASA is pronounced as “Nasa”. Initialisms are pronounced as a series of letters, for example DNA is pronounced as “D N A”.
-                    By default Rime will pronounce a series of capital letters as acronyms, i.e. as a single word. However, for many common initialisms, e.g. DNA, ID, USA, FBI, CIA, etc., Rime will automatically pronounce them correctly as a series of letters.
-                    That being said, to ensure that initialisms are pronounced correctly as a series of letters, the best practice is to use lower case and put a period and space after each letter.
-                    Desired Output	(Input)
-                    1) Nasa	(NASA)
-                    2) D N A	(DNA)
-                    3) D N A	(d. n. a.)
-                    4) UPS	(u. p. s.)
-                    5) GPA	(g. p. a.)
-
-                Symbols and Percentages
-                    Desired Output	(Input)
-                    1) And	(&)
-                    2) Dollar	($)
-                    3) Percent	(%)
-                    4) One hundred percent	(100%)
-                    5) Hash	(#)
-                
-                Addresses, URLs, and Emails
-                    Addresses
-                    While Rime will typically pronounce state name abbreviations correctly in the context of an address, best practice is to write out the full state name, e.g. “Massachusetts” instead of “MA”, to get consistent results. Common street abbreviations, e.g. “Rd.” or “St.”, will automatically be pronounced correctly.
-                    Desired Output	(Input)
-                    1) Five twenty-nine main street, boston, massachusetts, zero two one two nine	(529 Main St., Boston, Massachusetts 02129)
-                    2) Five twenty-nine main street, boston, massachusetts, zero two one two nine	(529 Main St., Boston, MA 02129)
-                    3) Five twenty-nine main street, boston, massachusetts, zero two one two nine	(529 Main Street, Boston, MA 02129)
-                    4) Five twenty-nine main street, boston, massachusetts, zero two one two nine	(529 Main St, Boston, MA 02129)
-
-                URLs
-                    Desired Output	(Input)
-                    1) Double-u double-u double-u dot example dot com	(www.example.com)
-                    2) H t t p s colon slash slash double-u double-u double-u dot rime dot ai slash dashboard	(https://rime.ai/dashboard)
-
-                Emails
-                    Desired Output	(Input)
-                    1) Name at example dot com	(name@example.com)
-            """
-            
-        # TODO: add instructions for other TTS providers
-        elif Config.TTS_CONFIG["provider"] == "elevenlabs":
-            tts_instructions = f"""
-                TTS Provider: {Config.TTS_CONFIG["provider"]} 
-            """
-        elif Config.TTS_CONFIG["provider"] == "cartesia":
-            tts_instructions = f"""
-                TTS Provider: {Config.TTS_CONFIG["provider"]} 
-            """
-        elif Config.TTS_CONFIG["provider"] == "google":
-            tts_instructions = f"""
-                TTS Provider: {Config.TTS_CONFIG["provider"]} 
-            """
-
+    
+        # TODO: fetch the total time for this
         system_prompt = f"""Your name is {self.bot_name}. You are an interviewer conducting an interview for the position of {self.job_title}.
         Your responses should be clear, concise, and professional.
         Keep your replies very short, as they will be read aloud. Make them conversational, without using any special characters or formatting.
@@ -318,8 +192,11 @@ class InterviewFlow:
         - You do not need to be kind or friendly. You are not the candidate's friend, mentor, or coach. You are an interviewer.
         - Don't expect the candidate to be extremely detailed in their responses. You can expect them to sometimes skip over some details.
         - Your job is to assess the candidate’s skills and experience. Be strict and critical in your evaluation.
-        - Spend most of the time asking questions based on the skills required for the job.
+        - Spend time asking questions based on the skills required for the job, ensure all the skills are assessed in the given time.
         - If the candidate absolutely doesn't know something or asks for help, offer only a very subtle hint.
+        - The duration of the interview is {self.duration} minutes, so you need to assess the candidate’s skills and experience within this time frame.
+        - A timer is provided for the interview duration. Make sure to monitor it and complete all necessary questions within the allotted time.
+
 
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}" and introduce yourself as {self.bot_name} then proceed with the interview.
         You will be asking question based on the skills required for the job, which are: {self.skills}
@@ -363,6 +240,46 @@ class InterviewFlow:
     @classmethod
     async def create(cls, url, bot_token, session_id, db_manager, job_id, bot_name="Sia"):
         return cls(url, bot_token, session_id, db_manager, job_id, bot_name)
+
+    async def start_interview_timer(self):
+        """
+        This function updates the interview timer every second.
+        """
+        logger.info("Starting interview timer from start_interview_timer")
+        try:
+            while self.interview_start_time:
+                logger.info("Inside while loop of start_interview_timer")
+                try:
+                    logger.info("Updating interview timer from start_interview_timer")
+                    # Calculate elapsed time
+                    elapsed = datetime.now() - self.interview_start_time
+                    elapsed_minutes = int(elapsed.total_seconds() // 60)
+                    elapsed_seconds = int(elapsed.total_seconds() % 60)
+                    
+                    logger.info(f"Elapsed time: {elapsed_minutes}:{elapsed_seconds:02d} out of {self.duration} minutes")
+
+                    # Create time update message
+                    time_message = {
+                        "role": "system",
+                        "content": f"Elapsed time is {elapsed_minutes} minutes and {elapsed_seconds} seconds, out of {self.duration} minutes."
+                    }
+                    
+                    # Update context with current time
+                    await self.task.queue_frame(LLMMessagesAppendFrame([time_message]))
+                    
+                    # Wait 1 second before next update
+                    await asyncio.sleep(1)
+                    
+                except Exception as e:
+                    logger.error(f"Error updating interview timer: {e}")
+                    break
+        except asyncio.CancelledError:
+            logger.info("Interview timer task cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Interview timer task failed: {e}")
+        finally:
+            logger.info("Interview timer task finished")
 
     async def create_transport(self):
         self.aiohttp_session = aiohttp.ClientSession()
@@ -420,6 +337,12 @@ class InterviewFlow:
             # Start the interview timer
             self.interview_start_time = datetime.now()
             logger.info(f"Interview timer started at: {self.interview_start_time}")
+            
+            logger.info("Starting interview timer")
+            # Start the timer task in the background without awaiting it
+            self.timer_task = asyncio.create_task(self.start_interview_timer())
+            logger.info("Interview timer started")
+
             await self.flow_manager.initialize()
             pass
 
@@ -561,6 +484,16 @@ class InterviewFlow:
 
     async def stop(self):
         try:
+            # Stop the interview timer
+            if hasattr(self, 'timer_task') and self.timer_task:
+                logger.info("Cancelling interview timer task")
+                self.timer_task.cancel()
+                try:
+                    await self.timer_task
+                except asyncio.CancelledError:
+                    pass
+                self.timer_task = None
+            
             # Calculate interview duration if not already done
             interview_duration_seconds = None
             interview_end_time = None
@@ -571,6 +504,8 @@ class InterviewFlow:
                 logger.info(
                     f"Interview duration on stop: {interview_duration_seconds} seconds ({duration})"
                 )
+                # Clear the interview start time to stop the timer loop
+                self.interview_start_time = None
 
             # Save chat history when pipeline is canceled
             if hasattr(self, "flow_manager") and self.flow_manager:
