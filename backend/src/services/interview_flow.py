@@ -252,8 +252,7 @@ class InterviewFlow:
                     elapsed_minutes = int(elapsed.total_seconds() // 60)
                     elapsed_seconds = int(elapsed.total_seconds() % 60)
 
-                    # TODO: remove this once we have tested it
-                    if elapsed_seconds == 30 or elapsed_minutes >= self.duration:
+                    if elapsed_minutes >= self.duration:
                         logger.info("Interview timer reached the duration")
 
                         # Create an assistant message that will be spoken out loud
