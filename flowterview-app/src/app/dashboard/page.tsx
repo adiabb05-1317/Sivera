@@ -53,7 +53,9 @@ export default function DashboardPage() {
     {
       id: 3,
       name: "Average Interview Score",
-      value: "N/A", // TODO: Implement with analytics hook when available
+      value: analytics.organizationAverageScore ? 
+        `${Number(analytics.organizationAverageScore).toFixed(1)}/100` : 
+        "No data",
       icon: Star,
     },
   ];

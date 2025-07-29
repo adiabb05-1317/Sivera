@@ -6,12 +6,12 @@ import { authenticatedFetch } from '@/lib/auth-client';
 
 // Analytics queries - route-based data fetching
 export const useAnalytics = () => {
-  // Overview analytics query
+  // Basic analytics endpoint (placeholder for overview)
   const overviewQuery = useQuery({
     queryKey: queryKeys.analytics.overview(),
     queryFn: async () => {
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/analytics/overview`
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/analytics/`
       );
 
       if (!response.ok) {
@@ -24,12 +24,12 @@ export const useAnalytics = () => {
     gcTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
-  // Organization average score query
+  // Organization average score query - using the correct endpoint
   const orgAverageScoreQuery = useQuery({
     queryKey: queryKeys.analytics.orgAverageScore(),
     queryFn: async () => {
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/analytics/organization/average-score`
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/analytics/average-score`
       );
 
       if (!response.ok) {

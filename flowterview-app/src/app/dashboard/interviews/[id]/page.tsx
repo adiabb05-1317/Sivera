@@ -2888,8 +2888,8 @@ export default function InterviewDetailsPage() {
                   <div className="flex flex-row items-center gap-3">
                     <Select
                       value={
-                        details?.status
-                          ? String(details.status)
+                        details?.interview?.status
+                          ? String(details.interview.status)
                           : "draft"
                       }
                       onValueChange={async (
@@ -2915,11 +2915,11 @@ export default function InterviewDetailsPage() {
                     >
                       <SelectTrigger className="w-[8rem] cursor-pointer">
                         <SelectValue>
-                          {details?.status &&
-                          typeof details.status === "string" &&
-                          details.status.length > 0
-                            ? details.status.charAt(0).toUpperCase() +
-                              details.status.slice(1)
+                          {details?.interview?.status &&
+                          typeof details.interview.status === "string" &&
+                          details.interview.status.length > 0
+                            ? details.interview.status.charAt(0).toUpperCase() +
+                              details.interview.status.slice(1)
                             : "Draft"}
                         </SelectValue>
                       </SelectTrigger>

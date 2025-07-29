@@ -12,6 +12,7 @@ import { useCandidates as useCandidatesQuery } from "./queries/useCandidates";
 import { useInterviews as useInterviewsQuery } from "./queries/useInterviews";
 import { useJobs as useJobsQuery } from "./queries/useJobs";
 import { useUserProfile, useOrganization } from "./queries/useAuth";
+import { useAnalytics as useAnalyticsRealQuery } from './queries/useAnalytics';
 import { useInterviewDetails as useInterviewDetailsQuery } from "./queries/useInterviews";
 
 // Auth hook - combines React Query with Zustand core auth state
@@ -229,9 +230,15 @@ export const useAnalytics = () => {
   const uiStore = useAnalyticsStore();
   const auth = useAuthStore();
 
-  // TODO: Implement React Query hooks for analytics when available
-  // For now, return UI state and placeholder data methods
+  const analyticsQuery = useAnalyticsRealQuery();
+
   return {
+    // Data from React Query
+    overview: analyticsQuery.overview,
+    organizationAverageScore: analyticsQuery.organizationAverageScore,
+    isLoading: analyticsQuery.isLoading,
+    error: analyticsQuery.error,
+
     // UI state from Zustand
     selectedTimeRange: uiStore.selectedTimeRange,
     selectedMetric: uiStore.selectedMetric,
@@ -257,11 +264,10 @@ export const useAnalytics = () => {
     setShowConfigModal: uiStore.setShowConfigModal,
     clearSelections: uiStore.clearSelections,
 
-    // Placeholder data (to be replaced with React Query hooks)
-    isLoading: false,
-    error: null,
-    overview: null,
-    refresh: () => console.log('Analytics refresh - TODO: implement React Query hooks'),
+    // Actions from React Query
+    refresh: analyticsQuery.refetchAll,
+    refetchOverview: analyticsQuery.refetchOverview,
+    refetchAverageScore: analyticsQuery.refetchAverageScore,
   };
 };
 
