@@ -77,7 +77,7 @@ class RTVISourcesMessage(BaseModel):
     """Model for sending sources to client via RTVI transport."""
 
     label: RTVIMessageLiteral = RTVI_MESSAGE_LABEL
-    type: str = "sources"
+    type: str = "server-message"
     data: Dict[str, Any]
 
 
@@ -197,7 +197,6 @@ class InterviewFlow:
         - The duration of the interview is {self.duration} minutes, so you need to assess the candidate’s skills and experience within this time frame.
         - A timer is provided for the interview duration. Make sure to monitor it and complete all necessary questions within the allotted time.
 
-
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}" and introduce yourself as {self.bot_name} then proceed with the interview.
         You will be asking question based on the skills required for the job, which are: {self.skills}
 
@@ -245,19 +244,40 @@ class InterviewFlow:
         """
         This function updates the interview timer every second.
         """
-        logger.info("Starting interview timer from start_interview_timer")
         try:
             while self.interview_start_time:
-                logger.info("Inside while loop of start_interview_timer")
                 try:
-                    logger.info("Updating interview timer from start_interview_timer")
                     # Calculate elapsed time
                     elapsed = datetime.now() - self.interview_start_time
                     elapsed_minutes = int(elapsed.total_seconds() // 60)
                     elapsed_seconds = int(elapsed.total_seconds() % 60)
-                    
-                    logger.info(f"Elapsed time: {elapsed_minutes}:{elapsed_seconds:02d} out of {self.duration} minutes")
 
+                    # TODO: remove this once we have tested it
+                    if elapsed_seconds == 30 or elapsed_minutes >= self.duration:
+                        logger.info("Interview timer reached the duration")
+
+                        # Create an assistant message that will be spoken out loud
+                        message = {
+                            "role": "system",
+                            "content": "Interview time has ended, please proceed to stop the interview. Say thank you to the candidate and end the interview."
+                        }
+                        
+                        # Add the message to context and let it be spoken through TTS
+                        await self.task.queue_frame(LLMMessagesAppendFrame([message]))
+                        await self.task.queue_frame(self.context_aggregator.user().get_context_frame())
+                        
+                        # Wait a bit for the message to be spoken before stopping
+                        await asyncio.sleep(10)
+
+                        end_message = {
+                            "type": "interview_ended",
+                            "message": "Interview time has ended"
+                        }
+                        await send_message_to_client(end_message)
+
+                        await self.stop()
+                        break
+                    
                     # Create time update message
                     time_message = {
                         "role": "system",
@@ -338,10 +358,8 @@ class InterviewFlow:
             self.interview_start_time = datetime.now()
             logger.info(f"Interview timer started at: {self.interview_start_time}")
             
-            logger.info("Starting interview timer")
             # Start the timer task in the background without awaiting it
             self.timer_task = asyncio.create_task(self.start_interview_timer())
-            logger.info("Interview timer started")
 
             await self.flow_manager.initialize()
             pass
