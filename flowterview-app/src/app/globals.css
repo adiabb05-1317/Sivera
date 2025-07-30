@@ -48,17 +48,67 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* App Blue Color Scheme - Darker and more blue-focused */
-  --color-app-blue-50: oklch(0.91 0.02 235); /* Much darker, blue-gray */
-  --color-app-blue-100: oklch(0.82 0.04 235); /* Darker, less cyan */
-  --color-app-blue-200: oklch(0.7 0.08 235); /* More muted blue */
-  --color-app-blue-300: oklch(0.58 0.12 235); /* More blue, less teal */
-  --color-app-blue-400: oklch(0.48 0.14 235); /* Darker transition */
-  --color-app-blue-500: oklch(0.4 0.16 235); /* Primary #488AB5 */
-  --color-app-blue-600: oklch(0.34 0.14 235); /* Darker blue */
-  --color-app-blue-700: oklch(0.28 0.12 235); /* Much darker */
-  --color-app-blue-800: oklch(0.22 0.1 235); /* Very dark blue */
-  --color-app-blue-900: oklch(0.12 0.06 235); /* Secondary #002B45 */
+  /* Professional Dark Theme Colors - Following Material Design Guidelines */
+  --color-app-blue-50: #f8fafc;
+  --color-app-blue-100: #f1f5f9;
+  --color-app-blue-200: #e2e8f0;
+  --color-app-blue-300: #94a3b8; /* Desaturated for dark themes */
+  --color-app-blue-400: #64748b; /* Desaturated for dark themes */
+  --color-app-blue-500: #488ab5; /* Your primary brand color - used sparingly */
+  --color-app-blue-600: #334155;
+  --color-app-blue-700: #1e293b;
+  --color-app-blue-800: #0f172a;
+  --color-app-blue-900: #002b45; /* Your secondary brand color */
+
+  /* Material Design Dark Theme Surfaces - Proper elevation hierarchy */
+  --dark-surface-0: #121212; /* Base surface - Material Design recommendation */
+  --dark-surface-1: #1e1e1e; /* 1dp elevation */
+  --dark-surface-2: #232323; /* 2dp elevation */
+  --dark-surface-3: #252525; /* 3dp elevation */
+  --dark-surface-4: #272727; /* 4dp elevation */
+  --dark-surface-6: #2c2c2c; /* 6dp elevation */
+  --dark-surface-8: #2f2f2f; /* 8dp elevation */
+  --dark-surface-12: #333333; /* 12dp elevation */
+  --dark-surface-16: #363636; /* 16dp elevation */
+  --dark-surface-24: #383838; /* 24dp elevation */
+
+  /* Professional Text Colors with Proper Opacity */
+  --dark-text-primary: rgba(
+    255,
+    255,
+    255,
+    0.87
+  ); /* High emphasis - 87% opacity */
+  --dark-text-secondary: rgba(
+    255,
+    255,
+    255,
+    0.6
+  ); /* Medium emphasis - 60% opacity */
+  --dark-text-disabled: rgba(
+    255,
+    255,
+    255,
+    0.38
+  ); /* Disabled text - 38% opacity */
+  --dark-text-hint: rgba(255, 255, 255, 0.5); /* Hint text */
+
+  /* Make available for Tailwind classes */
+  --color-dark-surface-0: #121212; /* Base surface */
+  --color-dark-surface-1: #1e1e1e; /* 1dp elevation */
+  --color-dark-surface-2: #232323; /* 2dp elevation */
+  --color-dark-surface-3: #252525; /* 3dp elevation */
+  --color-dark-surface-4: #272727; /* 4dp elevation */
+  --color-dark-surface-6: #2c2c2c; /* 6dp elevation */
+  --color-dark-surface-8: #2f2f2f; /* 8dp elevation */
+  --color-dark-surface-12: #333333; /* 12dp elevation */
+  --color-dark-surface-16: #363636; /* 16dp elevation */
+  --color-dark-surface-24: #383838; /* 24dp elevation */
+
+  --color-dark-text-primary: rgba(255, 255, 255, 0.87); /* 87% opacity */
+  --color-dark-text-secondary: rgba(255, 255, 255, 0.6); /* 60% opacity */
+  --color-dark-text-disabled: rgba(255, 255, 255, 0.38); /* 38% opacity */
+  --color-dark-text-hint: rgba(255, 255, 255, 0.5); /* 50% opacity */
 }
 
 :root {
@@ -97,37 +147,64 @@
 }
 
 .dark {
-  --background: var(--color-app-blue-900);
-  --foreground: var(--color-app-blue-50);
-  --card: var(--color-app-blue-800);
-  --card-foreground: var(--color-app-blue-50);
-  --popover: var(--color-app-blue-800);
-  --popover-foreground: var(--color-app-blue-50);
-  --primary: var(--color-app-blue-400);
-  --primary-foreground: var(--color-app-blue-50);
-  --secondary: var(--color-app-blue-700);
-  --secondary-foreground: var(--color-app-blue-50);
-  --muted: var(--color-app-blue-800);
-  --muted-foreground: var(--color-app-blue-300);
-  --accent: var(--color-app-blue-700);
-  --accent-foreground: var(--color-app-blue-50);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: var(--color-app-blue-700);
-  --input: var(--color-app-blue-700);
-  --ring: var(--color-app-blue-400);
-  --chart-1: var(--color-app-blue-400);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: rgb(11, 11, 11);
-  --sidebar-foreground: var(--color-app-blue-50);
-  --sidebar-primary: var(--color-app-blue-400);
-  --sidebar-primary-foreground: var(--color-app-blue-50);
-  --sidebar-accent: var(--color-app-blue-700);
-  --sidebar-accent-foreground: var(--color-app-blue-50);
-  --sidebar-border: var(--color-app-blue-700);
-  --sidebar-ring: var(--color-app-blue-400);
+  /* Base Surface - Pure neutral Material Design */
+  --background: #121212; /* Pure neutral dark */
+  --foreground: rgba(255, 255, 255, 0.87); /* High contrast white */
+
+  /* Card Surfaces - Pure neutral, no blue tint */
+  --card: #1a1a1a; /* Pure neutral dark gray */
+  --card-foreground: rgba(255, 255, 255, 0.87); /* High contrast white */
+
+  /* Popover/Modal Surfaces - Pure neutral */
+  --popover: #2a2a2a; /* Pure neutral elevated surface */
+  --popover-foreground: rgba(255, 255, 255, 0.87); /* High contrast white */
+
+  /* Primary - Brand blue ONLY for critical buttons */
+  --primary: var(--color-app-blue-500); /* #488AB5 - your brand blue */
+  --primary-foreground: #ffffff; /* Pure white for maximum contrast */
+
+  /* Secondary - Pure neutral, no blue tint */
+  --secondary: #2a2a2a; /* Pure neutral gray */
+  --secondary-foreground: #e5e5e5; /* Pure light gray */
+
+  /* Muted - Pure neutral surfaces */
+  --muted: #1a1a1a; /* Pure neutral dark gray */
+  --muted-foreground: #a1a1a1; /* Pure neutral medium gray */
+
+  /* Accent - Pure neutral, no brand color */
+  --accent: #2d2d2d; /* Pure neutral gray */
+  --accent-foreground: #ffffff; /* Pure white */
+
+  /* Destructive - Pure red, no blue tint */
+  --destructive: #ef4444; /* Pure red for danger */
+
+  /* Borders - Pure neutral borders */
+  --border: #404040; /* Pure neutral border gray */
+  --input: #1e1e1e; /* Pure neutral input background */
+  --ring: var(--color-app-blue-500); /* Brand blue ONLY for focus rings */
+
+  /* Charts - Pure neutral colors, no blue dominance */
+  --chart-1: #6b7280; /* Pure neutral gray */
+  --chart-2: #10b981; /* Pure green */
+  --chart-3: #f59e0b; /* Pure orange */
+  --chart-4: #8b5cf6; /* Pure purple */
+  --chart-5: #ef4444; /* Pure red */
+
+  /* Sidebar - KEEP EXACTLY AS IS - DON'T TOUCH */
+  --sidebar: var(--dark-surface-0); /* Same as background */
+  --sidebar-foreground: var(
+    --dark-text-secondary
+  ); /* 60% opacity for secondary text */
+  --sidebar-primary: var(
+    --color-app-blue-500
+  ); /* Brand blue for active items ONLY */
+  --sidebar-primary-foreground: #ffffff; /* Pure white on brand blue */
+  --sidebar-accent: var(--dark-surface-2); /* #232323 - hover state */
+  --sidebar-accent-foreground: var(
+    --dark-text-primary
+  ); /* High emphasis on hover */
+  --sidebar-border: var(--dark-surface-4); /* #272727 - subtle borders */
+  --sidebar-ring: var(--color-app-blue-500); /* Brand blue for focus states */
 }
 
 @layer base {

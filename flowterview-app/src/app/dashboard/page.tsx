@@ -17,10 +17,10 @@ import { useDashboard } from "@/hooks/useStores";
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Use our dashboard hook for comprehensive data
+  // Use combined dashboard hook for all data
   const {
+    auth,
     candidates,
-    jobs,
     interviews,
     analytics,
     isLoading,
@@ -36,7 +36,7 @@ export default function DashboardPage() {
       case "completed":
         return "bg-app-blue-100/90 text-app-blue-800 border-app-blue-300/80";
       case "draft":
-        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+        return "bg-app-blue-200/90 text-app-blue-600 border-app-blue-200/80";
       case "expired":
         return "bg-app-blue-900/20 text-app-blue-400 border-app-blue-700/50";
       default:
@@ -44,7 +44,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate stats from store data
+  // Calculate stats from TanStack Query data
   const stats = [
     {
       id: 1,
@@ -55,26 +55,34 @@ export default function DashboardPage() {
     {
       id: 2,
       name: "Total Candidates",
-      value: candidates.getCandidatesCount().toString(),
+      value: candidates.allCandidates.length.toString(),
       icon: Users,
     },
     {
       id: 3,
       name: "Average Interview Score",
-      value:
-        analytics.getOrganizationAverageScore()?.toFixed(2).toString() || "N/A",
+      value: analytics.organizationAverageScore
+        ? `${Number(analytics.organizationAverageScore).toFixed(1)}`
+        : "Loading...",
       icon: Star,
     },
   ];
 
   // Get recent interviews (limited to 4)
-  const recentInterviews = interviews.allInterviews.slice(0, 4);
+  const recentInterviews = interviews.interviews.slice(0, 4);
 
   if (hasError) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading dashboard data</p>
+        <div className="text-center space-y-2">
+          <p
+            className="text-red-500/70 text-sm"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
+            Error loading dashboard data
+          </p>
           <Button
             onClick={refreshAll}
             className="cursor-pointer text-xs"
@@ -90,10 +98,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-row justify-between items-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400 w-full">
           Overview of your interview activities and key metrics.
         </p>
-        <Button className="invisible" variant="outline">
+        <Button className="w-0 h-0 invisible" variant="outline">
           This button is to make the text aligned for all the pages
         </Button>
       </div>
@@ -106,8 +114,8 @@ export default function DashboardPage() {
           >
             <div className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
+                <div className="flex-shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-widest uppercase">
@@ -125,17 +133,17 @@ export default function DashboardPage() {
 
       {/* Recent Interviews */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
-        <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
+        <div className="flex items-center justify-between px-2 py-0">
+          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-4 py-1">
             Recent Interviews
           </h2>
         </div>
         <div>
           {recentInterviews.length > 0 ? (
-            recentInterviews.map((interview) => (
+            recentInterviews.map((interview: any) => (
               <div
                 key={interview.id}
-                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
                 onClick={() =>
                   router.push(`/dashboard/interviews/${interview.id}`)
                 }
@@ -178,8 +186,8 @@ export default function DashboardPage() {
           {recentInterviews.length === 4 && !isLoading && (
             <Button
               onClick={() => router.push("/dashboard/interviews")}
-              className="cursor-pointer text-xs w-full"
-              variant="outline"
+              className="cursor-pointer text-xs w-full !border-none !rounded-none"
+              variant="ghost"
             >
               View all
             </Button>
