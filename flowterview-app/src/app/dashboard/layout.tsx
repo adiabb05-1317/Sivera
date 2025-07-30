@@ -173,14 +173,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div>
           <header className="flex h-15 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-15">
             <div className="flex items-center gap-1 px-4">
-              <SidebarTrigger className="-ml-1 cursor-pointer z-100" />
+              <SidebarTrigger className="cursor-pointer z-100" />
               <Separator orientation="vertical" className="h-4" />
               <Breadcrumb>
                 <BreadcrumbList>
-                  {breadcrumbs.map((breadcrumb, index) => (
-                    <div key={breadcrumb.href} className="flex items-center">
-                      {index > 0 && <BreadcrumbSeparator />}
-                      <BreadcrumbItem>
+                  {breadcrumbs
+                    .map((breadcrumb, index) => [
+                      index > 0 && <BreadcrumbSeparator key={`sep-${index}`} />,
+                      <BreadcrumbItem key={breadcrumb.href}>
                         {breadcrumb.isCurrent ? (
                           <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
                         ) : (
@@ -190,15 +190,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             </Link>
                           </BreadcrumbLink>
                         )}
-                      </BreadcrumbItem>
-                    </div>
-                  ))}
+                      </BreadcrumbItem>,
+                    ])
+                    .flat()
+                    .filter(Boolean)}
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
           </header>
         </div>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4 p-5.5 pt-0 overflow-x-hidden">
+          {children}
+        </div>
       </SidebarInset>
       {showCompanySetupModal && user?.organization_id && (
         <CompanySetupModal

@@ -719,12 +719,7 @@ export default function CandidatesPage() {
       </div>
 
       {/* Candidates Table */}
-      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
-        <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
-            Candidates
-          </h2>
-        </div>
+      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow p-0 border dark:border-gray-800">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
             <thead className="bg-gray-50 dark:bg-gray-800">

@@ -299,7 +299,7 @@ export function AppSidebar() {
                         ${
                           isActive
                             ? "bg-app-blue-200 dark:bg-app-blue-700 text-app-blue-800 dark:text-app-blue-100 font-semibold"
-                            : "text-gray-600 dark:text-gray-300 hover:bg-app-blue-50 dark:hover:bg-app-blue-900/50 hover:text-app-blue-600 dark:hover:text-app-blue-300"
+                            : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-app-blue-900/50 hover:text-app-blue-600 dark:hover:text-app-blue-300"
                         }
                         transition-all duration-200 p-5
                       `}

@@ -4,12 +4,12 @@ import {
   Search,
   Filter,
   ArrowRight,
-  Users,
-  ChevronRight,
   Check,
   ChevronDown,
+  Ellipsis,
+  ChevronRight,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -254,6 +254,22 @@ export default function InterviewsPage() {
                 className="text-xs"
                 onClick={() => {
                   setSortBy("date");
+                  setSortOrder("desc");
+                }}
+              >
+                <Check
+                  className={`mr-2 h-4 w-4 ${
+                    sortBy === "date" && sortOrder === "desc"
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                />
+                Date (Newest)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs"
+                onClick={() => {
+                  setSortBy("date");
                   setSortOrder("asc");
                 }}
               >
@@ -379,75 +395,87 @@ export default function InterviewsPage() {
         </div>
       </div>
 
-      {/* Interviews List */}
+      {/* Interviews Table */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow p-0 border dark:border-gray-800">
-        {loading ? (
-          <div
-            className="p-6 text-center text-gray-500 dark:text-gray-300 text-xs"
-            style={{
-              fontFamily: "KyivType Sans",
-            }}
-          >
-            Loading interviews...
-          </div>
-        ) : error ? (
-          <div className="p-6 text-center text-red-500 dark:text-red-400">
-            {error.message}
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-200 dark:divide-gray-800">
-            {filteredAndSortedInterviews.length > 0 ? (
-              filteredAndSortedInterviews.map((interview: any) => (
-                <li key={interview.id} className="group">
-                  <CardContent
-                    className="flex items-center px-6 py-4 flex-row rounded-none cursor-pointer transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800 group-hover:bg-app-blue-50/20 dark:group-hover:bg-app-blue-900/30"
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                  Candidates
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                  Created By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                  Date Created
+                </th>
+                <th className="sr-only">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+              {filteredAndSortedInterviews.length > 0 ? (
+                filteredAndSortedInterviews.map((interview: any) => (
+                  <tr
+                    key={interview.id}
+                    className="transition-colors cursor-pointer hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30"
                     onClick={() =>
                       router.push(`/dashboard/interviews/${interview.id}`)
                     }
                   >
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
-                          {interview.title}
-                        </h3>
-                        <Badge
-                          variant="outline"
-                          className={`${getStatusBadgeClass(
-                            interview.status
-                          )} font-normal text-xs border-[0.5px] opacity-80`}
-                        >
-                          {interview.status.charAt(0).toUpperCase() +
-                            interview.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                        <Users className="mr-1 h-3 w-3" />
-                        <span>{interview.candidates || 0} candidates</span>
-                        <span className="mx-2">&middot;</span>
-                        <span className="text-xs opacity-90">
-                          {interview.date}
-                        </span>
-                        <span className="mx-2">&middot;</span>
-                        <span className="text-xs opacity-90">
-                          {interview.created_by}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="ml-auto h-4 w-4 text-gray-400 dark:text-gray-500" />
-                  </CardContent>
-                </li>
-              ))
-            ) : (
-              <div className="p-6 text-center text-gray-500 dark:text-gray-300 text-sm">
-                {interviews.length === 0
-                  ? "No interviews found."
-                  : `No interviews match your current filters. ${
-                      hasActiveFilters ? "Try clearing some filters." : ""
-                    }`}
-              </div>
-            )}
-          </ul>
-        )}
+                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      {interview.title}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm">
+                      <Badge
+                        variant="outline"
+                        className={`${getStatusBadgeClass(
+                          interview.status
+                        )} font-normal text-xs border-[0.5px] opacity-80`}
+                      >
+                        {interview.status.charAt(0).toUpperCase() +
+                          interview.status.slice(1)}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {interview.candidates || 0}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {interview.created_by || "-"}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {interview.created_at
+                        ? new Date(interview.created_at).toLocaleDateString()
+                        : interview.date || "-"}
+                    </td>
+                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <ChevronRight className="h-4 w-4" />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-300"
+                  >
+                    {interviews.length === 0
+                      ? "No interviews found."
+                      : `No interviews match your current filters. ${
+                          hasActiveFilters ? "Try clearing some filters." : ""
+                        }`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );

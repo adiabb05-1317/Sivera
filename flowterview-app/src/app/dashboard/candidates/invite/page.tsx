@@ -536,7 +536,7 @@ export default function InviteCandidatesPage() {
       </div>
 
       <div className="p-2 max-w-full overflow-x-hidden min-w-0">
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex items-center gap-3 justify-between">
             <h2 className="text-lg font-semibold opacity-70 tracking-tight dark:text-white">
               <div className="flex flex-col">

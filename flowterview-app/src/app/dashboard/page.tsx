@@ -74,8 +74,15 @@ export default function DashboardPage() {
   if (hasError) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading dashboard data</p>
+        <div className="text-center space-y-2">
+          <p
+            className="text-red-500/70 text-sm"
+            style={{
+              fontFamily: "KyivType Sans",
+            }}
+          >
+            Error loading dashboard data
+          </p>
           <Button
             onClick={refreshAll}
             className="cursor-pointer text-xs"
@@ -91,10 +98,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-row justify-between items-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400 w-full">
           Overview of your interview activities and key metrics.
         </p>
-        <Button className="invisible" variant="outline">
+        <Button className="w-0 h-0 invisible" variant="outline">
           This button is to make the text aligned for all the pages
         </Button>
       </div>
@@ -126,8 +133,8 @@ export default function DashboardPage() {
 
       {/* Recent Interviews */}
       <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
-        <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
+        <div className="flex items-center justify-between px-2 py-0">
+          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-4 py-1">
             Recent Interviews
           </h2>
         </div>
