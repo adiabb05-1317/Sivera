@@ -48,10 +48,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Extract interviewId for use in breadcrumbs
   const pathSegments = pathname.split("/").filter(Boolean);
   const interviewId =
-    pathSegments[1] === "interviews" && pathSegments[2] && isValidUUID(pathSegments[2])
+    pathSegments[1] === "interviews" &&
+    pathSegments[2] &&
+    isValidUUID(pathSegments[2])
       ? pathSegments[2]
       : undefined;
-  
+
   // Use TanStack Query for interview details when needed
   const { interviewDetails } = useInterviewDetails(interviewId || "");
 
@@ -126,7 +128,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleCompanySetupCompleted = async () => {
     // Close the modal
     setShowCompanySetupModal(false);
-    
+
     // Refetch user and organization data to get latest info
     // This will be handled automatically by TanStack Query
   };
@@ -139,9 +141,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-app-blue-600" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <div
+          className="flex flex-col items-center gap-2"
+          style={{
+            fontFamily: "KyivType Sans",
+          }}
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
+          <p className="text-xs text-app-blue-600 dark:text-gray-400">
             Loading dashboard...
           </p>
         </div>
@@ -154,12 +161,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width-icon": "4.5rem",
+        } as React.CSSProperties
+      }
+    >
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <header className="flex h-15 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-15">
           <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger className="-ml-1 cursor-pointer" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
@@ -183,17 +196,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
       </SidebarInset>
-             {showCompanySetupModal && user?.organization_id && (
-         <CompanySetupModal
-           open={showCompanySetupModal}
-           organizationId={user.organization_id}
-           onCompleted={handleCompanySetupCompleted}
-           onCancel={handleCompanySetupCancel}
-           isEditing={!!organization?.name}
-           existingName={organization?.name || ""}
-           existingLogoUrl={organization?.logo_url || ""}
-         />
-       )}
+      {showCompanySetupModal && user?.organization_id && (
+        <CompanySetupModal
+          open={showCompanySetupModal}
+          organizationId={user.organization_id}
+          onCompleted={handleCompanySetupCompleted}
+          onCancel={handleCompanySetupCancel}
+          isEditing={!!organization?.name}
+          existingName={organization?.name || ""}
+          existingLogoUrl={organization?.logo_url || ""}
+        />
+      )}
       <Toaster />
     </SidebarProvider>
   );

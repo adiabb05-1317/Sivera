@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -54,31 +54,32 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { setShowCompanySetupModal } = useAuthStore();
-
+  const router = useRouter();
   const handleSignOut = async () => {
     try {
       console.log("🔓 User initiated logout");
-      
+
       // 1. Clear auth store first
       logout();
-      
+
       // 2. Clear all cookies and data via auth-client
-      const { logout: supabaseLogout, clearUserContext } = await import("@/lib/auth-client");
-      
+      const { logout: supabaseLogout, clearUserContext } = await import(
+        "@/lib/auth-client"
+      );
+
       console.log("🧹 Clearing user context...");
       clearUserContext(); // Clear immediately
-      
+
       console.log("🚪 Supabase logout...");
       await supabaseLogout();
 
       console.log("🔄 Redirecting to login page");
-      
+
       // 3. Force immediate redirect with hard navigation
       window.location.replace("/auth/login");
-      
     } catch (error) {
       console.error("❌ Logout error:", error);
-      
+
       // Force cleanup even on error
       try {
         const { clearUserContext } = await import("@/lib/auth-client");
@@ -87,7 +88,7 @@ export function AppSidebar() {
       } catch (cleanupError) {
         console.error("❌ Cleanup error:", cleanupError);
       }
-      
+
       // Force redirect even on error
       console.log("🔄 Force redirecting to login after error");
       window.location.replace("/auth/login");
@@ -136,6 +137,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar
+      variant="floating"
       collapsible="icon"
       className="[&[data-state=collapsed]]:w-[4.5rem]"
       style={
@@ -146,14 +148,18 @@ export function AppSidebar() {
     >
       <SidebarHeader className="h-[3.95rem] flex items-center justify-center px-4">
         <div
-          className="text-[1.3rem] font-medium tracking-widest bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv group-data-[collapsible=icon]:hidden"
+          className="text-[1.3rem] font-medium tracking-widest bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv group-data-[collapsible=icon]:hidden cursor-pointer"
           style={{
             fontFamily: "KyivType Sans",
           }}
+          onClick={() => router.push("/dashboard")}
         >
           SIVERA
         </div>
-        <div className="group-data-[collapsible=icon]:flex hidden items-center justify-center w-full">
+        <div
+          className="group-data-[collapsible=icon]:flex hidden items-center justify-center w-full cursor-pointer"
+          onClick={() => router.push("/dashboard")}
+        >
           <img
             src={`/Sivera${theme === "dark" ? "Dark" : ""}.png`}
             alt="Sivera"

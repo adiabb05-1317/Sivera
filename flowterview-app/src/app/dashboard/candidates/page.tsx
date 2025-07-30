@@ -67,17 +67,17 @@ const CandidateViewDialog = ({
   handleSendInvite: (candidate: any) => void;
 }) => {
   const [interviewId, setInterviewId] = useState<string | null>(null);
-  
+
   // Fetch interview ID for this candidate's job
   useEffect(() => {
     const fetchInterviewId = async () => {
       if (!candidate.job_id) return;
-      
+
       try {
         const response = await authenticatedFetch(
           `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/by-job/${candidate.job_id}`
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           setInterviewId(data.interview?.id || null);
@@ -86,14 +86,14 @@ const CandidateViewDialog = ({
         console.error("Failed to fetch interview ID:", error);
       }
     };
-    
+
     fetchInterviewId();
   }, [candidate.job_id]);
 
   // Use TanStack Query for candidate analytics - only fetch if interview ID is available
   const candidateAnalytics = useCandidateAnalytics(
     candidate.id,
-    interviewId || ''
+    interviewId || ""
   );
 
   const handleShowAnalytics = () => {
@@ -103,7 +103,7 @@ const CandidateViewDialog = ({
       });
       return;
     }
-    
+
     // Analytics will be automatically fetched by TanStack Query
     if (candidateAnalytics.error) {
       toast.error("Error", {
@@ -130,7 +130,8 @@ const CandidateViewDialog = ({
             {candidate.status === "Interviewed" && (
               <>
                 {/* Analytics Section with TanStack Query */}
-                {!candidateAnalytics.analytics && !candidateAnalytics.isLoading ? (
+                {!candidateAnalytics.analytics &&
+                !candidateAnalytics.isLoading ? (
                   <Button
                     variant="outline"
                     onClick={handleShowAnalytics}
@@ -150,7 +151,9 @@ const CandidateViewDialog = ({
                     Loading Analytics...
                   </Button>
                 ) : candidateAnalytics.analytics ? (
-                  <InterviewAnalytics analyticsData={candidateAnalytics.analytics} />
+                  <InterviewAnalytics
+                    analyticsData={candidateAnalytics.analytics}
+                  />
                 ) : null}
 
                 {/* View Detailed Analysis Button - Only show when analytics are displayed */}
@@ -205,7 +208,7 @@ export default function CandidatesPage() {
     search: searchTerm || undefined,
   });
   const jobsQuery = useJobs();
-  
+
   // Extract data from TanStack Query
   const candidates = candidatesQuery.allCandidates;
   const loading = candidatesQuery.isLoading;

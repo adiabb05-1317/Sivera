@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/query-client';
-import { authenticatedFetch } from '@/lib/auth-client';
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-client";
+import { authenticatedFetch } from "@/lib/auth-client";
 
 // Analytics queries - route-based data fetching
 export const useAnalytics = () => {
@@ -15,7 +15,9 @@ export const useAnalytics = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch analytics overview: ${response.status}`);
+        throw new Error(
+          `Failed to fetch analytics overview: ${response.status}`
+        );
       }
 
       return response.json();
@@ -33,7 +35,9 @@ export const useAnalytics = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch organization average score: ${response.status}`);
+        throw new Error(
+          `Failed to fetch organization average score: ${response.status}`
+        );
       }
 
       return response.json();
@@ -46,15 +50,15 @@ export const useAnalytics = () => {
     // Data
     overview: overviewQuery.data,
     organizationAverageScore: orgAverageScoreQuery.data?.average_score,
-    
+
     // Loading states
     isLoading: overviewQuery.isLoading || orgAverageScoreQuery.isLoading,
     isLoadingOverview: overviewQuery.isLoading,
     isLoadingAverageScore: orgAverageScoreQuery.isLoading,
-    
+
     // Error states
     error: overviewQuery.error || orgAverageScoreQuery.error,
-    
+
     // Query controls
     refetchOverview: overviewQuery.refetch,
     refetchAverageScore: orgAverageScoreQuery.refetch,
@@ -66,7 +70,10 @@ export const useAnalytics = () => {
 };
 
 // Candidate analytics query - lazy loaded when needed
-export const useCandidateAnalytics = (candidateId: string, interviewId: string) => {
+export const useCandidateAnalytics = (
+  candidateId: string,
+  interviewId: string
+) => {
   const candidateAnalyticsQuery = useQuery({
     queryKey: queryKeys.candidates.analytics(candidateId, interviewId),
     queryFn: async () => {
@@ -75,7 +82,9 @@ export const useCandidateAnalytics = (candidateId: string, interviewId: string) 
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch candidate analytics: ${response.status}`);
+        throw new Error(
+          `Failed to fetch candidate analytics: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -104,7 +113,9 @@ export const useInterviewAnalytics = (interviewId: string) => {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch interview analytics: ${response.status}`);
+        throw new Error(
+          `Failed to fetch interview analytics: ${response.status}`
+        );
       }
 
       return response.json();

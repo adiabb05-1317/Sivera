@@ -48,7 +48,7 @@ interface Candidate {
 export default function InterviewsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Filter and sort states
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -61,7 +61,7 @@ export default function InterviewsPage() {
     createdBy: selectedUsers.length > 0 ? selectedUsers : undefined,
     search: searchQuery || undefined,
   });
-  
+
   // Extract data from TanStack Query
   const interviews = interviewsQuery.interviews;
   const loading = interviewsQuery.isLoading;

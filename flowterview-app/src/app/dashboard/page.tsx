@@ -18,7 +18,15 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Use combined dashboard hook for all data
-  const { auth, candidates, interviews, analytics, isLoading, hasError, refreshAll } = useDashboard();
+  const {
+    auth,
+    candidates,
+    interviews,
+    analytics,
+    isLoading,
+    hasError,
+    refreshAll,
+  } = useDashboard();
 
   // Status badge color mapping
   const getStatusBadgeClass = (status: string) => {
@@ -53,9 +61,9 @@ export default function DashboardPage() {
     {
       id: 3,
       name: "Average Interview Score",
-      value: analytics.organizationAverageScore ? 
-        `${Number(analytics.organizationAverageScore).toFixed(1)}/100` : 
-        "No data",
+      value: analytics.organizationAverageScore
+        ? `${Number(analytics.organizationAverageScore).toFixed(1)}`
+        : "No data",
       icon: Star,
     },
   ];
