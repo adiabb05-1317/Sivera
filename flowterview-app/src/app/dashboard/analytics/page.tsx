@@ -172,8 +172,8 @@ export default function AnalyticsPage() {
           >
             <CardContent className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
+                <div className="flex-shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
                   <dt className="truncate text-xs font-medium text-gray-500 tracking-wider uppercase dark:text-gray-300">

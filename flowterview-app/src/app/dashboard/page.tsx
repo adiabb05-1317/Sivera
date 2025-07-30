@@ -36,7 +36,7 @@ export default function DashboardPage() {
       case "completed":
         return "bg-app-blue-100/90 text-app-blue-800 border-app-blue-300/80";
       case "draft":
-        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+        return "bg-app-blue-200/90 text-app-blue-600 border-app-blue-200/80";
       case "expired":
         return "bg-app-blue-900/20 text-app-blue-400 border-app-blue-700/50";
       default:
@@ -63,7 +63,7 @@ export default function DashboardPage() {
       name: "Average Interview Score",
       value: analytics.organizationAverageScore
         ? `${Number(analytics.organizationAverageScore).toFixed(1)}`
-        : "No data",
+        : "Loading...",
       icon: Star,
     },
   ];
@@ -107,8 +107,8 @@ export default function DashboardPage() {
           >
             <div className="p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-xl bg-app-blue-50 dark:bg-app-blue-9/00 p-4 shadow-sm">
-                  <stat.icon className="h-6 w-6 text-app-blue-5/00 dark:text-app-blue-3/00" />
+                <div className="flex-shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 p-4 shadow-sm">
+                  <stat.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                 </div>
                 <div className="ml-6 w-0 flex-1">
                   <dt className="truncate text-sm font-semibold text-gray-500 dark:text-gray-300 tracking-widest uppercase">
@@ -136,7 +136,7 @@ export default function DashboardPage() {
             recentInterviews.map((interview: any) => (
               <div
                 key={interview.id}
-                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-app-blue-50/20 dark:hover:bg-app-blue-900/30 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
                 onClick={() =>
                   router.push(`/dashboard/interviews/${interview.id}`)
                 }
@@ -179,8 +179,8 @@ export default function DashboardPage() {
           {recentInterviews.length === 4 && !isLoading && (
             <Button
               onClick={() => router.push("/dashboard/interviews")}
-              className="cursor-pointer text-xs w-full"
-              variant="outline"
+              className="cursor-pointer text-xs w-full !border-none !rounded-none"
+              variant="ghost"
             >
               View all
             </Button>

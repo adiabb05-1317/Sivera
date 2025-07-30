@@ -153,7 +153,7 @@ export default function InterviewsPage() {
       case "completed":
         return "bg-app-blue-100/90 text-app-blue-800 border-app-blue-300/80";
       case "draft":
-        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+        return "bg-app-blue-200/90 text-app-blue-600 border-app-blue-200/80";
       case "expired":
         return "bg-app-blue-900/20 text-app-blue-400 border-app-blue-700/50";
       default:

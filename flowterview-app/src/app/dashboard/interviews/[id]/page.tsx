@@ -1181,7 +1181,7 @@ export default function InterviewDetailsPage() {
   const getCandidateStatusBadgeClass = (status: string) => {
     switch (status) {
       case "Applied":
-        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+        return "bg-app-blue-100/90 text-app-blue-600 border-app-blue-200/80";
       case "Screening":
         return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
       case "Interview_Scheduled":

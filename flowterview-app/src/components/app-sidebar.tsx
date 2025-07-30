@@ -26,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import { useAuth } from "@/hooks/useStores";
 import { useTheme } from "next-themes";
 import { Separator } from "./ui/separator";
 import { useAuthStore } from "../../store";
+import { useCallback, useRef, useEffect } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -52,9 +54,48 @@ const navigation = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { open, setOpen } = useSidebar();
+  const { resolvedTheme, setTheme } = useTheme();
   const { setShowCompanySetupModal } = useAuthStore();
   const router = useRouter();
+
+  // Hover state management
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wasCollapsedBeforeHover = useRef<boolean>(false);
+
+  const handleMouseEnter = useCallback(() => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    // Only expand if currently collapsed
+    if (!open) {
+      wasCollapsedBeforeHover.current = true;
+      setOpen(true);
+    }
+  }, [open, setOpen]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Only collapse if it was collapsed before hover and we expanded it
+    if (wasCollapsedBeforeHover.current) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setOpen(false);
+        wasCollapsedBeforeHover.current = false;
+      }, 100); // Small delay to prevent flickering
+    }
+  }, [setOpen]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSignOut = async () => {
     try {
       console.log("🔓 User initiated logout");
@@ -101,9 +142,9 @@ export function AppSidebar() {
   };
 
   const handleThemeToggle = () => {
-    if (theme === "light") {
+    if (resolvedTheme === "light") {
       setTheme("dark");
-    } else if (theme === "dark") {
+    } else if (resolvedTheme === "dark") {
       setTheme("system");
     } else {
       setTheme("light");
@@ -111,14 +152,14 @@ export function AppSidebar() {
   };
 
   const getThemeIcon = () => {
-    if (theme === "light") return Sun;
-    if (theme === "dark") return Moon;
+    if (resolvedTheme === "light") return Sun;
+    if (resolvedTheme === "dark") return Moon;
     return Monitor;
   };
 
   const getThemeLabel = () => {
-    if (theme === "light") return "Dark Mode";
-    if (theme === "dark") return "System Theme";
+    if (resolvedTheme === "light") return "Dark Mode";
+    if (resolvedTheme === "dark") return "System Theme";
     return "Light Mode";
   };
 
@@ -145,31 +186,90 @@ export function AppSidebar() {
           "--sidebar-width-icon": "4.5rem",
         } as React.CSSProperties
       }
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <SidebarHeader className="h-[3.95rem] flex items-center justify-center px-4">
+      <SidebarHeader className="h-[3.95rem] flex items-center justify-center px-4 group-data-[collapsible=icon]:px-0">
         <div
-          className="text-[1.3rem] font-medium tracking-widest bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv group-data-[collapsible=icon]:hidden cursor-pointer"
-          style={{
-            fontFamily: "KyivType Sans",
-          }}
+          className="relative w-full h-full flex items-center justify-center cursor-pointer group-data-[collapsible=icon]:w-[4.5rem]"
           onClick={() => router.push("/dashboard")}
         >
-          SIVERA
-        </div>
-        <div
-          className="group-data-[collapsible=icon]:flex hidden items-center justify-center w-full cursor-pointer"
-          onClick={() => router.push("/dashboard")}
-        >
-          <img
-            src={`/Sivera${theme === "dark" ? "Dark" : ""}.png`}
-            alt="Sivera"
-            width={34}
-            height={34}
-            style={{
-              mixBlendMode: "normal",
-              backgroundColor: "rgb(248, 250, 251)",
-            }}
-          />
+          {/* Morphing Text Animation - Each letter animates individually */}
+          <div className="absolute inset-0 flex items-center group-data-[collapsible=icon]:justify-center justify-center">
+            <div className="relative flex items-center justify-center">
+              {/* S - The main letter that stays and grows */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-400 ease-in-out
+                  group-data-[collapsible=icon]:text-[1.8rem] group-data-[collapsible=icon]:font-bold group-data-[collapsible=icon]:tracking-normal
+                  text-[1.3rem] font-medium tracking-widest group-data-[collapsible=icon]:ml-18"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                S
+              </span>
+
+              {/* I - Slides left and fades */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-250 ease-in-out delay-25
+                  group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-0 group-data-[collapsible=icon]:translate-x-[-30px] group-data-[collapsible=icon]:rotate-[-15deg]
+                  opacity-100 scale-100 translate-x-0 rotate-0 text-[1.3rem] font-medium tracking-widest"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                I
+              </span>
+
+              {/* V - Slides left and fades */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-250 ease-in-out delay-40
+                  group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-0 group-data-[collapsible=icon]:translate-x-[-40px] group-data-[collapsible=icon]:rotate-[-20deg]
+                  opacity-100 scale-100 translate-x-0 rotate-0 text-[1.3rem] font-medium tracking-widest"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                V
+              </span>
+
+              {/* E - Slides left and fades */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-250 ease-in-out delay-55
+                  group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-0 group-data-[collapsible=icon]:translate-x-[-50px] group-data-[collapsible=icon]:rotate-[-25deg]
+                  opacity-100 scale-100 translate-x-0 rotate-0 text-[1.3rem] font-medium tracking-widest"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                E
+              </span>
+
+              {/* R - Slides left and fades */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-250 ease-in-out delay-70
+                  group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-0 group-data-[collapsible=icon]:translate-x-[-60px] group-data-[collapsible=icon]:rotate-[-30deg]
+                  opacity-100 scale-100 translate-x-0 rotate-0 text-[1.3rem] font-medium tracking-widest"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                R
+              </span>
+
+              {/* A - Slides left and fades */}
+              <span
+                className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-transparent bg-clip-text dark:from-app-blue-300 dark:via-app-blue-400 dark:to-app-blue-500 font-kyiv transition-all duration-250 ease-in-out delay-85
+                  group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-0 group-data-[collapsible=icon]:translate-x-[-70px] group-data-[collapsible=icon]:rotate-[-35deg]
+                  opacity-100 scale-100 translate-x-0 rotate-0 text-[1.3rem] font-medium tracking-widest"
+                style={{
+                  fontFamily: "KyivType Sans",
+                }}
+              >
+                A
+              </span>
+            </div>
+          </div>
         </div>
       </SidebarHeader>
 
@@ -270,7 +370,7 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl shadow-xl"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl shadow-xl ml-4"
                 side="top"
                 align="end"
                 sideOffset={8}

@@ -535,342 +535,331 @@ export default function InviteCandidatesPage() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow border dark:border-gray-800">
-        <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="flex items-center gap-3 justify-between">
-              <h2 className="text-lg font-semibold opacity-70 tracking-tight dark:text-white">
-                Invite Candidates
-              </h2>
-              <div className="flex flex-row gap-5">
-                {!interviewIdFromQuery && (
-                  <div className="flex flex-col">
-                    <Select
-                      onValueChange={handleJobSelect}
-                      disabled={isLoadingJobSelection}
-                    >
-                      <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
-                        <SelectValue
-                          placeholder={
-                            isLoadingJobSelection
-                              ? "Loading..."
-                              : "Select Interview"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                        <SelectGroup>
-                          <SelectLabel className="dark:text-gray-300">
-                            Interviews
-                          </SelectLabel>
-                          {jobs.map((job: any) => (
-                            <SelectItem
-                              key={job.id}
-                              value={job.id}
-                              className="dark:text-gray-200"
-                            >
-                              {job.title}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    {interviewError && (
-                      <span className="text-red-500 text-xs mt-1">
-                        {interviewError}
-                      </span>
-                    )}
-                    {csvError && (
-                      <span className="text-red-500 text-xs mt-1">
-                        {csvError}
-                      </span>
-                    )}
-                    {formError && (
-                      <span className="text-red-500 text-xs mt-1">
-                        {formError}
-                      </span>
-                    )}
-                  </div>
+      <div className="p-2 max-w-full overflow-x-hidden min-w-0">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex items-center gap-3 justify-between">
+            <h2 className="text-lg font-semibold opacity-70 tracking-tight dark:text-white">
+              <div className="flex flex-col">
+                <span>Invite Candidates</span>
+                {interviewError && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {interviewError}
+                  </span>
                 )}
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isUploading}
-                    onClick={() =>
-                      document.getElementById("csv-upload")?.click()
-                    }
-                    className="cursor-pointer text-xs"
+                {csvError && (
+                  <span className="text-red-500 text-xs mt-1">{csvError}</span>
+                )}
+                {formError && (
+                  <span className="text-red-500 text-xs mt-1">{formError}</span>
+                )}
+              </div>
+            </h2>
+            <div className="flex flex-row gap-5">
+              {!interviewIdFromQuery && (
+                <div className="flex flex-col">
+                  <Select
+                    onValueChange={handleJobSelect}
+                    disabled={isLoadingJobSelection}
                   >
-                    {isUploading ? (
-                      "Uploading..."
-                    ) : (
-                      <>
-                        <UploadCloud className="w-4 h-4 mr-2" />
-                        Import CSV
-                      </>
-                    )}
-                  </Button>
+                    <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
+                      <SelectValue
+                        placeholder={
+                          isLoadingJobSelection
+                            ? "Loading..."
+                            : "Select Interview"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                      <SelectGroup>
+                        <SelectLabel className="dark:text-gray-300">
+                          Interviews
+                        </SelectLabel>
+                        {jobs.map((job: any) => (
+                          <SelectItem
+                            key={job.id}
+                            value={job.id}
+                            className="dark:text-gray-200"
+                          >
+                            {job.title}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isUploading}
+                  onClick={() => document.getElementById("csv-upload")?.click()}
+                  className="cursor-pointer text-xs"
+                >
+                  {isUploading ? (
+                    "Uploading..."
+                  ) : (
+                    <>
+                      <UploadCloud className="w-4 h-4 mr-2" />
+                      Import CSV
+                    </>
+                  )}
+                </Button>
 
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        type="button"
-                      >
-                        <Info className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-96 p-5" align="end">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
-                            CSV Format Requirements
-                          </h4>
-                          <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
-                            Your CSV file should have the following columns
-                            (exact names):
-                          </p>
-                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono border">
-                            full_name, email_address, phone_number, resume_url
-                          </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      type="button"
+                    >
+                      <Info className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96 p-5" align="end">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
+                          CSV Format Requirements
+                        </h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+                          Your CSV file should have the following columns (exact
+                          names):
+                        </p>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono border">
+                          full_name, email_address, phone_number, resume_url
                         </div>
+                      </div>
 
-                        <div>
-                          <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
-                            Example CSV Content:
-                          </h4>
-                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono whitespace-pre-line leading-relaxed border overflow-x-auto">
-                            {`full_name,email_address,phone_number,resume_url
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">
+                          Example CSV Content:
+                        </h4>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono whitespace-pre-line leading-relaxed border overflow-x-auto">
+                          {`full_name,email_address,phone_number,resume_url
 John Doe,john@example.com,+1234567890,https://example.com/resume.pdf
 Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
-                            Bulk Onboarding Process:
-                          </h4>
-                          <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-2">
-                            <li className="flex items-start gap-2">
-                              <span className="text-app-blue-500 font-semibold">
-                                •
-                              </span>
-                              <span>
-                                All candidates will be added to your
-                                organization
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-app-blue-500 font-semibold">
-                                •
-                              </span>
-                              <span>
-                                Candidates will be linked to the selected
-                                interview
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-app-blue-500 font-semibold">
-                                •
-                              </span>
-                              <span>
-                                Resume URLs should be publicly accessible PDF
-                                links
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-app-blue-500 font-semibold">
-                                •
-                              </span>
-                              <span>
-                                Invalid entries will be skipped automatically
-                              </span>
-                            </li>
-                          </ul>
                         </div>
                       </div>
-                    </PopoverContent>
-                  </Popover>
 
-                  <input
-                    id="csv-upload"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
+                          Bulk Onboarding Process:
+                        </h4>
+                        <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-2">
+                          <li className="flex items-start gap-2">
+                            <span className="text-app-blue-500 font-semibold">
+                              •
+                            </span>
+                            <span>
+                              All candidates will be added to your organization
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-app-blue-500 font-semibold">
+                              •
+                            </span>
+                            <span>
+                              Candidates will be linked to the selected
+                              interview
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-app-blue-500 font-semibold">
+                              •
+                            </span>
+                            <span>
+                              Resume URLs should be publicly accessible PDF
+                              links
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-app-blue-500 font-semibold">
+                              •
+                            </span>
+                            <span>
+                              Invalid entries will be skipped automatically
+                            </span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <input
+                  id="csv-upload"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
               </div>
             </div>
+          </div>
 
-            <div className="space-y-6">
-              {candidates.map((candidate) => (
-                <Card
-                  key={candidate.id}
-                  className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
-                >
-                  <CardHeader className="flex items-center justify-between p-0 px-1">
-                    <h3 className="text-md font-medium tracking-tight">
-                      Candidate
-                    </h3>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="cursor-pointer rounded-full text-xs"
-                      onClick={() => removeCandidateRow(candidate.id)}
-                    >
-                      <X className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </CardHeader>
+          <div className="space-y-6">
+            {candidates.map((candidate) => (
+              <Card
+                key={candidate.id}
+                className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+              >
+                <CardHeader className="flex items-center justify-between p-0 px-1">
+                  <h3 className="text-md font-medium tracking-tight">
+                    Candidate
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="cursor-pointer rounded-full text-xs"
+                    onClick={() => removeCandidateRow(candidate.id)}
+                  >
+                    <X className="h-4 w-4 opacity-60" />
+                  </Button>
+                </CardHeader>
 
-                  <CardContent className="space-y-5 p-3">
-                    <span className="text-xs opacity-75 mb-3">
-                      Name of the candidate
-                    </span>
-                    <Input
-                      type="text"
-                      placeholder="John Doe"
-                      value={candidate.name}
-                      onChange={(e) =>
-                        updateCandidate(candidate.id, "name", e.target.value)
-                      }
-                    />
-                    <span className="text-xs opacity-75 mb-3">
-                      Email address of the candidate
-                    </span>
-                    <Input
-                      type="email"
-                      placeholder="johndoe@example.com"
-                      value={candidate.email}
-                      onChange={(e) =>
-                        updateCandidate(candidate.id, "email", e.target.value)
-                      }
-                    />
-                    <span className="text-xs opacity-75 mb-3">
-                      Phone number of the candidate
-                    </span>
-                    <Input
-                      type="tel"
-                      placeholder="+1 234 567 8900"
-                      value={candidate.phone}
-                      onChange={(e) =>
-                        updateCandidate(candidate.id, "phone", e.target.value)
-                      }
-                    />
+                <CardContent className="space-y-5 p-3">
+                  <span className="text-xs opacity-75 mb-3">
+                    Name of the candidate
+                  </span>
+                  <Input
+                    type="text"
+                    placeholder="John Doe"
+                    value={candidate.name}
+                    onChange={(e) =>
+                      updateCandidate(candidate.id, "name", e.target.value)
+                    }
+                  />
+                  <span className="text-xs opacity-75 mb-3">
+                    Email address of the candidate
+                  </span>
+                  <Input
+                    type="email"
+                    placeholder="johndoe@example.com"
+                    value={candidate.email}
+                    onChange={(e) =>
+                      updateCandidate(candidate.id, "email", e.target.value)
+                    }
+                  />
+                  <span className="text-xs opacity-75 mb-3">
+                    Phone number of the candidate
+                  </span>
+                  <Input
+                    type="tel"
+                    placeholder="+1 234 567 8900"
+                    value={candidate.phone}
+                    onChange={(e) =>
+                      updateCandidate(candidate.id, "phone", e.target.value)
+                    }
+                  />
 
-                    {/* Resume Section - Show URL if exists, otherwise show file upload */}
-                    {candidate.resume_url ? (
-                      <div className="space-y-2">
-                        <span className="text-xs opacity-75 mb-3">Resume</span>
-                        <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                              <Check className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              Provided via CSV upload
-                            </p>
-                            <a
-                              href={candidate.resume_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 underline truncate block"
-                            >
-                              {candidate.resume_url}
-                            </a>
+                  {/* Resume Section - Show URL if exists, otherwise show file upload */}
+                  {candidate.resume_url ? (
+                    <div className="space-y-2">
+                      <span className="text-xs opacity-75 mb-3">Resume</span>
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <span className="text-xs opacity-75 mb-3">
-                          Upload Resume File
-                        </span>
-                        <div className="flex items-center space-x-4">
-                          <label
-                            htmlFor={`resume-upload-${candidate.id}`}
-                            className="cursor-pointer"
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            Provided via CSV upload
+                          </p>
+                          <a
+                            href={candidate.resume_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-app-blue-600 dark:text-app-blue-400 hover:text-app-blue-700 dark:hover:text-app-blue-300 underline truncate block"
                           >
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              <span>Choose File</span>
-                            </Button>
-                          </label>
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {candidate.resume?.name || "No file chosen"}
-                          </span>
+                            {candidate.resume_url}
+                          </a>
                         </div>
-
-                        <Input
-                          id={`resume-upload-${candidate.id}`}
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) =>
-                            updateCandidate(
-                              candidate.id,
-                              "resume",
-                              e.target.files?.[0] ?? null
-                            )
-                          }
-                          className="hidden"
-                        />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <span className="text-xs opacity-75 mb-3">
+                        Upload Resume File
+                      </span>
+                      <div className="flex items-center space-x-4">
+                        <label
+                          htmlFor={`resume-upload-${candidate.id}`}
+                          className="cursor-pointer"
+                        >
+                          <Button asChild variant="outline" className="text-xs">
+                            <span>Choose File</span>
+                          </Button>
+                        </label>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {candidate.resume?.name || "No file chosen"}
+                        </span>
+                      </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="text-app-blue-6/00 cursor-pointer text-xs"
-                onClick={addCandidateRow}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Add another candidate
-              </Button>
-            </div>
+                      <Input
+                        id={`resume-upload-${candidate.id}`}
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) =>
+                          updateCandidate(
+                            candidate.id,
+                            "resume",
+                            e.target.files?.[0] ?? null
+                          )
+                        }
+                        className="hidden"
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
 
-            <div className="flex flex-col md:flex-row items-center justify-end space-y-3 md:space-y-0 md:space-x-4">
-              <Button
-                onClick={() => router.push("/dashboard/candidates")}
-                className="cursor-pointer text-xs"
-                variant="outline"
-              >
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="text-app-blue-6/00 cursor-pointer text-xs"
+              onClick={addCandidateRow}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add another candidate
+            </Button>
+          </div>
 
-              <Button
-                type="submit"
-                disabled={
-                  isSubmitting ||
-                  bulkLoading ||
-                  isLoadingJobSelection ||
-                  (!interviewIdFromQuery && !jobInterviewPair) ||
-                  validateCandidates().length > 0
-                }
-                variant="outline"
-                className="cursor-pointer text-xs"
-              >
-                {isSubmitting || bulkLoading ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Save Candidate(s)
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </div>
+          <div className="flex flex-col md:flex-row items-center justify-end space-y-3 md:space-y-0 md:space-x-4">
+            <Button
+              onClick={() => router.push("/dashboard/candidates")}
+              className="cursor-pointer text-xs"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                bulkLoading ||
+                isLoadingJobSelection ||
+                (!interviewIdFromQuery && !jobInterviewPair) ||
+                validateCandidates().length > 0
+              }
+              variant="outline"
+              className="cursor-pointer text-xs"
+            >
+              {isSubmitting || bulkLoading ? (
+                "Processing..."
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Save Candidate(s)
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
