@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  Trash,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const CandidateViewDialog = ({
   handleSendInvite: (candidate: any) => void;
 }) => {
   const [interviewId, setInterviewId] = useState<string | null>(null);
+  const candidatesQuery = useCandidates();
 
   // Fetch interview ID for this candidate's job
   useEffect(() => {
@@ -118,6 +120,11 @@ const CandidateViewDialog = ({
     });
   };
 
+  const handleRemoveCandidate = async (candidate: any) => {
+    onClose();
+    await candidatesQuery.deleteCandidate({ candidateId: candidate.id });
+  };
+
   return (
     <Dialog open={!!candidate} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -138,7 +145,7 @@ const CandidateViewDialog = ({
                     disabled={!interviewId}
                     className="cursor-pointer text-xs"
                   >
-                    <Brain className="mr-2 h-4 w-4" />
+                    <Brain className="h-4 w-4" />
                     Show Analytics
                   </Button>
                 ) : candidateAnalytics.isLoading ? (
@@ -147,7 +154,7 @@ const CandidateViewDialog = ({
                     disabled
                     className="cursor-pointer text-xs"
                   >
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Loading Analytics...
                   </Button>
                 ) : candidateAnalytics.analytics ? (
@@ -163,21 +170,31 @@ const CandidateViewDialog = ({
                     onClick={handleViewMoreDetails}
                     className="cursor-pointer text-xs"
                   >
-                    <ArrowRight className="mr-2 h-4 w-4" />
+                    <ArrowRight className="h-4 w-4" />
                     View Detailed Analysis
                   </Button>
                 )}
               </>
             )}
             {candidate.resume_url && (
-              <Button
-                onClick={() => window.open(candidate.resume_url, "_blank")}
-                variant="outline"
-                className="cursor-pointer text-xs"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                View Resume
-              </Button>
+              <>
+                <Button
+                  onClick={() => window.open(candidate.resume_url, "_blank")}
+                  variant="outline"
+                  className="cursor-pointer text-xs"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Resume
+                </Button>
+                <Button
+                  onClick={() => handleRemoveCandidate(candidate)}
+                  variant="outline"
+                  className="cursor-pointer text-xs"
+                >
+                  <Trash className="h-4 w-4" />
+                  Remove Candidate
+                </Button>
+              </>
             )}
             {!candidate.resume_url && (
               <p className="text-sm text-gray-500">No resume available.</p>

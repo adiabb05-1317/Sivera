@@ -208,6 +208,38 @@ async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
+@router.delete("/{candidate_id}")
+async def delete_candidate(candidate_id: str, request: Request):
+    try:
+        organization_id = require_organization(request).organization_id
+        candidate = db.fetch_one("candidates", {"id": candidate_id})
+        print(f"[DEBUG] candidate: {candidate}")
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        if candidate["organization_id"] != organization_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # TODO: More parameters to check.
+        candidate_interviews = db.fetch_all("candidate_interviews", {"candidate_id": candidate_id})
+        candidate_interview_rounds = db.fetch_all("candidate_interview_round", {"candidate_id": candidate_id})
+        if len(candidate_interview_rounds) > 0 or len(candidate_interviews) > 0 or candidate["status"] == "Accepted":
+            raise HTTPException(status_code=500, detail="Candidate is already in an interview or already accepted")
+
+        # Get current interviews for this job
+        interviews = db.fetch_all("interviews", {"job_id": candidate["job_id"]})
+        for interview in interviews:
+            current_invited = interview.get("candidates_invited", [])
+            if candidate_id in current_invited:
+                # Remove the candidate from the array
+                updated_invited = [cid for cid in current_invited if cid != candidate_id]
+                db.update("interviews", {"candidates_invited": updated_invited}, {"id": interview["id"]})
+        db.delete("candidates", {"id": candidate_id})
+        return {"success": True, "message": "Candidate deleted"}
+    except DatabaseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/upload-resume")
 async def upload_resume(
     request: Request,

@@ -147,7 +147,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                   onQuickAction("view_resume", candidate);
                 }}
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
                 View Resume
               </DropdownMenuItem>
               {candidate.linkedin_profile && (

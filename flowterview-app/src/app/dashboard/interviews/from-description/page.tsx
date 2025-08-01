@@ -53,7 +53,6 @@ export default function GenerateFromDescriptionPage() {
   // Process toggle states
   const [processStages, setProcessStages] = useState({
     phoneInterview: true,
-    assessments: true,
     aiInterviewer: true,
   });
 
@@ -283,9 +282,7 @@ export default function GenerateFromDescriptionPage() {
 
   // Check if all process stages are disabled
   const allProcessStagesDisabled =
-    !processStages.phoneInterview &&
-    !processStages.assessments &&
-    !processStages.aiInterviewer;
+    !processStages.phoneInterview && !processStages.aiInterviewer;
 
   // Check if phone interview is enabled but no questions are provided
   const phoneInterviewIncomplete =
@@ -447,10 +444,10 @@ export default function GenerateFromDescriptionPage() {
               </div>
 
               <div className="flex justify-center">
-                <Carousel className="w-full max-w-md">
+                <Carousel className="w-full max-w-sm">
                   <CarouselContent>
                     {/* Phone Interview */}
-                    <CarouselItem className="basis-1/3">
+                    <CarouselItem className="basis-1/2">
                       <div className="p-1">
                         <Card
                           className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
@@ -498,57 +495,8 @@ export default function GenerateFromDescriptionPage() {
                       </div>
                     </CarouselItem>
 
-                    {/* Assessments */}
-                    <CarouselItem className="basis-1/3">
-                      <div className="p-1">
-                        <Card
-                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                            processStages.assessments
-                              ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
-                              : "opacity-50 hover:opacity-70 hover:border-gray-400"
-                          }`}
-                          onClick={() => toggleProcessStage("assessments")}
-                          title={`${
-                            processStages.assessments ? "Disable" : "Enable"
-                          } Technical Assessment`}
-                        >
-                          <CardContent className="flex aspect-square items-center justify-center p-6">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <FileText
-                                className={`h-6 w-6 ${
-                                  processStages.assessments
-                                    ? "text-app-blue-600 dark:text-app-blue-400"
-                                    : "text-gray-400 dark:text-gray-500"
-                                }`}
-                              />
-                              <div className="text-center">
-                                <div
-                                  className={`text-sm font-semibold ${
-                                    processStages.assessments
-                                      ? "text-app-blue-600 dark:text-app-blue-400"
-                                      : "text-gray-500 dark:text-gray-400"
-                                  }`}
-                                >
-                                  Technical
-                                </div>
-                                <div
-                                  className={`text-xs ${
-                                    processStages.assessments
-                                      ? "text-app-blue-500 dark:text-app-blue-300"
-                                      : "text-gray-400 dark:text-gray-500"
-                                  }`}
-                                >
-                                  Assessment
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </CarouselItem>
-
                     {/* AI Interviewer */}
-                    <CarouselItem className="basis-1/3">
+                    <CarouselItem className="basis-1/2">
                       <div className="p-1">
                         <Card
                           className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${

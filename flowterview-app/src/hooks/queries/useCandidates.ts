@@ -1,15 +1,15 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, invalidateRelatedQueries } from '@/lib/query-client';
-import { authenticatedFetch } from '@/lib/auth-client';
-import { 
-  addCandidate, 
-  addBulkCandidates, 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys, invalidateRelatedQueries } from "@/lib/query-client";
+import { authenticatedFetch } from "@/lib/auth-client";
+import {
+  addCandidate,
+  addBulkCandidates,
   fetchCandidatesSortedByJob,
-  CandidateStatus 
-} from '@/lib/supabase-candidates';
-import { toast } from 'sonner';
+  CandidateStatus,
+} from "@/lib/supabase-candidates";
+import { toast } from "sonner";
 
 // Candidates queries with route-based data fetching
 export const useCandidates = (filters?: Record<string, any>) => {
@@ -33,7 +33,7 @@ export const useCandidates = (filters?: Record<string, any>) => {
 
       // Transform grouped data to flat array for filtering
       const flatCandidates = Object.values(allCandidates).flat();
-      
+
       return flatCandidates.filter((candidate: any) => {
         // Apply filters logic here
         if (filters.status && candidate.status !== filters.status) return false;
@@ -56,36 +56,43 @@ export const useCandidates = (filters?: Record<string, any>) => {
     mutationFn: addCandidate,
     onMutate: async (newCandidate) => {
       // Cancel outgoing queries to prevent conflicts
-      await queryClient.cancelQueries({ queryKey: queryKeys.candidates.byJob() });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.candidates.byJob(),
+      });
 
       // Snapshot previous value
-      const previousCandidates = queryClient.getQueryData(queryKeys.candidates.byJob());
+      const previousCandidates = queryClient.getQueryData(
+        queryKeys.candidates.byJob()
+      );
 
       // Optimistically update UI
-      toast.loading('Adding candidate...', { 
-        id: 'add-candidate',
-        description: `Adding ${newCandidate.name}` 
+      toast.loading("Adding candidate...", {
+        id: "add-candidate",
+        description: `Adding ${newCandidate.name}`,
       });
 
       return { previousCandidates };
     },
     onSuccess: (data, variables) => {
       // Invalidate and refetch candidates data
-      invalidateRelatedQueries(queryClient, 'create', 'candidates');
-      
-      toast.success('Candidate added successfully', {
-        id: 'add-candidate',
+      invalidateRelatedQueries(queryClient, "create", "candidates");
+
+      toast.success("Candidate added successfully", {
+        id: "add-candidate",
         description: `${variables.name} has been added to the interview`,
       });
     },
     onError: (error: any, variables, context) => {
       // Rollback optimistic update
       if (context?.previousCandidates) {
-        queryClient.setQueryData(queryKeys.candidates.byJob(), context.previousCandidates);
+        queryClient.setQueryData(
+          queryKeys.candidates.byJob(),
+          context.previousCandidates
+        );
       }
-      
-      toast.error('Failed to add candidate', {
-        id: 'add-candidate',
+
+      toast.error("Failed to add candidate", {
+        id: "add-candidate",
         description: error.message,
       });
     },
@@ -95,49 +102,91 @@ export const useCandidates = (filters?: Record<string, any>) => {
   const addBulkCandidatesMutation = useMutation({
     mutationFn: addBulkCandidates,
     onMutate: async (bulkData) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.candidates.byJob() });
-      
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.candidates.byJob(),
+      });
+
       const candidateCount = bulkData.candidates.length;
-      toast.loading(`Adding ${candidateCount} candidates...`, { 
-        id: 'bulk-add-candidates',
-        description: 'This may take a moment'
+      toast.loading(`Adding ${candidateCount} candidates...`, {
+        id: "bulk-add-candidates",
+        description: "This may take a moment",
       });
 
       return { candidateCount };
     },
     onSuccess: (data, variables, context) => {
-      invalidateRelatedQueries(queryClient, 'create', 'candidates');
-      
+      invalidateRelatedQueries(queryClient, "create", "candidates");
+
       const successCount = data?.length || 0;
       const totalCount = context?.candidateCount || 0;
-      
+
       toast.success(`Candidates added successfully`, {
-        id: 'bulk-add-candidates',
+        id: "bulk-add-candidates",
         description: `${successCount} of ${totalCount} candidates added`,
       });
     },
     onError: (error: any) => {
-      toast.error('Failed to add candidates', {
-        id: 'bulk-add-candidates',
+      toast.error("Failed to add candidates", {
+        id: "bulk-add-candidates",
         description: error.message,
+      });
+    },
+  });
+
+  const deleteCandidateMutation = useMutation({
+    mutationFn: async ({ candidateId }: { candidateId: string }) => {
+      toast.loading("Deleting candidate...", {
+        id: "delete-candidate",
+        description: "This may take a moment",
+      });
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/${candidateId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to delete candidate: ${response.status}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      invalidateRelatedQueries(queryClient, "delete", "candidates");
+      toast.success("Candidate deleted", {
+        id: "delete-candidate",
+        description: "Candidate deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete candidate", {
+        id: "delete-candidate",
+        description: "Candidate either in interview or already accepted",
       });
     },
   });
 
   // Update candidate status mutation
   const updateCandidateStatusMutation = useMutation({
-    mutationFn: async ({ candidateId, status }: { candidateId: string; status: CandidateStatus }) => {
+    mutationFn: async ({
+      candidateId,
+      status,
+    }: {
+      candidateId: string;
+      status: CandidateStatus;
+    }) => {
       const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/${candidateId}/status`,
         {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update candidate status: ${response.status}`);
+        throw new Error(
+          `Failed to update candidate status: ${response.status}`
+        );
       }
 
       return response.json();
@@ -149,27 +198,29 @@ export const useCandidates = (filters?: Record<string, any>) => {
 
       queryClient.setQueryData(queryKey, (old: any) => {
         if (!old) return old;
-        
+
         // Update the specific candidate's status in the grouped data
         const updated = { ...old };
-        Object.keys(updated).forEach(jobId => {
+        Object.keys(updated).forEach((jobId) => {
           updated[jobId] = updated[jobId].map((candidate: any) =>
             candidate.id === candidateId ? { ...candidate, status } : candidate
           );
         });
-        
+
         return updated;
       });
 
-      toast.loading('Updating candidate status...', { id: `status-${candidateId}` });
+      toast.loading("Updating candidate status...", {
+        id: `status-${candidateId}`,
+      });
 
       return { previousCandidates, candidateId, status };
     },
     onSuccess: (data, variables) => {
       // Invalidate related queries
-      invalidateRelatedQueries(queryClient, 'update', 'candidates');
-      
-      toast.success('Status updated', {
+      invalidateRelatedQueries(queryClient, "update", "candidates");
+
+      toast.success("Status updated", {
         id: `status-${variables.candidateId}`,
         description: `Candidate status changed to ${variables.status}`,
       });
@@ -177,10 +228,13 @@ export const useCandidates = (filters?: Record<string, any>) => {
     onError: (error: any, variables, context) => {
       // Rollback optimistic update
       if (context?.previousCandidates) {
-        queryClient.setQueryData(queryKeys.candidates.byJob(), context.previousCandidates);
+        queryClient.setQueryData(
+          queryKeys.candidates.byJob(),
+          context.previousCandidates
+        );
       }
-      
-      toast.error('Failed to update status', {
+
+      toast.error("Failed to update status", {
         id: `status-${variables.candidateId}`,
         description: error.message,
       });
@@ -191,39 +245,44 @@ export const useCandidates = (filters?: Record<string, any>) => {
     // Data
     candidatesGrouped: candidatesQuery.data,
     filteredCandidates: filteredCandidatesQuery.data,
-    
+
     // Transform grouped data to flat array for UI components
-    allCandidates: candidatesQuery.data ? Object.values(candidatesQuery.data).flat() : [],
-    
+    allCandidates: candidatesQuery.data
+      ? Object.values(candidatesQuery.data).flat()
+      : [],
+
     // Loading states
     isLoading: candidatesQuery.isLoading,
     isLoadingFiltered: filteredCandidatesQuery.isLoading,
-    
-    // Error states  
+
+    // Error states
     error: candidatesQuery.error || filteredCandidatesQuery.error,
-    
+
     // Actions
     addCandidate: addCandidateMutation.mutateAsync,
     addBulkCandidates: addBulkCandidatesMutation.mutateAsync,
     updateCandidateStatus: updateCandidateStatusMutation.mutateAsync,
-    
+    deleteCandidate: deleteCandidateMutation.mutateAsync,
+
     // Mutation states
     isAddingCandidate: addCandidateMutation.isPending,
     isAddingBulkCandidates: addBulkCandidatesMutation.isPending,
     isUpdatingStatus: updateCandidateStatusMutation.isPending,
-    
+    isDeletingCandidate: deleteCandidateMutation.isPending,
     // Query controls
     refetch: candidatesQuery.refetch,
-    
+
     // Helper functions
     getCandidatesByJobId: (jobId: string) => {
       return candidatesQuery.data?.[jobId] || [];
     },
     getCandidateById: (candidateId: string) => {
       if (!candidatesQuery.data) return undefined;
-      
+
       for (const candidates of Object.values(candidatesQuery.data)) {
-        const candidate = (candidates as any[]).find((c: any) => c.id === candidateId);
+        const candidate = (candidates as any[]).find(
+          (c: any) => c.id === candidateId
+        );
         if (candidate) return candidate;
       }
       return undefined;
