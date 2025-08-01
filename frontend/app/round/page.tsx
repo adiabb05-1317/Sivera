@@ -19,6 +19,7 @@ interface RoundTokenData {
   success: boolean;
   message: string;
   token?: string;
+  room_url?: string;
   participants?: {
     candidates: Array<{
       email: string;
@@ -47,6 +48,11 @@ interface JoinResponse {
   all_joined?: boolean;
   waiting_for?: number;
   total_participants?: number;
+  room_url?: string;
+  joined_participant?: {
+    email: string;
+    role: string;
+  };
 }
 
 type Step = "verifying" | "participant-info" | "waiting" | "ready" | "error";
@@ -55,6 +61,7 @@ function RoundContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
+  const idnt = searchParams.get("idnt");
 
   const [currentStep, setCurrentStep] = useState<Step>("verifying");
   const [roundData, setRoundData] = useState<RoundTokenData | null>(null);
@@ -62,19 +69,46 @@ function RoundContent() {
   const [userRole, setUserRole] = useState<"candidate" | "recruiter" | null>(
     null
   );
+  const [decodedEmail, setDecodedEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const [roomUrl, setRoomUrl] = useState<string | null>(null);
 
-  // Verify token on component mount
+  // Decode email from idnt parameter and verify token on component mount
   useEffect(() => {
+    if (idnt) {
+      try {
+        const decoded = decodeURIComponent(idnt);
+        setDecodedEmail(decoded);
+        console.log("Decoded email:", decoded);
+      } catch (error) {
+        console.error("Failed to decode email:", error);
+        setError("Invalid email parameter");
+        setCurrentStep("error");
+        return;
+      }
+    }
+
     if (token) {
       verifyToken();
     } else {
       setError("No token provided");
       setCurrentStep("error");
     }
-  }, [token]);
+  }, [token, idnt]);
+
+  // Auto-join when participant info is shown
+  useEffect(() => {
+    if (currentStep === "participant-info" && roundData) {
+      // Automatically join after a short delay to show the UI
+      const timer = setTimeout(() => {
+        joinRound();
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, roundData]);
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -111,6 +145,12 @@ function RoundContent() {
           jobId: data.job_id,
           roundNumber: data.round,
         });
+
+        // Store room_url if available
+        if (data.room_url) {
+          setRoomUrl(data.room_url);
+        }
+
         setCurrentStep("participant-info");
       } else {
         setError(data.message);
@@ -125,11 +165,6 @@ function RoundContent() {
   };
 
   const joinRound = async () => {
-    if (!userEmail.trim()) {
-      setError("Email is required");
-      return;
-    }
-
     try {
       setIsLoading(true);
       setError("");
@@ -143,7 +178,7 @@ function RoundContent() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ token, email: userEmail }),
+          body: JSON.stringify({ token, email: decodedEmail }),
         }
       );
 
@@ -160,6 +195,13 @@ function RoundContent() {
           // Waiting for other participants
           setCurrentStep("waiting");
           startPolling();
+        }
+
+        // Set user role if provided
+        if (data.joined_participant) {
+          setUserRole(
+            data.joined_participant.role as "candidate" | "recruiter"
+          );
         }
       } else {
         setError(data.message);
@@ -189,10 +231,15 @@ function RoundContent() {
 
       if (data.success) {
         if (data.round_started) {
-          setCurrentStep("ready");
+          // Stop polling
           if (pollInterval) {
             clearInterval(pollInterval);
             setPollInterval(null);
+          }
+
+          if (roomUrl) {
+            setRoomUrl(roomUrl);
+            startInterview();
           }
         } else {
           setCurrentStep("waiting");
@@ -212,24 +259,63 @@ function RoundContent() {
     setPollInterval(interval);
   };
 
-  const startInterview = () => {
-    // router.push("/");
-    console.log("Starting interview");
+  const startInterview = async () => {
+    try {
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+          ? `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/rounds/delete-token`
+          : "https://api.sivera.io/api/v1/rounds/delete-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token, email: decodedEmail }),
+        }
+      );
+
+      if (response.ok) {
+        if (roomUrl) {
+          window.location.href = roomUrl;
+        } else {
+          console.error("No room URL available");
+          setError("No interview room available. Please contact support.");
+        }
+      }
+    } catch (err) {
+      console.error("Error starting interview:", err);
+    }
   };
 
-  // Auto-detect user role based on participants
+  // Auto-detect user role based on participants and decoded email
   useEffect(() => {
-    if (roundData?.participants && userEmail) {
+    if (roundData?.participants && decodedEmail) {
       const allParticipants = [
         ...roundData.participants.candidates,
         ...roundData.participants.recruiters,
       ];
-      const participant = allParticipants.find((p) => p.email === userEmail);
+
+      // Find the participant with the matching email
+      const participant = allParticipants.find((p) => p.email === decodedEmail);
       if (participant) {
         setUserRole(participant.role as "candidate" | "recruiter");
+        setUserEmail(decodedEmail);
+        console.log(
+          `Identified user as ${participant.role} with email: ${decodedEmail}`
+        );
+      } else {
+        console.warn(`No participant found with email: ${decodedEmail}`);
+        // Fallback: assume candidate if no match found
+        const candidateParticipant = allParticipants.find(
+          (p) => p.role === "candidate"
+        );
+        if (candidateParticipant) {
+          setUserRole("candidate");
+          setUserEmail(decodedEmail);
+        }
       }
     }
-  }, [roundData, userEmail]);
+  }, [roundData, decodedEmail]);
 
   if (currentStep === "verifying") {
     return (
@@ -288,16 +374,9 @@ function RoundContent() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email address"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Click the button below to join the round interview.
+              </p>
             </div>
 
             {roundData?.participants && (
@@ -389,7 +468,7 @@ function RoundContent() {
               onClick={joinRound}
               className="cursor-pointer text-xs w-full"
               variant="outline"
-              disabled={isLoading || !userEmail.trim()}
+              disabled={isLoading}
             >
               {isLoading ? "Joining Round..." : "Join Round"}
             </Button>

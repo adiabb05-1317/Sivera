@@ -270,7 +270,7 @@ async def send_batch_human_interview_emails(
                     "date": scheduling.date,
                     "time": format_time_12hour(scheduling.time),
                     "timezone": scheduling.timeZone,
-                    "url": interview_url,  # Same token for candidate
+                    "url": interview_url + f"&idnt={urllib.parse.quote_plus(scheduling.candidateEmail)}",
                 }
 
                 await send_loops_email(
@@ -288,7 +288,7 @@ async def send_batch_human_interview_emails(
                     "date": scheduling.date,
                     "time": format_time_12hour(scheduling.time),
                     "timezone": scheduling.timeZone,
-                    "url": interview_url,  # Same token for recruiter
+                    "url": interview_url + f"&idnt={urllib.parse.quote_plus(scheduling.interviewerEmail)}",
                     "company": company_name,
                 }
 

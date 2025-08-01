@@ -142,6 +142,7 @@ class InterviewFlow:
 
         if self.job_id:
             self.job = self.db.fetch_one("jobs", {"id": self.job_id})
+            self.job_description = self.job.get("description")
             self.interview = self.db.fetch_one("interviews", {"job_id": self.job_id})
             self.interview_flow = self.db.fetch_one(
                 "interview_flows", {"id": self.job.get("flow_id")}
@@ -608,7 +609,7 @@ class InterviewFlow:
                             )
                             if candidate_interview_id:
                                 analytics_service = InterviewAnalytics()
-                                analytics = await analytics_service.analyze_interview(filtered_messages)
+                                analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
                                 details = {
                                     "interview_duration_seconds": interview_duration_seconds,
                                     "interview_start_time": self.interview_start_time.isoformat(),
