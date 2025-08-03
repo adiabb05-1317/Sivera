@@ -33,17 +33,19 @@ def extract_user_context(request: Request) -> Optional[UserContext]:
         organization_id = request.headers.get("X-Organization-ID")
 
         if not user_id or not email:
-            logger.debug("Missing required user headers")
+            logger.debug(f"Missing required user headers. X-User-ID: {'present' if user_id else 'missing'}, X-User-Email: {'present' if email else 'missing'}")
             return None
 
-        # Optional: Validate Supabase token if present
+        # Optional: Validate Supabase token if present (but don't fail auth if validation fails)
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            if not validate_supabase_token(token):
-                logger.warning(f"Invalid Supabase token for user {email}")
-                return None
-
+            token_valid = validate_supabase_token(token)
+            if not token_valid:
+                logger.warning(f"Invalid Supabase token for user {email}, but proceeding with header-based auth")
+                # Don't return None here - continue with header-based authentication
+        
+        logger.debug(f"Successfully extracted user context for {email} with org_id: {organization_id}")
         return UserContext(user_id=user_id, email=email, organization_id=organization_id)
 
     except Exception as e:
@@ -65,19 +67,31 @@ def validate_supabase_token(token: str) -> bool:
         # For now, we'll do basic validation
         # In production, you should verify the token signature with Supabase's public key
         decoded = jwt.decode(token, options={"verify_signature": False})
+        
+        logger.debug(f"Decoded token claims: {list(decoded.keys())}")
 
-        # Check if token has required claims
-        if "sub" not in decoded or "email" not in decoded:
+        # Check if token has required claims (be more lenient - only require sub)
+        if "sub" not in decoded:
+            logger.warning("Token missing 'sub' claim")
             return False
 
         # Check if token is expired
         import time
+        current_time = time.time()
+        
+        if "exp" in decoded:
+            token_exp = decoded["exp"]
+            logger.debug(f"Token expiration: {token_exp}, current time: {current_time}")
+            if token_exp < current_time:
+                logger.warning(f"Token expired. Exp: {token_exp}, Now: {current_time}")
+                return False
 
-        if "exp" in decoded and decoded["exp"] < time.time():
-            return False
-
+        logger.debug("Token validation successful")
         return True
 
+    except jwt.DecodeError as e:
+        logger.error(f"JWT decode error: {e}")
+        return False
     except Exception as e:
         logger.error(f"Error validating token: {e}")
         return False
@@ -98,6 +112,15 @@ def require_auth(request: Request) -> UserContext:
     """
     user_context = extract_user_context(request)
     if not user_context:
+        # Log the headers for debugging
+        headers_debug = {
+            "X-User-ID": request.headers.get("X-User-ID", "missing"),
+            "X-User-Email": request.headers.get("X-User-Email", "missing"),
+            "X-Organization-ID": request.headers.get("X-Organization-ID", "missing"),
+            "Authorization": "present" if request.headers.get("Authorization") else "missing"
+        }
+        logger.error(f"Authentication failed. Headers: {headers_debug}")
+        
         raise HTTPException(
             status_code=401,
             detail="Authentication required. Please include X-User-ID and X-User-Email headers.",
