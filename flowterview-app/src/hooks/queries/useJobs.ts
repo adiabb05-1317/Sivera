@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, invalidateRelatedQueries } from '@/lib/query-client';
-import { authenticatedFetch } from '@/lib/auth-client';
-import { fetchJobs } from '@/lib/supabase-candidates';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys, invalidateRelatedQueries } from "@/lib/query-client";
+import { authenticatedFetch } from "@/lib/auth-client";
+import { fetchJobs } from "@/lib/supabase-candidates";
+import { toast } from "sonner";
 
 // Jobs queries for route-based data fetching
 export const useJobs = () => {
@@ -20,17 +20,17 @@ export const useJobs = () => {
 
   // Create job mutation
   const createJobMutation = useMutation({
-    mutationFn: async (jobData: { 
-      title: string; 
-      description?: string; 
+    mutationFn: async (jobData: {
+      title: string;
+      description?: string;
       requirements?: string[];
       department?: string;
     }) => {
       const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/jobs/`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(jobData),
         }
       );
@@ -44,24 +44,24 @@ export const useJobs = () => {
     onMutate: async (newJob) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.jobs.all() });
 
-      toast.loading('Creating job posting...', { 
-        id: 'create-job',
-        description: `Creating "${newJob.title}"`
+      toast.loading("Creating job posting...", {
+        id: "create-job",
+        description: `Creating "${newJob.title}"`,
       });
 
       return { newJob };
     },
     onSuccess: (data, variables) => {
-      invalidateRelatedQueries(queryClient, 'create', 'jobs');
-      
-      toast.success('Job created successfully', {
-        id: 'create-job',
+      invalidateRelatedQueries(queryClient, "create", "jobs");
+
+      toast.success("Job created successfully", {
+        id: "create-job",
         description: `"${variables.title}" is now available for candidates`,
       });
     },
     onError: (error: any) => {
-      toast.error('Failed to create job', {
-        id: 'create-job',
+      toast.error("Failed to create job", {
+        id: "create-job",
         description: error.message,
       });
     },
@@ -69,18 +69,22 @@ export const useJobs = () => {
 
   // Update job mutation
   const updateJobMutation = useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      updates 
-    }: { 
-      jobId: string; 
-      updates: Partial<{ title: string; description: string; requirements: string[] }>
+    mutationFn: async ({
+      jobId,
+      updates,
+    }: {
+      jobId: string;
+      updates: Partial<{
+        title: string;
+        description: string;
+        requirements: string[];
+      }>;
     }) => {
       const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/jobs/${jobId}`,
         {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         }
       );
@@ -98,21 +102,21 @@ export const useJobs = () => {
 
       queryClient.setQueryData(queryKey, (old: any[]) => {
         if (!old) return old;
-        return old.map(job => 
+        return old.map((job) =>
           job.id === jobId ? { ...job, ...updates } : job
         );
       });
 
-      toast.loading('Updating job...', { id: `update-job-${jobId}` });
+      toast.loading("Updating job...", { id: `update-job-${jobId}` });
 
       return { previousJobs, jobId, updates };
     },
     onSuccess: (data, variables) => {
-      invalidateRelatedQueries(queryClient, 'update', 'jobs');
-      
-      toast.success('Job updated successfully', {
+      invalidateRelatedQueries(queryClient, "update", "jobs");
+
+      toast.success("Job updated successfully", {
         id: `update-job-${variables.jobId}`,
-        description: 'Job details have been saved',
+        description: "Job details have been saved",
       });
     },
     onError: (error: any, variables, context) => {
@@ -120,8 +124,8 @@ export const useJobs = () => {
       if (context?.previousJobs) {
         queryClient.setQueryData(queryKeys.jobs.all(), context.previousJobs);
       }
-      
-      toast.error('Failed to update job', {
+
+      toast.error("Failed to update job", {
         id: `update-job-${variables.jobId}`,
         description: error.message,
       });
@@ -131,30 +135,33 @@ export const useJobs = () => {
   return {
     // Data
     jobs: jobsQuery.data || [],
-    
+
     // Loading states
     isLoading: jobsQuery.isLoading,
-    
+
     // Error states
     error: jobsQuery.error,
-    
+
     // Actions
     createJob: createJobMutation.mutateAsync,
     updateJob: updateJobMutation.mutateAsync,
-    
+
     // Mutation states
     isCreatingJob: createJobMutation.isPending,
     isUpdatingJob: updateJobMutation.isPending,
-    
+
     // Query controls
     refetch: jobsQuery.refetch,
-    
+
     // Helper functions
     getJobById: (jobId: string) => {
       return jobsQuery.data?.find((job: any) => job.id === jobId);
     },
     getJobsByDepartment: (department: string) => {
-      return jobsQuery.data?.filter((job: any) => job.department === department) || [];
+      return (
+        jobsQuery.data?.filter((job: any) => job.department === department) ||
+        []
+      );
     },
   };
 };
