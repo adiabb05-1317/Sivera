@@ -135,48 +135,54 @@ export const invalidateRelatedQueries = async (
   action: string,
   entityType: string
 ) => {
-  switch (entityType) {
-    case "candidates":
-      // Invalidate all candidate-related queries
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.candidates.all(),
-      });
-      // Also invalidate interviews since they show candidate counts
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.interviews.all(),
-      });
-      // Invalidate analytics as candidate changes affect metrics
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.analytics.all(),
-      });
-      break;
+  try {
+    switch (entityType) {
+      case "candidates":
+        // Invalidate all candidate-related queries
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.candidates.all(),
+        });
+        // Also invalidate interviews since they show candidate counts
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.interviews.all(),
+        });
+        // Invalidate analytics as candidate changes affect metrics
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.analytics.all(),
+        });
+        break;
 
-    case "interviews":
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.interviews.all(),
-      });
-      // Interview changes might affect candidate data (statuses, assignments)
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.candidates.all(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.analytics.all(),
-      });
-      break;
+      case "interviews":
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.interviews.all(),
+        });
+        // Interview changes might affect candidate data (statuses, assignments)
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.candidates.all(),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.analytics.all(),
+        });
+        break;
 
-    case "jobs":
-      await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all() });
-      // Job changes affect candidates and interviews
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.candidates.all(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.interviews.all(),
-      });
-      break;
+      case "jobs":
+        await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all() });
+        // Job changes affect candidates and interviews
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.candidates.all(),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.interviews.all(),
+        });
+        break;
 
-    default:
-      // Fallback: invalidate everything
-      await queryClient.invalidateQueries();
+      default:
+        // Fallback: invalidate everything
+        await queryClient.invalidateQueries();
+    }
+  } catch (error) {
+    console.error("Error invalidating queries:", error);
+    // Fallback to invalidating everything if specific invalidation fails
+    await queryClient.invalidateQueries();
   }
 };
