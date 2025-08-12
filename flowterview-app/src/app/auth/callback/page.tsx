@@ -2,16 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { authenticatedFetch } from "@/lib/auth-client";
+import { Loader2 } from "lucide-react";
 
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
@@ -98,8 +91,8 @@ export default function AuthCallbackPage() {
               }
               throw new Error(
                 (data as any).detail ||
-                  (data as any).error ||
-                  "Failed to create user"
+                (data as any).error ||
+                "Failed to create user"
               );
             }
 
@@ -179,105 +172,71 @@ export default function AuthCallbackPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
-          <CardHeader className="flex flex-col items-center justify-center">
-            <CardTitle className="tracking-widest text-2xl">
-              <div
-                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-                style={{
-                  fontFamily: "KyivType Sans",
-                }}
-              >
-                SIVERA
-              </div>
-            </CardTitle>
-            <CardDescription className="dark:text-gray-300">
-              Setting up your account...
-              <p
-                className="text-xs text-gray-400 dark:text-gray-300"
-                style={{
-                  fontFamily: "KyivType Sans",
-                }}
-              >
-                Please don&apos;t close this page.
-              </p>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-6 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              Setting up your account
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Please don&apos;t close this page.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
-          <CardHeader className="flex flex-col items-center justify-center">
-            <CardTitle className="tracking-widest text-2xl">
-              <div
-                className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-                style={{
-                  fontFamily: "KyivType Sans",
-                }}
-              >
-                SIVERA
-              </div>
-            </CardTitle>
-            <CardDescription className="dark:text-gray-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
               Authentication Error
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300">
               {error}
             </div>
-            <div className="text-xs text-gray-400 dark:text-gray-300 whitespace-pre-wrap mt-2">
-              {debugInfo}
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col items-center">
+
+            {debugInfo && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                {debugInfo}
+              </div>
+            )}
+
             <Button
               asChild
-              className="cursor-pointer text-xs"
               variant="outline"
+              className="w-full"
             >
               <a href="/auth/login">Back to Login</a>
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div
-            className="text-2xl font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-            style={{
-              fontFamily: "KyivType Sans",
-            }}
-          >
-            SIVERA
-          </div>
-          <p
-            className="mt-4 text-gray-600 dark:text-gray-300 text-xs"
-            style={{
-              fontFamily: "KyivType Sans",
-            }}
-          >
-            Signing you in...
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Signing you in
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Please wait while we complete your authentication.
           </p>
-          <div className="mt-6 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
-          </div>
+        </div>
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
         </div>
       </div>
     </div>
