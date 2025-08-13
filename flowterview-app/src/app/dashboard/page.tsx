@@ -63,7 +63,7 @@ export default function DashboardPage() {
       name: "Average Interview Score",
       value: analytics.organizationAverageScore
         ? `${Number(analytics.organizationAverageScore).toFixed(1)}`
-        : "Loading...",
+        : "0",
       icon: Star,
     },
   ];

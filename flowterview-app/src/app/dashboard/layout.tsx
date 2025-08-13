@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -123,6 +123,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       router.push("/dashboard/candidate");
     }
   }, [user, router]);
+
+  // Show company setup modal if organization name is empty
+  useEffect(() => {
+    if (user && organization && !organization.name && !showCompanySetupModal) {
+      setShowCompanySetupModal(true);
+    }
+  }, [user, organization, showCompanySetupModal, setShowCompanySetupModal]);
 
   // Helper function to handle organization update completion
   const handleCompanySetupCompleted = async () => {

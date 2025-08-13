@@ -91,8 +91,8 @@ export default function AuthCallbackPage() {
               }
               throw new Error(
                 (data as any).detail ||
-                (data as any).error ||
-                "Failed to create user"
+                  (data as any).error ||
+                  "Failed to create user"
               );
             }
 
@@ -211,11 +211,7 @@ export default function AuthCallbackPage() {
               </div>
             )}
 
-            <Button
-              asChild
-              variant="outline"
-              className="w-full"
-            >
+            <Button asChild variant="outline" className="w-full">
               <a href="/auth/login">Back to Login</a>
             </Button>
           </div>
@@ -236,7 +232,7 @@ export default function AuthCallbackPage() {
           </p>
         </div>
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
         </div>
       </div>
     </div>

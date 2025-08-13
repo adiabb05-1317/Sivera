@@ -2,11 +2,10 @@
 
 import { useState, FormEvent, useRef, DragEvent } from "react";
 import { supabase } from "@/lib/supabase";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { useUpdateOrganization } from "@/hooks/queries/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Building2, X, Loader2, ShieldCloseIcon } from "lucide-react";
-import { DrawerClose } from "./ui/drawer";
+import { Upload, Building2, X, Loader2 } from "lucide-react";
 
 interface CompanySetupModalProps {
   open: boolean;
@@ -31,8 +30,9 @@ export default function CompanySetupModal({
   const [file, setFile] = useState<File | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const updateOrganizationMutation = useUpdateOrganization();
 
   // Track if there are changes from the original values
   const hasNameChanged = name.trim() !== existingName.trim();
@@ -48,7 +48,6 @@ export default function CompanySetupModal({
       return;
     }
     setError(null);
-    setIsSubmitting(true);
 
     let logoUrl: string | null = null;
 
@@ -65,30 +64,21 @@ export default function CompanySetupModal({
           .createSignedUrl(path, secondsInYear);
         if (signedError) {
           console.error("Error creating signed URL:", signedError);
-          return null;
+          return;
         }
         logoUrl = signedData?.signedUrl || null;
       }
 
-      const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/organizations/${organizationId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, logo_url: logoUrl }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update organization (${response.status})`);
-      }
+      await updateOrganizationMutation.mutateAsync({
+        organizationId,
+        name,
+        logo_url: logoUrl,
+      });
 
       onCompleted();
     } catch (err: any) {
       console.error("Company setup error", err);
       setError(err.message || "Unexpected error");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -157,7 +147,7 @@ export default function CompanySetupModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Acme Corporation"
-                className="w-full border-gray-300 dark:border-gray-600 focus:border-app-blue-500 focus:ring-app-blue-500 dark:focus:border-app-blue-400 dark:focus:ring-app-blue-400 text-base shadow-sm"
+                className="w-full border-gray-300 dark:border-gray-600 focus:border-app-blue-500 focus:ring-app-blue-500 dark:focus:border-app-blue-400 dark:focus:ring-app-blue-400 text-sm shadow-sm"
                 required
                 autoComplete="off"
               />
@@ -257,7 +247,7 @@ export default function CompanySetupModal({
                 <Button
                   type="button"
                   onClick={onCancel}
-                  disabled={isSubmitting}
+                  disabled={updateOrganizationMutation.isPending}
                   variant="outline"
                   className="cursor-pointer text-xs"
                 >
@@ -267,11 +257,13 @@ export default function CompanySetupModal({
               {(!isEditing || hasChanges) && (
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !name.trim()}
+                  disabled={
+                    updateOrganizationMutation.isPending || !name.trim()
+                  }
                   className="cursor-pointer text-xs"
                   variant="outline"
                 >
-                  {isSubmitting ? (
+                  {updateOrganizationMutation.isPending ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...
