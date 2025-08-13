@@ -100,10 +100,33 @@ async def fetch_candidates_sorted_by_job(request: Request):
 @router.post("/", response_model=CandidateOut)
 async def create_candidate(candidate: CandidateIn, request: Request):
     try:
+        organization_id = require_organization(request).organization_id
+        
+        # Validate that the organization_id matches
+        if candidate.organization_id != organization_id:
+            raise HTTPException(status_code=403, detail="Organization mismatch")
+
+        # Normalize email for comparison
+        normalized_email = candidate.email.lower().strip()
+
+        # Check if email already exists in database for this job
+        existing_candidate = db.fetch_one("candidates", {
+            "email": normalized_email,
+            "job_id": candidate.job_id,
+            "organization_id": organization_id
+        })
+
+        if existing_candidate:
+            raise HTTPException(status_code=400, detail="Email already exists for this job")
+
         # Insert candidate
         candidate_id = str(uuid.uuid4())
         candidate_data = candidate.dict()
         candidate_data["id"] = candidate_id
+        candidate_data["email"] = normalized_email  # Store normalized email
+        candidate_data["created_at"] = datetime.now().isoformat()
+        candidate_data["updated_at"] = datetime.now().isoformat()
+        
         created_candidate = db.execute_query("candidates", candidate_data)
 
         return created_candidate
@@ -111,13 +134,31 @@ async def create_candidate(candidate: CandidateIn, request: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{candidate_id}", response_model=CandidateOut)
-async def get_candidate(candidate_id: str, request: Request):
+@router.get("/check-email")
+async def check_email_exists(email: str, job_id: Optional[str] = None, request: Request = None):
+    """Check if an email already exists for candidates in the organization or specific job"""
     try:
-        candidate = db.fetch_one("candidates", {"id": candidate_id})
-        if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate not found")
-        return candidate
+        organization_id = require_organization(request).organization_id
+        
+        # Build query conditions
+        conditions = {
+            "email": email.lower().strip(),
+            "organization_id": organization_id
+        }
+        
+        # If job_id is provided, check only within that job
+        if job_id:
+            conditions["job_id"] = job_id
+        
+        # Check if any candidate exists with this email
+        existing_candidate = db.fetch_one("candidates", conditions)
+        
+        return {
+            "exists": existing_candidate is not None,
+            "candidate_id": existing_candidate.get("id") if existing_candidate else None,
+            "job_id": existing_candidate.get("job_id") if existing_candidate else None
+        }
+        
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -129,6 +170,17 @@ async def get_candidates_by_job(job_id: str, request: Request):
         organization_id = require_organization(request).organization_id
         candidates = db.fetch_all("candidates", {"job_id": job_id, "organization_id": organization_id})
         return candidates
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{candidate_id}", response_model=CandidateOut)
+async def get_candidate(candidate_id: str, request: Request):
+    try:
+        candidate = db.fetch_one("candidates", {"id": candidate_id})
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        return candidate
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -176,6 +228,9 @@ async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request
         created_candidates = []
         failed_candidates = []
 
+        # Track emails within this batch to prevent duplicates
+        batch_emails = set()
+
         for candidate_data in bulk_request.candidates:
             try:
                 # Validate that the organization_id matches
@@ -183,10 +238,32 @@ async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request
                     failed_candidates.append({"candidate": candidate_data.dict(), "error": "Organization mismatch"})
                     continue
 
+                # Normalize email for comparison
+                normalized_email = candidate_data.email.lower().strip()
+
+                # Check for duplicates within the batch
+                if normalized_email in batch_emails:
+                    failed_candidates.append({"candidate": candidate_data.dict(), "error": "Duplicate email in batch"})
+                    continue
+                
+                batch_emails.add(normalized_email)
+
+                # Check if email already exists in database for this job
+                existing_candidate = db.fetch_one("candidates", {
+                    "email": normalized_email,
+                    "job_id": candidate_data.job_id,
+                    "organization_id": organization_id
+                })
+
+                if existing_candidate:
+                    failed_candidates.append({"candidate": candidate_data.dict(), "error": "Email already exists for this job"})
+                    continue
+
                 # Create candidate
                 candidate_id = str(uuid.uuid4())
                 candidate_dict = candidate_data.dict()
                 candidate_dict["id"] = candidate_id
+                candidate_dict["email"] = normalized_email  # Store normalized email
                 candidate_dict["created_at"] = datetime.now().isoformat()
                 candidate_dict["updated_at"] = datetime.now().isoformat()
 

@@ -224,7 +224,7 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Signing you in
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
