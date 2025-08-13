@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAddCandidate, useBulkAddCandidates } from "./supabase-hooks";
+import {
+  useAddCandidate,
+  useBulkAddCandidates,
+  useEmailValidation,
+} from "./supabase-hooks";
 import { useJobs, useCandidates, useInterviews } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
 import Link from "next/link";
@@ -103,6 +107,16 @@ export default function InviteCandidatesPage() {
     progress: bulkProgress,
   } = useBulkAddCandidates();
 
+  // Email validation hook
+  const {
+    validateEmail,
+    validateBulkEmails,
+    validatingEmails,
+    emailErrors,
+    clearEmailError,
+    clearAllEmailErrors,
+  } = useEmailValidation();
+
   const session = useSession();
   const orgEmail = session?.user?.email ?? "";
 
@@ -174,12 +188,18 @@ export default function InviteCandidatesPage() {
         break;
       }
 
-      // Check for duplicate emails
+      // Check for duplicate emails within the form
       if (emails.has(candidate.email.toLowerCase())) {
         errors.push("Duplicate email addresses are not allowed");
         break;
       }
       emails.add(candidate.email.toLowerCase());
+
+      // Check for email validation errors from the server
+      if (emailErrors[candidate.email]) {
+        errors.push(emailErrors[candidate.email]);
+        break;
+      }
 
       // Check resume requirement
       if (!candidate.resume && !candidate.resume_url.trim()) {
@@ -265,6 +285,8 @@ export default function InviteCandidatesPage() {
 
         const newCandidates: CandidateRow[] = [];
         const processedEmails = new Set<string>();
+        const skippedDuplicates: string[] = [];
+        const skippedInvalid: string[] = [];
 
         for (let i = 1; i < lines.length && i <= 101; i++) {
           const values = parseCSVLine(lines[i]);
@@ -280,6 +302,7 @@ export default function InviteCandidatesPage() {
 
             // Skip duplicates
             if (processedEmails.has(email)) {
+              skippedDuplicates.push(values[emailIndex]);
               continue;
             }
             processedEmails.add(email);
@@ -287,6 +310,7 @@ export default function InviteCandidatesPage() {
             // Basic email validation
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(values[emailIndex])) {
+              skippedInvalid.push(values[emailIndex]);
               continue; // Skip invalid emails
             }
 
@@ -303,8 +327,26 @@ export default function InviteCandidatesPage() {
           }
         }
 
+        // Show summary of skipped entries
+        let warningMessage = "";
+        if (skippedDuplicates.length > 0) {
+          warningMessage += `Skipped ${skippedDuplicates.length} duplicate email(s). `;
+        }
+        if (skippedInvalid.length > 0) {
+          warningMessage += `Skipped ${skippedInvalid.length} invalid email(s). `;
+        }
+        if (warningMessage) {
+          console.warn("CSV Import warnings:", warningMessage);
+        }
+
         if (newCandidates.length > 0) {
           setCandidates(newCandidates);
+
+          // Validate emails after CSV upload if job is selected
+          if (selectedJobId) {
+            const emails = newCandidates.map((c) => c.email);
+            validateBulkEmails(emails, selectedJobId);
+          }
         } else {
           setCsvError(
             "No valid candidates found in CSV. Please ensure the format is: full_name, email_address, phone_number, resume_url and that email addresses are valid."
@@ -328,6 +370,7 @@ export default function InviteCandidatesPage() {
     setInterviewError("");
     setCsvError("");
     setFormError("");
+    clearAllEmailErrors();
     setIsLoadingJobSelection(true);
 
     // CRITICAL: Set current request ID to track this specific request
@@ -359,6 +402,15 @@ export default function InviteCandidatesPage() {
         console.log(
           `Successfully selected job ${jobId} with interview ${interviewId}`
         );
+
+        // Validate existing candidate emails for the new job
+        const candidateEmails = candidates
+          .map((c) => c.email.trim())
+          .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+        if (candidateEmails.length > 0) {
+          validateBulkEmails(candidateEmails, jobId);
+        }
       } else {
         setInterviewError(
           "No active interview found for this job. Please create one first."
@@ -393,6 +445,14 @@ export default function InviteCandidatesPage() {
     const validationErrors = validateCandidates();
     if (validationErrors.length > 0) {
       setFormError(validationErrors[0]);
+      return;
+    }
+
+    // Final email validation check
+    const candidateEmails = candidates.map((c) => c.email.trim());
+    const hasEmailErrors = candidateEmails.some((email) => emailErrors[email]);
+    if (hasEmailErrors) {
+      setFormError("Please fix email validation errors before submitting");
       return;
     }
 
@@ -734,14 +794,29 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
                   <span className="text-xs opacity-75 mb-3">
                     Email address of the candidate
                   </span>
-                  <Input
-                    type="email"
-                    placeholder="johndoe@example.com"
-                    value={candidate.email}
-                    onChange={(e) =>
-                      updateCandidate(candidate.id, "email", e.target.value)
-                    }
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      type="email"
+                      placeholder="johndoe@example.com"
+                      value={candidate.email}
+                      onChange={(e) => {
+                        const email = e.target.value;
+                        updateCandidate(candidate.id, "email", email);
+                        if (emailErrors[candidate.email]) {
+                          clearEmailError(candidate.email);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const email = e.target.value.trim();
+                        if (email && selectedJobId) {
+                          validateEmail(email, selectedJobId);
+                        }
+                      }}
+                      className={
+                        emailErrors[candidate.email] ? "border-red-500" : ""
+                      }
+                    />
+                  </div>
                   <span className="text-xs opacity-75 mb-3">
                     Phone number of the candidate
                   </span>
@@ -820,7 +895,7 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
             <Button
               type="button"
               variant="outline"
-              className="text-app-blue-6/00 cursor-pointer text-xs"
+              className="text-app-blue-600 cursor-pointer text-xs"
               onClick={addCandidateRow}
             >
               <Plus className="mr-1 h-4 w-4" />
@@ -842,18 +917,32 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
               disabled={
                 isSubmitting ||
                 bulkLoading ||
-                isLoadingJobSelection ||
-                (!interviewIdFromQuery && !jobInterviewPair) ||
-                validateCandidates().length > 0
+                validatingEmails.size > 0 ||
+                Object.keys(emailErrors).some((email) => emailErrors[email]) ||
+                !selectedInterview ||
+                candidates.some(
+                  (c) =>
+                    !c.name.trim() ||
+                    !c.email.trim() ||
+                    (!c.resume && !c.resume_url.trim())
+                )
               }
-              variant="outline"
               className="cursor-pointer text-xs"
+              variant="outline"
             >
               {isSubmitting || bulkLoading ? (
-                "Processing..."
+                <>
+                  <Send className="mr-1 h-4 w-4 animate-spin" />
+                  {bulkProgress || "Submitting..."}
+                </>
+              ) : validatingEmails.size > 0 ? (
+                <>
+                  <Send className="mr-1 h-4 w-4" />
+                  Validating emails...
+                </>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send className="mr-1 h-4 w-4" />
                   Save Candidate(s)
                 </>
               )}
