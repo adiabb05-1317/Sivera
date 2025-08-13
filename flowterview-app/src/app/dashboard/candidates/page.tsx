@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  Trash,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,9 @@ import {
 import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
-import { useCandidates, useJobs } from "@/hooks/useStores";
+import { useCandidates } from "@/hooks/queries/useCandidates";
+import { useJobs } from "@/hooks/queries/useJobs";
+import { useCandidateAnalytics } from "@/hooks/queries/useAnalytics";
 import { InterviewAnalytics } from "@/components/ui/interview-analytics";
 import {
   DropdownMenu,
@@ -64,66 +67,50 @@ const CandidateViewDialog = ({
   onClose: () => void;
   handleSendInvite: (candidate: any) => void;
 }) => {
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [interviewId, setInterviewId] = useState<string | null>(null);
+  const candidatesQuery = useCandidates();
 
-  const siveraBackendUrl =
-    process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  // Fetch interview ID for this candidate's job
+  useEffect(() => {
+    const fetchInterviewId = async () => {
+      if (!candidate.job_id) return;
 
-  const handleShowAnalytics = async () => {
-    setLoadingAnalytics(true);
-    try {
-      // We need to find the interview ID for this candidate's job
-      if (!candidate.job_id) {
-        toast.error("Error", {
-          description: "No job information found for this candidate",
-        });
-        return;
-      }
-
-      // Fetch interview for this job to get the interview ID
-      const interviewResponse = await authenticatedFetch(
-        `${siveraBackendUrl}/api/v1/interviews/by-job/${candidate.job_id}`
-      );
-
-      if (!interviewResponse.ok) {
-        throw new Error(
-          `Failed to fetch interview: ${interviewResponse.status}`
+      try {
+        const response = await authenticatedFetch(
+          `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/by-job/${candidate.job_id}`
         );
+
+        if (response.ok) {
+          const data = await response.json();
+          setInterviewId(data.interview?.id || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch interview ID:", error);
       }
+    };
 
-      const interviewData = await interviewResponse.json();
-      const interviewId = interviewData.interview?.id;
+    fetchInterviewId();
+  }, [candidate.job_id]);
 
-      if (!interviewId) {
-        toast.error("Error", {
-          description: "No interview found for this job",
-        });
-        return;
-      }
+  // Use TanStack Query for candidate analytics - only fetch if interview ID is available
+  const candidateAnalytics = useCandidateAnalytics(
+    candidate.id,
+    interviewId || ""
+  );
 
-      // Now fetch analytics for this candidate and interview
-      const analytics = await authenticatedFetch(
-        `${siveraBackendUrl}/api/v1/analytics/interview/${interviewId}/candidate/${candidate.id}`
-      );
-
-      if (!analytics.ok) {
-        throw new Error(`Failed to fetch analytics: ${analytics.status}`);
-      }
-
-      const data = await analytics.json();
-      setAnalyticsData(data.analytics);
-
-      toast.success("Analytics", {
-        description: "Analytics loaded successfully",
+  const handleShowAnalytics = () => {
+    if (!interviewId) {
+      toast.error("Error", {
+        description: "No interview found for this job",
       });
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
+      return;
+    }
+
+    // Analytics will be automatically fetched by TanStack Query
+    if (candidateAnalytics.error) {
       toast.error("Error", {
         description: "Failed to load analytics",
       });
-    } finally {
-      setLoadingAnalytics(false);
     }
   };
 
@@ -131,6 +118,11 @@ const CandidateViewDialog = ({
     toast.info("More Details", {
       description: "Detailed analytics view coming soon!",
     });
+  };
+
+  const handleRemoveCandidate = async (candidate: any) => {
+    onClose();
+    await candidatesQuery.deleteCandidate({ candidateId: candidate.id });
   };
 
   return (
@@ -144,52 +136,65 @@ const CandidateViewDialog = ({
           <div className="flex flex-col gap-2 w-full">
             {candidate.status === "Interviewed" && (
               <>
-                {/* Analytics Section */}
-                {!analyticsData ? (
+                {/* Analytics Section with TanStack Query */}
+                {!candidateAnalytics.analytics &&
+                !candidateAnalytics.isLoading ? (
                   <Button
                     variant="outline"
                     onClick={handleShowAnalytics}
-                    disabled={loadingAnalytics}
+                    disabled={!interviewId}
                     className="cursor-pointer text-xs"
                   >
-                    {loadingAnalytics ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading Analytics...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="mr-2 h-4 w-4" />
-                        Show Analytics
-                      </>
-                    )}
+                    <Brain className="h-4 w-4" />
+                    Show Analytics
                   </Button>
-                ) : (
-                  <InterviewAnalytics analyticsData={analyticsData} />
-                )}
+                ) : candidateAnalytics.isLoading ? (
+                  <Button
+                    variant="outline"
+                    disabled
+                    className="cursor-pointer text-xs"
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading Analytics...
+                  </Button>
+                ) : candidateAnalytics.analytics ? (
+                  <InterviewAnalytics
+                    analyticsData={candidateAnalytics.analytics}
+                  />
+                ) : null}
 
                 {/* View Detailed Analysis Button - Only show when analytics are displayed */}
-                {analyticsData && (
+                {candidateAnalytics.analytics && (
                   <Button
                     variant="outline"
                     onClick={handleViewMoreDetails}
                     className="cursor-pointer text-xs"
                   >
-                    <ArrowRight className="mr-2 h-4 w-4" />
+                    <ArrowRight className="h-4 w-4" />
                     View Detailed Analysis
                   </Button>
                 )}
               </>
             )}
             {candidate.resume_url && (
-              <Button
-                onClick={() => window.open(candidate.resume_url, "_blank")}
-                variant="outline"
-                className="cursor-pointer text-xs"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                View Resume
-              </Button>
+              <>
+                <Button
+                  onClick={() => window.open(candidate.resume_url, "_blank")}
+                  variant="outline"
+                  className="cursor-pointer text-xs"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Resume
+                </Button>
+                <Button
+                  onClick={() => handleRemoveCandidate(candidate)}
+                  variant="outline"
+                  className="cursor-pointer text-xs"
+                >
+                  <Trash className="h-4 w-4" />
+                  Remove Candidate
+                </Button>
+              </>
             )}
             {!candidate.resume_url && (
               <p className="text-sm text-gray-500">No resume available.</p>
@@ -213,14 +218,19 @@ export default function CandidatesPage() {
   const [sortBy, setSortBy] = useState<"name" | "job" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Use our new store hooks instead of the old supabase hooks
-  const {
-    candidates,
-    isLoading: loading,
-    error,
-    refresh: reload,
-  } = useCandidates();
-  const { jobs, fetchJobs } = useJobs();
+  // Route-based data fetching - only load what this page needs
+  const candidatesQuery = useCandidates({
+    status: selectedStatuses.length > 0 ? selectedStatuses : undefined,
+    jobId: selectedJobIds.length > 0 ? selectedJobIds : undefined,
+    search: searchTerm || undefined,
+  });
+  const jobsQuery = useJobs();
+
+  // Extract data from TanStack Query
+  const candidates = candidatesQuery.allCandidates;
+  const loading = candidatesQuery.isLoading;
+  const error = candidatesQuery.error;
+  const jobs = jobsQuery.jobs;
 
   // Get unique statuses from candidates
   const uniqueStatuses = useMemo(() => {
@@ -321,7 +331,7 @@ export default function CandidatesPage() {
   const getCandidateStatusBadgeClass = (status: string) => {
     switch (status) {
       case "Applied":
-        return "bg-app-blue-50/90 text-app-blue-600 border-app-blue-200/80";
+        return "bg-app-blue-100/90 text-app-blue-600 border-app-blue-200/80";
       case "Screening":
         return "bg-app-blue-100/90 text-app-blue-700 border-app-blue-300/80";
       case "Interview_Scheduled":
@@ -368,9 +378,7 @@ export default function CandidatesPage() {
     )
   ).map((str) => JSON.parse(str));
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  // No useEffect needed - TanStack Query handles data fetching automatically
 
   // Invite for Interview handler
   const handleSendInvite = async (candidate: any) => {
@@ -728,12 +736,7 @@ export default function CandidatesPage() {
       </div>
 
       {/* Candidates Table */}
-      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow pb-0 border dark:border-gray-800">
-        <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-base font-medium text-gray-900 dark:text-white ml-5">
-            Candidates
-          </h2>
-        </div>
+      <Card className="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow p-0 border dark:border-gray-800">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
             <thead className="bg-gray-50 dark:bg-gray-800">

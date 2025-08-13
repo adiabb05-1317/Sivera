@@ -6,13 +6,13 @@ Job Role:
 Job Description:
 {job_description}
 
-The skills required for the job are:
+The required skills for this role are:
 {skills}
-so, you need to tailor the flow for the AI system to ask questions based on the skills.
+Therefore, tailor the interview flow to include questions that assess these skills.
 
-The duration of the interview will be is: {duration} minutes.
+The interview duration is {duration} minutes. Based on this duration, ensure that the interview flow is appropriately structured and time-efficient.
 
-Create an interview flow JSON that EXACTLY follows this STRUCTURE, you can change the order of the nodes and the functions, but you cannot change the names of the functions:
+Create a JSON interview flow that EXACTLY follows the structure below. You may change the order of the nodes and functions, but DO NOT change the function names:
 {
   "initial_node": "introduction",
   "nodes": {

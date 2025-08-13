@@ -20,8 +20,10 @@ export default function StoreInitializer({ children }: StoreInitializerProps) {
       initialized.current = true;
 
       const doInitialize = async () => {
+        console.log("🚀 StoreInitializer: Starting initialization...");
         try {
           await initializeStores();
+          console.log("✅ StoreInitializer: Initialization completed");
         } catch (error) {
           console.error("❌ StoreInitializer: Initialization failed:", error);
         } finally {
@@ -30,8 +32,11 @@ export default function StoreInitializer({ children }: StoreInitializerProps) {
       };
 
       doInitialize();
+    } else if (!authStore.isLoading && initialized.current) {
+      // Auth is ready and we've already initialized, skip loading
+      setIsInitializing(false);
     }
-  }, [authStore.isLoading]); // Re-run when auth loading state changes
+  }, [authStore.isLoading]);
 
   // Show loading state while initializing
   if (isInitializing) {

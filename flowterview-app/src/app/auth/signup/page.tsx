@@ -2,19 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { authenticatedFetch, signup } from "@/lib/auth-client";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
+
+const emailSchema = z.string().email();
 
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
@@ -31,6 +27,16 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<"email" | "password">("email");
+
+  const handleEmailStep = () => {
+    if (!email || !emailSchema.safeParse(email).success) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    setError(null);
+    setStep("password");
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +46,7 @@ export default function SignupPage() {
     try {
       if (!password || password !== confirmPassword) {
         setError("Passwords do not match");
+        return;
       }
 
       const signupResult = await signup(email, password);
@@ -97,113 +104,171 @@ export default function SignupPage() {
   // If success, show confirmation message
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
-          <CardHeader className="flex flex-col items-center justify-center">
-            <CardTitle className="tracking-widest text-lg">
-              <div
-                className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-                style={{
-                  fontFamily: "KyivType Sans",
-                }}
-              >
-                SIVERA
-              </div>
-            </CardTitle>
-            <CardDescription className="dark:text-gray-300">
-              {password ? "Account created!" : "Check your email"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mt-4 text-gray-600 dark:text-gray-300">
-              {password ? (
-                <>
-                  Your account has been created. You can now{" "}
-                  <strong>sign in</strong> with your email and password.
-                </>
-              ) : (
-                <>
-                  We&apos;ve sent a magic link to <strong>{email}</strong>.
-                  Click the link in the email to sign in.
-                </>
-              )}
-            </p>
-          </CardContent>
-          <CardFooter className="flex flex-col items-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Header with Banner */}
+        <div className="relative h-16 w-full overflow-hidden">
+          <Image
+            src="/Banner.png"
+            alt="Header Banner"
+            fill
+            className="object-cover object-top"
+            priority
+          />
+          {/* Sivera Logo */}
+          <div className="absolute top-2 left-4 z-10">
+            <Image
+              src="/SiveraTransparent.png"
+              alt="Sivera Logo"
+              width={48}
+              height={48}
+              className="mix-blend-multiply opacity-70"
+              priority
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
+          <div className="w-full max-w-md space-y-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                {password ? "Account created!" : "Check your email"}
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {password ? (
+                  <>
+                    Your account has been created. You can now{" "}
+                    <strong>sign in</strong> with your email and password.
+                  </>
+                ) : (
+                  <>
+                    We&apos;ve sent a magic link to <strong>{email}</strong>.
+                    Click the link in the email to sign in.
+                  </>
+                )}
+              </p>
+            </div>
             <Button
               asChild
-              className="cursor-pointer text-xs"
               variant="outline"
+              className="w-full"
             >
               <Link href="/auth/login">Back to sign in</Link>
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
-        <CardHeader className="flex flex-col items-center justify-center">
-          <CardTitle className="tracking-widest text-lg">
-            <div
-              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-              style={{
-                fontFamily: "KyivType Sans",
-              }}
-            >
-              SIVERA
-            </div>
-          </CardTitle>
-          <CardDescription className="dark:text-gray-300">
-            Create your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
-              {error}
-            </div>
-          )}
-          <form className="space-y-6" onSubmit={handleSignup}>
-            <div className="space-y-4">
-              <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="email" className="dark:text-gray-200">
-                  Email address
-                </label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
-                />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header with Banner */}
+      <div className="relative h-16 w-full overflow-hidden">
+        <Image
+          src="/Banner.png"
+          alt="Header Banner"
+          fill
+          className="object-cover object-top"
+          priority
+        />
+        {/* Sivera Logo */}
+        <div className="absolute top-2 left-4 z-10">
+          <Image
+            src="/SiveraTransparent.png"
+            alt="Sivera Logo"
+            width={48}
+            height={48}
+            className="mix-blend-multiply opacity-70"
+            priority
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              Create your account
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {error && (
+              <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300">
+                {error}
               </div>
-              <div className="flex flex-col space-y-1.5 text-sm">
-                <label htmlFor="password" className="dark:text-gray-200">
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="********"
-                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
-                />
+            )}
+
+            {step === "email" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email address
+                  </label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full py-3"
+                    onKeyDown={(e) => e.key === "Enter" && handleEmailStep()}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleEmailStep}
+                  disabled={!email}
+                  className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
+                >
+                  Next
+                </Button>
               </div>
-              {password && (
-                <div className="flex flex-col space-y-1.5 text-sm">
-                  <label
-                    htmlFor="confirmPassword"
-                    className="dark:text-gray-200"
-                  >
+            ) : (
+              <form className="space-y-4" onSubmit={handleSignup}>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email address
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={email}
+                      disabled
+                      className="w-full py-3 bg-gray-100 dark:bg-gray-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStep("email")}
+                      className="text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Password
+                  </label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create a password"
+                    className="w-full py-3"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Confirm password
                   </label>
                   <Input
@@ -213,34 +278,34 @@ export default function SignupPage() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
+                    placeholder="Confirm your password"
+                    className="w-full py-3"
                   />
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col items-center space-y-3 w-full px-3">
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={loading}
-                className="cursor-pointer text-xs w-full"
-              >
-                {loading ? "Signing up..." : "Sign Up"}
-              </Button>
-              <div className="text-sm text-gray-500 dark:text-gray-300 items-center justify-center">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="text-app-blue-5/00 hover:text-app-blue-6/00 dark:text-app-blue-4/00 dark:hover:text-app-blue-3/00"
+
+                <Button
+                  type="submit"
+                  disabled={loading || !password || !confirmPassword}
+                  className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
                 >
-                  Sign in
-                </Link>
-              </div>
+                  {loading ? "Creating account..." : "Create Account"}
+                </Button>
+              </form>
+            )}
+
+            {/* Footer */}
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Already have an account?{" "}
+              <Link
+                href="/auth/login"
+                className="text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Sign in
+              </Link>
             </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-row items-center gap-2 text-sm"></CardFooter>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -18,7 +18,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   const { isBotSpeaking, setIsBotSpeaking } = usePathStore();
   const { isUserSpeaking, setIsUserSpeaking } = usePathStore();
   const { sources, setSources } = usePathStore();
-  const { setCurrentChatHistory } = usePathStore();
+  const { setCurrentChatHistory, setCallStatus, resetStore } = usePathStore();
   const { currentBotTranscript, setCurrentBotTranscript } = usePathStore();
   const { setCurrentUserTranscript } = usePathStore();
   const { isSpeakerOn, isMicMuted } = usePathStore();
@@ -105,6 +105,16 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       },
       type === "error" ? 5000 : 3000
     );
+  };
+
+  // Handle interview end the same way as the end call button
+  const handleInterviewEnd = () => {
+    setCallStatus("leaving");
+
+    setTimeout(() => {
+      resetStore();
+      setCallStatus("left");
+    }, 1200);
   };
 
   const getOriginUrl = (url: string): string => {
@@ -356,15 +366,25 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           onError: (err: any) => {
             console.error("RTVIClient error:", err);
           },
+          // TODO: this is not working fully
           onServerMessage: (data: any) => {
             try {
               const message =
                 typeof data === "string" ? JSON.parse(data) : data;
+
               if (message?.text && message?.text !== "") {
                 setCurrentUserTranscript(message.text);
               }
 
               if (message && typeof message === "object") {
+                // Handle interview ended message first (check the main message object)
+                if (message?.type === "interview_ended") {
+                  handleInterviewEnd();
+                  return;
+                }
+
+                const messageData = message.message || message;
+
                 if (message?.sources?.length > 0) {
                   setSources(message.sources);
                 }
@@ -373,7 +393,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                 }
 
                 // Handle assessment messages (coding problems and notebooks)
-                const messageData = message.message || message;
 
                 if (
                   messageData &&
@@ -603,7 +622,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      {/* <Button
+      <Button
         onClick={handleTestAssessments}
         className="fixed top-4 right-4 z-50 shadow-lg"
         style={{
@@ -616,7 +635,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           : currentAssessment.type === "notebook"
             ? "Test Coding Assessment"
             : "Close Assessments"}
-      </Button> */}
+      </Button>
     </div>
   );
 }

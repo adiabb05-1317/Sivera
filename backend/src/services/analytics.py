@@ -8,9 +8,9 @@ class InterviewAnalytics:
     def __init__(self):
         pass
 
-    def _prepare_prompt(self, chat_history: List[Dict[str, str]]) -> str:
+    def _prepare_prompt(self, job_title: str, job_description: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> str:
         """Prepare the prompt for the LLM to analyze the interview."""
-        context = """
+        context = f"""
         You are an expert interview analyzer. Review the following interview conversation and provide detailed analytics.
 
         Analyze the following aspects:
@@ -24,7 +24,7 @@ class InterviewAnalytics:
         8. What would he not be good at? (2-3 sentences)
 
         Format your response as a JSON with the following structure:
-        {
+        {{
             "summary": "Brief summary here",
             "good_at": "What would he be good at? (2-3 sentences)",
             "good_at_skills": ["skill1", "skill2", ...],
@@ -38,10 +38,17 @@ class InterviewAnalytics:
             "technical_score": X (1-10 scale),
             "overall_assessment": "Brief overall assessment",
             "overall_score": X (1-10 scale)
-        }
+        }}
 
-        Here is the interview conversation:
+        Job Information:
+        Job Title: {job_title}
+        Job Description: {job_description}
 
+        Candidate Information:
+        Resume: {resume}
+        Additional Links Info: {additional_links_info}
+
+        Interview Conversation:
         """
 
         for message in chat_history:
@@ -50,7 +57,7 @@ class InterviewAnalytics:
 
         return context
 
-    async def analyze_interview(self, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def analyze_interview(self, job_title: str, job_description: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Analyze the interview chat history and return structured analytics.
 
@@ -61,7 +68,7 @@ class InterviewAnalytics:
             Dictionary containing structured interview analysis
         """
         try:
-            prompt = self._prepare_prompt(chat_history)
+            prompt = self._prepare_prompt(job_title, job_description, resume, additional_links_info, chat_history)
             response = await generic_llm.call_llm(prompt)
 
             try:

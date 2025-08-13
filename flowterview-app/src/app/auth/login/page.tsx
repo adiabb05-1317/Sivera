@@ -2,22 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { setUserContext } from "@/lib/auth-client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@radix-ui/react-label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Separator } from "@radix-ui/react-separator";
 
 const emailSchema = z.string().email();
 
@@ -25,10 +18,11 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<"email" | "password">("email");
 
   useEffect(() => {
     const checkSession = async () => {
@@ -46,9 +40,8 @@ export default function LoginPage() {
     checkSession();
   }, [router]);
 
-  const handleLogin = async () => {
+  const handleEmailLogin = async () => {
     setLoading(true);
-    setError(null);
 
     try {
       if (!email || !emailSchema.safeParse(email).success) {
@@ -58,33 +51,10 @@ export default function LoginPage() {
         return;
       }
 
-      if (password && password.trim() !== "") {
-        // If password provided, do password login
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          toast.error("Error logging in", {
-            description: error.message,
-          });
-          return;
-        }
-
-        // FIXED: Set user context and cookies after successful login
-        if (data?.user) {
-          await setUserContext(data.user.id, data.user.email!);
-          router.push("/dashboard");
-        }
-        return;
-      }
-
-      // If no password, send magic link
+      // Send magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // Using the environment variable for production
           emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL
             ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
             : `${window.location.origin}/auth/callback`,
@@ -101,11 +71,56 @@ export default function LoginPage() {
       setMagicLinkSent(true);
     } catch (error: unknown) {
       console.error("Login error:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "An error occurred during login";
-      setError(errorMessage);
+      toast.error("An error occurred", {
+        description: "Please try again",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailStep = () => {
+    if (!email || !emailSchema.safeParse(email).success) {
+      toast.error("Invalid email", {
+        description: "Please enter a valid email address",
+      });
+      return;
+    }
+    setStep("password");
+  };
+
+  const handlePasswordLogin = async () => {
+    setLoading(true);
+
+    try {
+      if (!password) {
+        toast.error("Password required", {
+          description: "Please enter your password",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error("Error logging in", {
+          description: error.message,
+        });
+        return;
+      }
+
+      if (data?.user) {
+        await setUserContext(data.user.id, data.user.email!);
+        router.push("/dashboard");
+      }
+    } catch (error: unknown) {
+      console.error("Login error:", error);
+      toast.error("An error occurred", {
+        description: "Please try again",
+      });
     } finally {
       setLoading(false);
     }
@@ -113,60 +128,53 @@ export default function LoginPage() {
 
   if (sessionLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg flex flex-col items-center justify-center">
-          <div
-            className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-            style={{
-              fontFamily: "KyivType Sans",
-            }}
-          >
-            SIVERA
-          </div>
-          <div className="text-center">
-            <p
-              className="mt-4 text-gray-600 dark:text-gray-300 text-xs"
-              style={{
-                fontFamily: "KyivType Sans",
-              }}
-            >
-              Loading...
-            </p>
-            <div className="mt-6 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-app-blue-5/00 border-t-transparent"></div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
       </div>
     );
   }
 
   if (magicLinkSent) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-800 p-4">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-white dark:bg-zinc-900 p-8 shadow-lg">
-          <div className="text-center">
-            <div
-              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-              style={{
-                fontFamily: "KyivType Sans",
-              }}
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Header with Banner */}
+        <div className="relative h-16 w-full overflow-hidden">
+          <Image
+            src="/Banner.png"
+            alt="Header Banner"
+            fill
+            className="object-cover object-top"
+            priority
+          />
+          {/* Sivera Logo */}
+          <div className="absolute top-2 left-4 z-10">
+            <Image
+              src="/SiveraTransparent.png"
+              alt="Sivera Logo"
+              width={48}
+              height={48}
+              className="mix-blend-multiply opacity-70"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
+          <div className="w-full max-w-md space-y-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                Check your email
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                We&apos;ve sent a magic link to <strong>{email}</strong>
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setMagicLinkSent(false)}
+              className="w-full"
             >
-              SIVERA
-            </div>
-            <p className="mt-4 text-gray-600 dark:text-gray-300">
-              We&apos;ve sent a magic link to <strong>{email}</strong>. Click
-              the link in the email to sign in.
-            </p>
-            <div className="mt-8">
-              <Button
-                className="cursor-pointer text-xs"
-                variant="outline"
-                onClick={() => setMagicLinkSent(false)}
-              >
-                Try again
-              </Button>
-            </div>
+              Try again
+            </Button>
           </div>
         </div>
       </div>
@@ -174,89 +182,207 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-app-blue-50/20 to-app-blue-300/30 dark:bg-gradient-to-t dark:from-zinc-900 dark:to-zinc-800 p-4">
-      <Card className="w-[450px] dark:bg-zinc-900 dark:border-zinc-700">
-        <CardHeader className="flex flex-col items-center justify-center">
-          <CardTitle className="tracking-widest text-lg">
-            <div
-              className="text-lg font-medium tracking-widest bg-gradient-to-br from-app-blue-400/50 via-app-blue-600/70 to-app-blue-8/00 text-transparent bg-clip-text dark:from-app-blue-2/00 dark:via-blue-400 dark:to-white"
-              style={{
-                fontFamily: "KyivType Sans",
-              }}
-            >
-              SIVERA
-            </div>
-          </CardTitle>
-          <CardDescription className="dark:text-gray-300">
-            Sign in to your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5 text-sm">
-                <Label htmlFor="name" className="dark:text-gray-200">
-                  Email address
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="email@domain.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5 text-sm">
-                <Label htmlFor="name" className="dark:text-gray-200">
-                  Password (optional)
-                </Label>
-                <Input
-                  id="password"
-                  placeholder="Leave empty to use magic link"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="dark:bg-zinc-800 dark:text-gray-100 dark:border-zinc-700"
-                />
-              </div>
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-between flex-col gap-5 p-2">
-          <div className="flex self-start text-sm">
-            <Link
-              href="/auth/forgot-password"
-              className="font-medium text-app-blue-6/00 hover:text-app-blue-5/00 ml-5 dark:text-app-blue-4/00 dark:hover:text-app-blue-3/00"
-            >
-              Forgot your password?
-            </Link>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header with Banner */}
+      <div className="relative h-16 w-full overflow-hidden">
+        <Image
+          src="/Banner.png"
+          alt="Header Banner"
+          fill
+          className="object-cover object-top"
+          priority
+        />
+        {/* Sivera Logo */}
+        <div className="absolute top-2 left-4 z-10">
+          <Image
+            src="/SiveraTransparent.png"
+            alt="Sivera Logo"
+            width={48}
+            height={48}
+            className="mix-blend-multiply opacity-70"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              {showPassword ? "Log in or create an account to collaborate" : "Log in to Sivera"}
+            </h2>
           </div>
-          <div className="flex flex-col items-center space-y-3 w-full px-3">
-            <Button
-              className="cursor-pointer text-xs w-full"
-              variant="outline"
-              onClick={handleLogin}
-            >
-              {loading
-                ? password
-                  ? "Signing in..."
-                  : "Sending link..."
-                : password
-                ? "Sign in"
-                : "Send magic link"}
-            </Button>
-            <Button
-              className="cursor-pointer text-xs w-full"
-              variant="outline"
-              onClick={() => {
-                router.push("/auth/signup");
-              }}
-            >
-              Sign up
-            </Button>
+
+          <div className="space-y-4">
+            {!showPassword ? (
+              <>
+                {/* SAML SSO */}
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-3 py-3 cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Continue with SAML SSO
+                </Button>
+
+                {/* Passkey */}
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-3 py-3 cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  Continue with Passkey
+                </Button>
+
+                <div className="flex items-center gap-4">
+                  <Separator className="flex-1 h-px bg-gray-300 dark:bg-gray-600 opacity-40" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">or</span>
+                  <Separator className="flex-1 h-px bg-gray-300 dark:bg-gray-600 opacity-40" />
+                </div>
+
+                {/* Email Input */}
+                <div className="space-y-2">
+                  <Input
+                    type="email"
+                    placeholder="Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full py-3"
+                  />
+                </div>
+
+                {/* Continue with Email Button */}
+                <Button
+                  onClick={handleEmailLogin}
+                  disabled={loading || !email}
+                  className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
+                >
+                  {loading ? "Sending link..." : "Continue with Email"}
+                </Button>
+
+                {/* Show other options */}
+                <button
+                  onClick={() => setShowPassword(true)}
+                  className="w-full text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+                >
+                  Show other options
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Two-step Email and Password Form */}
+                <div className="space-y-4">
+                  {step === "email" ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Email
+                        </label>
+                        <Input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full py-3"
+                          placeholder="Enter your email address"
+                          onKeyDown={(e) => e.key === "Enter" && handleEmailStep()}
+                        />
+                      </div>
+
+                      <Button
+                        onClick={handleEmailStep}
+                        disabled={!email}
+                        className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
+                      >
+                        Next
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Email
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="email"
+                            value={email}
+                            disabled
+                            className="w-full py-3 bg-gray-100 dark:bg-gray-800"
+                          />
+                          <button
+                            onClick={() => setStep("email")}
+                            className="text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Password
+                        </label>
+                        <Input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full py-3"
+                          placeholder="Enter your password"
+                          onKeyDown={(e) => e.key === "Enter" && handlePasswordLogin()}
+                          autoFocus
+                        />
+                      </div>
+
+                      <Button
+                        onClick={handlePasswordLogin}
+                        disabled={loading || !password}
+                        className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
+                      >
+                        {loading ? "Logging in..." : "Log in"}
+                      </Button>
+
+                      <div className="text-center">
+                        <Link
+                          href="/auth/forgot-password"
+                          className="text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="text-center">
+                    <button
+                      onClick={() => {
+                        setShowPassword(false);
+                        setStep("email");
+                      }}
+                      className="text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+                    >
+                      Use single sign-on
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Footer */}
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/signup"
+                className="text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                {showPassword ? "Create one" : "Sign Up"}
+              </Link>
+            </div>
           </div>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { authenticatedFetch, getUserContext } from "@/lib/auth-client";
+import { useAuth } from "@/hooks/useStores";
 import { useAuthStore } from "../../../../store";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,9 +87,13 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
 
-  // Auth store for organization data
-  const { organization, user, fetchOrganization, setShowCompanySetupModal } =
-    useAuthStore();
+  // Route-based data fetching - only load auth data for this page
+  const auth = useAuth();
+  const organization = auth.organization;
+  const user = auth.user;
+
+  // Global modal state (controlled by layout)
+  const { setShowCompanySetupModal } = useAuthStore();
 
   const openCompanyEdit = searchParams.get("openCompanyEdit");
 
@@ -591,7 +596,7 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Customize your application preferences and integrations.
         </p>
-        <Button className="invisible" variant="outline">
+        <Button className="w-0 h-0 invisible" variant="outline">
           This button is to make the text aligned for all the pages
         </Button>
       </div>
@@ -599,98 +604,98 @@ export default function SettingsPage() {
       {/* Company Details */}
       <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
         <CardHeader>
-          <CardTitle className="dark:text-white">Company Details</CardTitle>
-          <CardDescription className="dark:text-gray-300">
+          <CardTitle className="dark:text-white text-base font-medium text-gray-900">
+            Company Details
+          </CardTitle>
+          <CardDescription className="dark:text-gray-300 text-xs">
             Manage your organization profile and company information.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
-            {/* Company Name and Branding */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  {organization?.logo_url ? (
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                      <img
-                        src={organization.logo_url}
-                        alt="Company logo"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="p-2 bg-app-blue-100 dark:bg-app-blue-900/30 rounded-lg">
-                      <Building2 className="h-6 w-6 text-app-blue-600 dark:text-app-blue-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-[1rem] font-medium text-gray-900 dark:text-white">
-                    {organization?.name || "Company Name Not Set"}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {organization?.name
-                      ? "Your organization name and branding settings"
-                      : "Complete your company profile to get started"}
-                  </p>
-                </div>
+          {/* Company Name and Branding */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                {organization?.logo_url ? (
+                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                    <img
+                      src={organization.logo_url}
+                      alt="Company logo"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-2 bg-app-blue-100 dark:bg-app-blue-900/30 rounded-lg">
+                    <Building2 className="h-6 w-6 text-app-blue-600 dark:text-app-blue-400" />
+                  </div>
+                )}
               </div>
-
-              <div className="flex items-center space-x-3">
-                <Button
-                  onClick={() => setShowCompanySetupModal(true)}
-                  className="cursor-pointer text-xs"
-                  variant="outline"
-                >
-                  <Edit3 className="h-3 w-3 mr-1" />
-                  {organization?.name ? "Edit" : "Setup"}
-                </Button>
+              <div className="flex-1">
+                <h3 className="text-[1rem] font-medium text-gray-900 dark:text-white">
+                  {organization?.name || "Company Name Not Set"}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {organization?.name
+                    ? "Your organization name and branding settings"
+                    : "Complete your company profile to get started"}
+                </p>
               </div>
             </div>
 
-            {/* Company Members */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0 w-10 h-10"></div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-gray-600 dark:text-white">
-                    Company Members
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {members.length > 0
-                      ? `${members.length} ${
-                          members.length === 1 ? "member" : "members"
-                        } in your organization`
-                      : "View and manage organization members"}
-                  </p>
-                </div>
-              </div>
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={() => setShowCompanySetupModal(true)}
+                className="cursor-pointer text-xs"
+                variant="outline"
+              >
+                <Edit3 className="h-3 w-3 mr-1" />
+                {organization?.name ? "Edit" : "Setup"}
+              </Button>
+            </div>
+          </div>
 
-              <div className="flex items-center space-x-3">
-                <Button
-                  onClick={() => {
-                    if (members.length === 0) {
-                      fetchOrganizationMembers();
-                    }
-                    setMembersDialogOpen(true);
-                  }}
-                  className="cursor-pointer text-xs"
-                  variant="outline"
-                  disabled={membersLoading}
-                >
-                  {membersLoading ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <Users className="h-3 w-3 mr-1" />
-                      View / Add Members
-                    </>
-                  )}
-                </Button>
+          {/* Company Members */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0 w-10 h-10"></div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-gray-600 dark:text-white">
+                  Company Members
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {members.length > 0
+                    ? `${members.length} ${
+                        members.length === 1 ? "member" : "members"
+                      } in your organization`
+                    : "View and manage organization members"}
+                </p>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={() => {
+                  if (members.length === 0) {
+                    fetchOrganizationMembers();
+                  }
+                  setMembersDialogOpen(true);
+                }}
+                className="cursor-pointer text-xs"
+                variant="outline"
+                disabled={membersLoading}
+              >
+                {membersLoading ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-3 w-3 mr-1" />
+                    View / Add Members
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -699,8 +704,10 @@ export default function SettingsPage() {
       {/* Theme Settings */}
       <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
         <CardHeader>
-          <CardTitle className="dark:text-white">Application Theme</CardTitle>
-          <CardDescription className="dark:text-gray-300">
+          <CardTitle className="dark:text-white text-base font-medium text-gray-900">
+            Application Theme
+          </CardTitle>
+          <CardDescription className="dark:text-gray-300 text-xs">
             Choose how the application looks and feels.
           </CardDescription>
         </CardHeader>
@@ -759,8 +766,10 @@ export default function SettingsPage() {
       {/* App Integrations */}
       <Card className="bg-white dark:bg-gray-900 border dark:border-gray-800">
         <CardHeader>
-          <CardTitle className="dark:text-white">App Integrations</CardTitle>
-          <CardDescription className="dark:text-gray-300">
+          <CardTitle className="dark:text-white text-base font-medium text-gray-900">
+            App Integrations
+          </CardTitle>
+          <CardDescription className="dark:text-gray-300 text-xs">
             Connect with external services to enhance your workflow.
           </CardDescription>
         </CardHeader>
@@ -1057,7 +1066,7 @@ export default function SettingsPage() {
                       .toLowerCase()
                       .includes(searchQuery.toLowerCase())
                   )
-                  .map((member, index) => (
+                  .map((member) => (
                     <div
                       key={member.id}
                       className={`flex items-center justify-between px-4 py-3 rounded-lg border ${

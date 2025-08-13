@@ -183,3 +183,51 @@ CREATE TABLE public.verification_tokens (
   CONSTRAINT verification_tokens_interview_id_fkey FOREIGN KEY (interview_id) REFERENCES public.interviews(id),
   CONSTRAINT verification_tokens_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
 );
+
+-- Interview Recordings Table for storing screen recordings (AI and human interviews)
+CREATE TABLE public.interview_recordings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  job_id uuid NOT NULL,
+  candidate_id uuid NOT NULL,
+  interview_id uuid,
+  
+  -- Interview type and round information
+  interview_type character varying NOT NULL DEFAULT 'ai_interview'::character varying,
+  round_number smallint,
+  
+  -- Link to specific interview sessions
+  candidate_interview_id uuid,  -- For AI interviews
+  candidate_interview_round_id uuid,  -- For human interview rounds
+  round_token text,  -- For multi-participant rounds
+  
+  -- Recording file information
+  filename character varying NOT NULL,
+  file_size bigint NOT NULL,
+  storage_type character varying NOT NULL DEFAULT 'local'::character varying,
+  cloud_url text,
+  object_key text,
+  local_path text,
+  metadata jsonb,
+  
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  
+  CONSTRAINT interview_recordings_pkey PRIMARY KEY (id),
+  CONSTRAINT interview_recordings_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.jobs(id),
+  CONSTRAINT interview_recordings_candidate_id_fkey FOREIGN KEY (candidate_id) REFERENCES public.candidates(id),
+  CONSTRAINT interview_recordings_interview_id_fkey FOREIGN KEY (interview_id) REFERENCES public.interviews(id),
+  CONSTRAINT interview_recordings_candidate_interview_id_fkey FOREIGN KEY (candidate_interview_id) REFERENCES public.candidate_interviews(id),
+  CONSTRAINT interview_recordings_candidate_interview_round_id_fkey FOREIGN KEY (candidate_interview_round_id) REFERENCES public.candidate_interview_round(id),
+  CONSTRAINT interview_recordings_interview_type_check CHECK (interview_type IN ('ai_interview', 'human_interview'))
+);
+
+-- Create indexes for better performance on interview recordings
+CREATE INDEX idx_interview_recordings_job_id ON public.interview_recordings(job_id);
+CREATE INDEX idx_interview_recordings_candidate_id ON public.interview_recordings(candidate_id);
+CREATE INDEX idx_interview_recordings_interview_id ON public.interview_recordings(interview_id);
+CREATE INDEX idx_interview_recordings_interview_type ON public.interview_recordings(interview_type);
+CREATE INDEX idx_interview_recordings_round_number ON public.interview_recordings(round_number);
+CREATE INDEX idx_interview_recordings_candidate_interview_id ON public.interview_recordings(candidate_interview_id);
+CREATE INDEX idx_interview_recordings_round_token ON public.interview_recordings(round_token);
+CREATE INDEX idx_interview_recordings_created_at ON public.interview_recordings(created_at);
+CREATE INDEX idx_interview_recordings_storage_type ON public.interview_recordings(storage_type);

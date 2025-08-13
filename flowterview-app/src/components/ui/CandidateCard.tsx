@@ -147,7 +147,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                   onQuickAction("view_resume", candidate);
                 }}
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
                 View Resume
               </DropdownMenuItem>
               {candidate.linkedin_profile && (
@@ -183,7 +183,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
           candidate.interview_status &&
           candidate.interview_status.toLowerCase() === "completed" && (
             <div className="absolute top-3.5 right-3.5">
-              {candidate.ai_score ? (
+              {typeof candidate.ai_score === "number" ? (
                 <div className="w-10 h-10">
                   <svg
                     className="w-10 h-10 transform -rotate-90"
@@ -224,7 +224,11 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                           : "text-rose-600/60 dark:text-rose-400/60"
                       }`}
                     >
-                      {candidate.ai_score}
+                      {candidate.ai_score === 0
+                        ? "F"
+                        : candidate.ai_score === 10
+                        ? "A+"
+                        : candidate.ai_score}
                     </span>
                   </div>
                 </div>
