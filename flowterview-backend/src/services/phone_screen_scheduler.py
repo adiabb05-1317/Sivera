@@ -6,15 +6,15 @@ In production, this would be triggered by a cron job or task scheduler.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.router.phone_screen_router import process_scheduled_phone_screens
-from src.storage.db_manager import DatabaseManager
+from storage.db_manager import DatabaseManager
 from src.utils.logger import logger
 
 
 class PhoneScreenScheduler:
-    def __init__(self, check_interval_minutes: int = 5):
+    def __init__(self, check_interval_minutes: int = 60):  # Default to 1 hour
         self.check_interval_minutes = check_interval_minutes
         self.db = DatabaseManager()
         self.running = False
@@ -62,13 +62,16 @@ class PhoneScreenScheduler:
                 stats["total"] += 1
 
             # Get overdue calls (scheduled but not yet attempted and past due)
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
             overdue_attempts = []
 
             scheduled_attempts = self.db.fetch_all("phone_screen_attempts", {"status": "scheduled"})
 
             for attempt in scheduled_attempts:
                 scheduled_at = datetime.fromisoformat(attempt["scheduled_at"])
+                # Ensure timezone awareness - if no timezone info, assume UTC
+                if scheduled_at.tzinfo is None:
+                    scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
                 if current_time > scheduled_at:
                     overdue_attempts.append(attempt)
 
@@ -85,7 +88,7 @@ class PhoneScreenScheduler:
 _scheduler_instance = None
 
 
-async def start_phone_screen_scheduler(check_interval_minutes: int = 5):
+async def start_phone_screen_scheduler(check_interval_minutes: int = 60):  # Default to 1 hour
     """Start the global phone screen scheduler"""
     global _scheduler_instance
 
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Phone Screen Scheduler")
-    parser.add_argument("--interval", type=int, default=5, help="Check interval in minutes (default: 5)")
+    parser.add_argument("--interval", type=int, default=60, help="Check interval in minutes (default: 60)")
     parser.add_argument("--once", action="store_true", help="Run once and exit (don't start continuous scheduler)")
     parser.add_argument("--stats", action="store_true", help="Show statistics and exit")
 

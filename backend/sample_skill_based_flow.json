@@ -1,0 +1,248 @@
+{
+  "initial_node": "introduction",
+  "nodes": {
+    "introduction": {
+      "name": "introduction",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are Sia, a professional technical interviewer for Senior Python Developer position. Welcome the candidate warmly, explain the interview structure, and transition smoothly to technical assessment. Keep responses under 100 words and conversational."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Welcome the candidate to the Senior Python Developer technical interview. Briefly explain that you'll assess their skills in: Python Programming, Django Framework, Database Design, API Development, System Architecture. Ask for a quick self-introduction and then move to the first technical area. Be encouraging and professional."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Move to first technical skill assessment",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "candidate_name": {"type": "string", "description": "Candidate's name"},
+                "ready_for_technical": {"type": "boolean", "description": "Ready to start technical assessment"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "python_programming_assessment": {
+      "name": "python_programming_assessment",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are a Python programming expert conducting technical assessment. You have deep knowledge of Python internals, best practices, and real-world applications. Assess the candidate's Python skills through progressive questioning. Keep responses under 150 words."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Assess Python programming skills through these key areas: 1) Core language features like decorators, generators, and context managers, 2) Object-oriented programming concepts including inheritance and polymorphism, 3) Error handling strategies and debugging approaches, 4) Performance optimization techniques and memory management, 5) Popular libraries like NumPy, pandas, requests and their use cases, 6) Code organization, modules, and packaging best practices, 7) Real-world problem solving scenarios and algorithm implementation, 8) Testing frameworks like pytest and code quality practices. Start with fundamentals and progress based on their responses. Use follow-up questions to gauge depth of understanding. Move to next skill when you have sufficient assessment."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Evaluate Python skills and determine next step",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill_assessed": {"type": "string"},
+                "proficiency_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+                "confidence_score": {"type": "number", "minimum": 1, "maximum": 10},
+                "key_insights": {"type": "string"},
+                "areas_explored": {"type": "string"},
+                "ready_for_next": {"type": "boolean"},
+                "needs_deeper_assessment": {"type": "boolean"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "django_framework_assessment": {
+      "name": "django_framework_assessment",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are a Django framework expert conducting technical assessment. You have extensive experience with Django development, deployment, and best practices. Assess the candidate's Django skills through progressive questioning. Keep responses under 150 words."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Assess Django framework skills through these key areas: 1) Django project structure, apps, and settings configuration, 2) Models, migrations, and ORM query optimization, 3) Views, templates, and URL routing patterns, 4) Forms, validation, and user input handling, 5) Authentication, permissions, and security best practices, 6) Django REST framework for API development, 7) Deployment strategies and production considerations, 8) Testing Django applications and debugging techniques. Start with fundamentals and progress based on their responses. Use follow-up questions to gauge depth of understanding. Move to next skill when you have sufficient assessment."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Evaluate Django skills and determine next step",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill_assessed": {"type": "string"},
+                "proficiency_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+                "confidence_score": {"type": "number", "minimum": 1, "maximum": 10},
+                "key_insights": {"type": "string"},
+                "areas_explored": {"type": "string"},
+                "ready_for_next": {"type": "boolean"},
+                "needs_deeper_assessment": {"type": "boolean"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "database_design_assessment": {
+      "name": "database_design_assessment",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are a database design expert conducting technical assessment. You have deep knowledge of relational databases, NoSQL, query optimization, and data modeling. Assess the candidate's database skills through progressive questioning. Keep responses under 150 words."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Assess database design skills through these key areas: 1) Relational database concepts, normalization, and schema design, 2) SQL query writing, optimization, and performance tuning, 3) Database indexing strategies and their impact on performance, 4) Transactions, ACID properties, and concurrency control, 5) NoSQL databases and when to use them over relational databases, 6) Database migrations and version control strategies, 7) Backup, recovery, and disaster planning approaches, 8) Real-world scenarios like handling large datasets and scaling strategies. Start with fundamentals and progress based on their responses. Use follow-up questions to gauge depth of understanding. Move to next skill when you have sufficient assessment."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Evaluate database design skills and determine next step",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill_assessed": {"type": "string"},
+                "proficiency_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+                "confidence_score": {"type": "number", "minimum": 1, "maximum": 10},
+                "key_insights": {"type": "string"},
+                "areas_explored": {"type": "string"},
+                "ready_for_next": {"type": "boolean"},
+                "needs_deeper_assessment": {"type": "boolean"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "api_development_assessment": {
+      "name": "api_development_assessment",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are an API development expert conducting technical assessment. You have extensive experience with RESTful APIs, GraphQL, authentication, and API design patterns. Assess the candidate's API development skills through progressive questioning. Keep responses under 150 words."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Assess API development skills through these key areas: 1) RESTful API design principles and HTTP methods usage, 2) API authentication and authorization strategies (JWT, OAuth, API keys), 3) Error handling, status codes, and response formatting best practices, 4) API versioning strategies and backward compatibility, 5) Rate limiting, throttling, and security considerations, 6) API documentation and testing approaches, 7) GraphQL vs REST trade-offs and use cases, 8) Real-world scenarios like handling file uploads and implementing webhooks. Start with fundamentals and progress based on their responses. Use follow-up questions to gauge depth of understanding. Move to next skill when you have sufficient assessment."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Evaluate API development skills and determine next step",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill_assessed": {"type": "string"},
+                "proficiency_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+                "confidence_score": {"type": "number", "minimum": 1, "maximum": 10},
+                "key_insights": {"type": "string"},
+                "areas_explored": {"type": "string"},
+                "ready_for_next": {"type": "boolean"},
+                "needs_deeper_assessment": {"type": "boolean"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "system_architecture_assessment": {
+      "name": "system_architecture_assessment",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are a system architecture expert conducting technical assessment. You have deep knowledge of scalable system design, microservices, cloud architecture, and performance optimization. Assess the candidate's system architecture skills through progressive questioning. Keep responses under 150 words."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Assess system architecture skills through these key areas: 1) Scalable system design principles and patterns, 2) Microservices vs monolithic architecture trade-offs, 3) Load balancing, caching strategies, and performance optimization, 4) Cloud architecture and deployment strategies (AWS, GCP, Azure), 5) Message queues, event-driven architecture, and asynchronous processing, 6) Monitoring, logging, and observability in distributed systems, 7) Security considerations in system design, 8) Real-world scenarios like designing systems for high availability and handling traffic spikes. Start with fundamentals and progress based on their responses. Use follow-up questions to gauge depth of understanding. Move to next skill when you have sufficient assessment."
+        }
+      ],
+      "functions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "evaluate_and_proceed",
+            "description": "Evaluate system architecture skills and determine next step",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill_assessed": {"type": "string"},
+                "proficiency_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+                "confidence_score": {"type": "number", "minimum": 1, "maximum": 10},
+                "key_insights": {"type": "string"},
+                "areas_explored": {"type": "string"},
+                "ready_for_next": {"type": "boolean"},
+                "needs_deeper_assessment": {"type": "boolean"}
+              },
+              "required": []
+            },
+            "handler": "__function__:evaluate_and_proceed"
+          }
+        }
+      ]
+    },
+    "interview_conclusion": {
+      "name": "interview_conclusion",
+      "role_messages": [
+        {
+          "role": "system",
+          "content": "You are concluding the technical interview. Provide encouraging feedback and professional closure."
+        }
+      ],
+      "task_messages": [
+        {
+          "role": "system",
+          "content": "Thank the candidate for their time, provide brief positive feedback about their technical discussion, explain next steps, and end professionally. Keep it under 100 words."
+        }
+      ],
+      "post_actions": [
+        {
+          "type": "end_conversation"
+        }
+      ]
+    }
+  }
+}
