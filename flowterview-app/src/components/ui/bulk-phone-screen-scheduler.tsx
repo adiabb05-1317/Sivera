@@ -205,11 +205,11 @@ export function BulkPhoneScreenScheduler({
     const slots: string[] = [];
     const baseDateTime = new Date(selectedDate);
     const [hours, minutes] = startTime.split(":").map(Number);
-    baseDateTime.setHours(hours, minutes, 0, 0);
+    baseDateTime.setUTCHours(hours, minutes, 0, 0);
 
     Array.from(selectedCandidates).forEach((_, index) => {
       const slotTime = new Date(baseDateTime);
-      slotTime.setMinutes(slotTime.getMinutes() + index * interval);
+      slotTime.setUTCMinutes(slotTime.getUTCMinutes() + index * interval);
       slots.push(slotTime.toISOString());
     });
 
@@ -226,9 +226,10 @@ export function BulkPhoneScreenScheduler({
 
     setLoading(true);
     try {
+      // Create UTC datetime from selected date and time
       const baseDateTime = new Date(selectedDate);
       const [hours, minutes] = startTime.split(":").map(Number);
-      baseDateTime.setHours(hours, minutes, 0, 0);
+      baseDateTime.setUTCHours(hours, minutes, 0, 0);
 
       const timeSlots = generateTimeSlots();
 
@@ -392,15 +393,18 @@ export function BulkPhoneScreenScheduler({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-sm font-medium mb-2 block">
-              Start Time <span className="text-red-500">*</span>
+              Start Time (UTC) <span className="text-red-500">*</span>
             </Label>
             <Input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              min="08:00"
-              max="18:00"
+              min="00:00"
+              max="23:59"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              UTC time - Current UTC: {new Date().toISOString().slice(11, 16)}
+            </p>
           </div>
           <div>
             <Label className="text-sm font-medium mb-2 block">Interval</Label>
@@ -426,7 +430,7 @@ export function BulkPhoneScreenScheduler({
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Schedule Preview
+              Schedule Preview (UTC Times)
             </h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {generateTimeSlots()
@@ -443,10 +447,7 @@ export function BulkPhoneScreenScheduler({
                       className="flex justify-between items-center text-xs"
                     >
                       <span className="font-mono">
-                        {new Date(slot).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(slot).toISOString().slice(11, 16)} UTC
                       </span>
                       <span className="text-gray-600">
                         {candidate?.name || "Unknown"}
