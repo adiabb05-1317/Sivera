@@ -5,8 +5,8 @@ import { usePathStore } from "./store/PathStore";
 
 export default function Home() {
   const { jobId } = usePathStore();
-  if (jobId) {
-  return (
+  if (!jobId) {
+    return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a]">
         <div className="flex flex-col items-center justify-center">
           <h1 className="text-xl font-bold text-app-blue-900 dark:text-app-blue-200">
