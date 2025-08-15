@@ -176,6 +176,15 @@ export const invalidateRelatedQueries = async (
         });
         break;
 
+      case "auth":
+        // Invalidate all auth-related queries
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.auth.user(),
+        });
+        // Also invalidate organization queries if we have an orgId
+        // This will be handled by the specific organization query key when needed
+        break;
+
       default:
         // Fallback: invalidate everything
         await queryClient.invalidateQueries();

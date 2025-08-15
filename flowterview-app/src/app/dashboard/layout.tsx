@@ -21,9 +21,12 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "../../../store";
 import CompanySetupModal from "@/components/CompanySetupModal";
+import UserSetupModal from "@/components/UserSetupModal";
 import { Loader2 } from "lucide-react";
 
 import { useAuth, useInterviewDetails } from "@/hooks/useStores";
+import { invalidateRelatedQueries } from "@/lib/query-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -36,7 +39,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Use TanStack Query auth for authentication state and user data
   const { user, organization, isLoading: authLoading } = useAuth();
   const isLoading = authLoading;
-  const { showCompanySetupModal, setShowCompanySetupModal } = useAuthStore();
+  const queryClient = useQueryClient();
+  const {
+    showCompanySetupModal,
+    setShowCompanySetupModal,
+    showUserSetupModal,
+    setShowUserSetupModal
+  } = useAuthStore();
 
   // Helper function to check if a string is a valid UUID
   const isValidUUID = (str: string) => {
@@ -49,8 +58,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathSegments = pathname.split("/").filter(Boolean);
   const interviewId =
     pathSegments[1] === "interviews" &&
-    pathSegments[2] &&
-    isValidUUID(pathSegments[2])
+      pathSegments[2] &&
+      isValidUUID(pathSegments[2])
       ? pathSegments[2]
       : undefined;
 
@@ -131,6 +140,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [user, organization, showCompanySetupModal, setShowCompanySetupModal]);
 
+  // Show user setup modal if user name is empty and company setup is complete
+  useEffect(() => {
+    if (
+      user &&
+      organization &&
+      organization.name && // Company setup is complete
+      (!user.name || user.name.trim() === "") && // User name is empty
+      !showCompanySetupModal && // Company setup modal is not showing
+      !showUserSetupModal // User setup modal is not already showing
+    ) {
+      setShowUserSetupModal(true);
+    } else if (
+      user &&
+      user.name &&
+      user.name.trim() !== "" &&
+      showUserSetupModal
+    ) {
+      // Close modal if user now has a name
+      setShowUserSetupModal(false);
+    }
+  }, [user, organization, showCompanySetupModal, showUserSetupModal, setShowUserSetupModal]);
+
   // Helper function to handle organization update completion
   const handleCompanySetupCompleted = async () => {
     // Close the modal
@@ -143,6 +174,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Helper function to handle organization setup cancel
   const handleCompanySetupCancel = () => {
     setShowCompanySetupModal(false);
+  };
+
+  // Helper function to handle user setup completion
+  const handleUserSetupCompleted = async () => {
+    // Refetch user data to get latest info first
+    await invalidateRelatedQueries(queryClient, "update", "auth");
+
+    // The modal will close automatically via useEffect when user data updates
+    // and the user now has a name
+  };
+
+  // Helper function to handle user setup cancel
+  const handleUserSetupCancel = () => {
+    setShowUserSetupModal(false);
   };
 
   if (isLoading) {
@@ -220,6 +265,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           isEditing={!!organization?.name}
           existingName={organization?.name || ""}
           existingLogoUrl={organization?.logo_url || ""}
+        />
+      )}
+      {showUserSetupModal && user?.id && (
+        <UserSetupModal
+          open={showUserSetupModal}
+          userId={user.id}
+          onCompleted={handleUserSetupCompleted}
+          onCancel={handleUserSetupCancel}
+          existingName={user.name || ""}
+          existingLogoUrl={user.logo_url || ""}
         />
       )}
       <Toaster />

@@ -114,3 +114,45 @@ export const useUpdateOrganization = () => {
     },
   });
 };
+
+// Mutation for updating user
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      name,
+      logo_url,
+    }: {
+      userId: string;
+      name: string;
+      logo_url?: string | null;
+    }) => {
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/users/${userId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, logo_url }),
+        }
+      );
+
+      if (!response.ok)
+        throw new Error(`Failed to update user (${response.status})`);
+      return response.json() as unknown as User;
+    },
+    onSuccess: (updatedUser) => {
+      toast.success("Profile updated successfully");
+      // Invalidate user queries to refetch fresh data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.user(),
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Failed to update profile", {
+        description: error.message,
+      });
+    },
+  });
+};

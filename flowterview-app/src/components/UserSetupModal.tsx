@@ -2,14 +2,14 @@
 
 import { useState, FormEvent, useRef, DragEvent } from "react";
 import { supabase } from "@/lib/supabase";
-import { useUpdateOrganization } from "@/hooks/queries/useAuth";
+import { useUpdateUser } from "@/hooks/queries/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Building2, X, Loader2 } from "lucide-react";
+import { Upload, User, X, Loader2 } from "lucide-react";
 
-interface CompanySetupModalProps {
+interface UserSetupModalProps {
   open: boolean;
-  organizationId: string;
+  userId: string;
   onCompleted: () => void;
   onCancel?: () => void;
   isEditing?: boolean;
@@ -17,22 +17,22 @@ interface CompanySetupModalProps {
   existingLogoUrl?: string;
 }
 
-export default function CompanySetupModal({
+export default function UserSetupModal({
   open,
-  organizationId,
+  userId,
   onCompleted,
   onCancel,
   isEditing = false,
   existingName = "",
   existingLogoUrl = "",
-}: CompanySetupModalProps) {
+}: UserSetupModalProps) {
   const [name, setName] = useState(existingName);
   const [file, setFile] = useState<File | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const updateOrganizationMutation = useUpdateOrganization();
+  const updateUserMutation = useUpdateUser();
 
   // Track if there are changes from the original values
   const hasNameChanged = name.trim() !== existingName.trim();
@@ -44,7 +44,7 @@ export default function CompanySetupModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Company name is required");
+      setError("Name is required");
       return;
     }
     setError(null);
@@ -53,7 +53,7 @@ export default function CompanySetupModal({
 
     try {
       if (file) {
-        const path = `${organizationId}/${Date.now()}-${file.name}`;
+        const path = `${userId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("logos")
           .upload(path, file);
@@ -69,15 +69,15 @@ export default function CompanySetupModal({
         logoUrl = signedData?.signedUrl || null;
       }
 
-      await updateOrganizationMutation.mutateAsync({
-        organizationId,
+      await updateUserMutation.mutateAsync({
+        userId,
         name,
         logo_url: logoUrl,
       });
 
       onCompleted();
     } catch (err: any) {
-      console.error("Company setup error", err);
+      console.error("User setup error", err);
       setError(err.message || "Unexpected error");
     }
   };
@@ -116,15 +116,14 @@ export default function CompanySetupModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-10 h-10 rounded-md bg-blue-50 dark:bg-blue-900/20">
-                <Building2 className="w-5 h-5 text-app-blue-600 dark:text-app-blue-400" />
+                <User className="w-5 h-5 text-app-blue-600 dark:text-app-blue-400" />
               </div>
               <div className="space-y-0.5">
                 <h2 className="text-md font-semibold leading-none text-gray-900 dark:text-white">
-                  Company Setup
+                  Profile Setup
                 </h2>
                 <p className="text-xs text-muted-foreground max-w-xs">
-                  Let's configure your organization profile to get started. You
-                  can modify these details anytime.
+                  Complete your profile to get started. You can modify these details anytime.
                 </p>
               </div>
             </div>
@@ -134,29 +133,29 @@ export default function CompanySetupModal({
         {/* Content */}
         <div className="px-8 py-8">
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Company Name */}
+            {/* Name */}
             <div className="space-y-3">
               <label
-                htmlFor="company-name"
+                htmlFor="user-name"
                 className="block text-sm font-semibold text-gray-800 dark:text-gray-200"
               >
-                Company Name <span className="text-red-500">*</span>
+                Your Name <span className="text-red-500">*</span>
               </label>
               <Input
-                id="company-name"
+                id="user-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Acme Corporation"
+                placeholder="e.g., John Doe"
                 className="w-full border-gray-300 dark:border-gray-600 focus:border-app-blue-500 focus:ring-app-blue-500 dark:focus:border-app-blue-400 dark:focus:ring-app-blue-400 text-sm shadow-sm"
                 required
                 autoComplete="off"
               />
             </div>
 
-            {/* Logo Upload */}
+            {/* Profile Picture Upload */}
             <div className="space-y-3">
               <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                Company Logo{" "}
+                Profile Picture{" "}
                 <span className="text-gray-500 text-sm font-normal">
                   (optional)
                 </span>
@@ -167,8 +166,8 @@ export default function CompanySetupModal({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`relative group border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer ${isDragActive
-                    ? "border-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/20"
-                    : "border-gray-300 dark:border-gray-600 hover:border-app-blue-300 dark:hover:border-app-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                  ? "border-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/20"
+                  : "border-gray-300 dark:border-gray-600 hover:border-app-blue-300 dark:hover:border-app-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   }`}
               >
                 {file ? (
@@ -176,7 +175,7 @@ export default function CompanySetupModal({
                     <div className="relative">
                       <img
                         src={URL.createObjectURL(file)}
-                        alt="Logo preview"
+                        alt="Profile preview"
                         className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                       />
                       <button
@@ -203,7 +202,7 @@ export default function CompanySetupModal({
                       </Button>
                       <img
                         src={existingLogoUrl}
-                        alt="Current logo"
+                        alt="Current profile picture"
                         className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                       />
                     </div>
@@ -214,7 +213,7 @@ export default function CompanySetupModal({
                       <Upload className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                      Click to upload or drag and drop your logo
+                      Click to upload or drag and drop your profile picture
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Supports PNG's, JPG's up to 10MB
@@ -246,7 +245,7 @@ export default function CompanySetupModal({
                 <Button
                   type="button"
                   onClick={onCancel}
-                  disabled={updateOrganizationMutation.isPending}
+                  disabled={updateUserMutation.isPending}
                   variant="outline"
                   className="cursor-pointer text-xs"
                 >
@@ -257,12 +256,12 @@ export default function CompanySetupModal({
                 <Button
                   type="submit"
                   disabled={
-                    updateOrganizationMutation.isPending || !name.trim()
+                    updateUserMutation.isPending || !name.trim()
                   }
                   className="cursor-pointer text-xs"
                   variant="outline"
                 >
-                  {updateOrganizationMutation.isPending ? (
+                  {updateUserMutation.isPending ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...

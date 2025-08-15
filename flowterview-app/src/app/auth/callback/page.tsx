@@ -59,7 +59,7 @@ export default function AuthCallbackPage() {
             // User does not exist, create user with org from domain
             setOrgLoading(true);
             const userId = userData?.user?.id;
-            const name = email.split("@")[0];
+            const name = "";
             const orgName = extractOrgFromEmail(email);
             // Defensive: fallback if orgName is empty
             if (!orgName) {
@@ -91,8 +91,8 @@ export default function AuthCallbackPage() {
               }
               throw new Error(
                 (data as any).detail ||
-                  (data as any).error ||
-                  "Failed to create user"
+                (data as any).error ||
+                "Failed to create user"
               );
             }
 

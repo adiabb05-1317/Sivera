@@ -66,7 +66,7 @@ export default function SignupPage() {
         });
         return;
       }
-      const name = email.split("@")[0];
+      const name = "";
       const orgName = extractOrgFromEmail(email);
       const resp = await authenticatedFetch(
         (process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL ||

@@ -164,7 +164,14 @@ export function AppSidebar() {
   };
 
   // Get user initials for avatar
-  const getUserInitials = (email: string) => {
+  const getUserInitials = (name: string, email: string) => {
+    if (name && name.trim()) {
+      const nameParts = name.trim().split(" ");
+      if (nameParts.length >= 2) {
+        return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+      }
+      return nameParts[0][0].toUpperCase();
+    }
     if (!email) return "U";
     const parts = email.split("@")[0].split(".");
     if (parts.length >= 2) {
@@ -173,7 +180,7 @@ export function AppSidebar() {
     return email[0].toUpperCase();
   };
 
-  const username = user?.email?.split("@")[0] || "User";
+  const username = user?.name || user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "Loading...";
 
   return (
@@ -296,10 +303,9 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={item.name}
                       className={`
-                        ${
-                          isActive
-                            ? "bg-app-blue-200 dark:bg-app-blue-700 text-app-blue-800 dark:text-app-blue-100 font-semibold"
-                            : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-app-blue-900/50 hover:text-app-blue-600 dark:hover:text-app-blue-300"
+                        ${isActive
+                          ? "bg-app-blue-200 dark:bg-app-blue-700 text-app-blue-800 dark:text-app-blue-100 font-semibold"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-app-blue-900/50 hover:text-app-blue-600 dark:hover:text-app-blue-300"
                         }
                         transition-all duration-200 p-5
                       `}
@@ -315,11 +321,10 @@ export function AppSidebar() {
                         className="flex items-center gap-3.5 pl-[1.1rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:w-fit group-data-[collapsible=icon]:pl-0 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:p-[1.45rem] p-5"
                       >
                         <item.icon
-                          className={`h-5 w-5 flex-shrink-0 ${
-                            isActive
-                              ? "text-app-blue-700 dark:text-app-blue-200"
-                              : ""
-                          }`}
+                          className={`h-5 w-5 flex-shrink-0 ${isActive
+                            ? "text-app-blue-700 dark:text-app-blue-200"
+                            : ""
+                            }`}
                         />
                         <span className="font-medium group-data-[collapsible=icon]:sr-only">
                           {item.name}
@@ -351,8 +356,9 @@ export function AppSidebar() {
                 >
                   <div className="flex w-full items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-fit group-data-[collapsible=icon]:gap-0">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.logo_url} />
                       <AvatarFallback className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-white font-semibold">
-                        {getUserInitials(userEmail)}
+                        {getUserInitials(user?.name || "", userEmail)}
                       </AvatarFallback>
                     </Avatar>
 
@@ -378,8 +384,9 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarImage src={user?.logo_url} />
                       <AvatarFallback className="bg-gradient-to-br from-app-blue-500 via-app-blue-600 to-app-blue-700 text-white font-semibold">
-                        {getUserInitials(userEmail)}
+                        {getUserInitials(user?.name || "", userEmail)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-sm leading-tight">

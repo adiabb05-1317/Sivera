@@ -1208,7 +1208,7 @@ export default function InterviewDetailsPage() {
   };
 
   // Timer options and logic
-  const timerOptions = [10, 20, 30];
+  const timerOptions = [30, 45, 60];
 
   const getTimerStatus = (time: number) => {
     const skillCount = selectedSkills.length;
