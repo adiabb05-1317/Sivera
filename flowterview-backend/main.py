@@ -20,6 +20,8 @@ from src.router.recording_router import router as recording_router
 from src.router.round_router import router as round_router
 from src.router.user_router import router as user_router
 from src.utils.logger import intercept_standard_logging
+from src.services.phone_screen_scheduler import PhoneScreenScheduler
+import asyncio
 
 intercept_standard_logging()
 
@@ -51,6 +53,20 @@ async def lifespan(app: FastAPI):
 
         app.state.manager = manager
 
+        # Start Phone Screen Scheduler automatically
+        try:
+            
+            
+            logger.info("Starting phone screen scheduler...")
+            scheduler = PhoneScreenScheduler(check_interval_minutes=60)  # Check every 1 hour
+            scheduler_task = asyncio.create_task(scheduler.start())
+            app.state.scheduler_task = scheduler_task
+            app.state.scheduler = scheduler
+            logger.info("Phone screen scheduler started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start phone screen scheduler: {e}")
+            logger.warning("Continuing without phone screen scheduler")
+
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
         raise
@@ -60,7 +76,22 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Application shutting down...")
-    # Cleanup if needed
+    
+    # Stop phone screen scheduler
+    try:
+        if hasattr(app.state, "scheduler") and hasattr(app.state, "scheduler_task"):
+            logger.info("Stopping phone screen scheduler...")
+            await app.state.scheduler.stop()
+            app.state.scheduler_task.cancel()
+            try:
+                await app.state.scheduler_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("Phone screen scheduler stopped successfully")
+    except Exception as e:
+        logger.error(f"Error stopping phone screen scheduler: {e}")
+    
+    # Cleanup ConnectionManager
     try:
         if hasattr(app.state, "manager"):
             await app.state.manager.cleanup()

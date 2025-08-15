@@ -127,8 +127,7 @@ class InterviewFlow:
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
-        self.interview_start_time = None  # Track when interview starts
-        self.timer_task = None  # Track the timer background task
+        # Remove time tracking functionality
 
         # TODO: here call linkedin api to get the profile
         # also get the additional links and their important information
@@ -195,8 +194,7 @@ class InterviewFlow:
         - Your job is to assess the candidate’s skills and experience. Be strict and critical in your evaluation.
         - Spend time asking questions based on the skills required for the job, ensure all the skills are assessed in the given time.
         - If the candidate absolutely doesn't know something or asks for help, offer only a very subtle hint.
-        - The duration of the interview is {self.duration} minutes, so you need to assess the candidate’s skills and experience within this time frame.
-        - A timer is provided for the interview duration. Make sure to monitor it and complete all necessary questions within the allotted time.
+        - Focus on assessing the candidate's skills and experience thoroughly for each required skill area.
 
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}" and introduce yourself as {self.bot_name} then proceed with the interview.
         You will be asking question based on the skills required for the job, which are: {self.skills}
@@ -241,65 +239,7 @@ class InterviewFlow:
     async def create(cls, url, bot_token, session_id, db_manager, job_id, bot_name="Sia"):
         return cls(url, bot_token, session_id, db_manager, job_id, bot_name)
 
-    async def start_interview_timer(self):
-        """
-        This function updates the interview timer every second.
-        """
-        try:
-            while self.interview_start_time:
-                try:
-                    # Calculate elapsed time
-                    elapsed = datetime.now() - self.interview_start_time
-                    elapsed_minutes = int(elapsed.total_seconds() // 60)
-                    elapsed_seconds = int(elapsed.total_seconds() % 60)
-
-                    if elapsed_minutes >= self.duration:
-                        logger.info("Interview timer reached the duration")
-
-                        # Create an assistant message that will be spoken out loud
-                        message = {
-                            "role": "system",
-                            "content": "Interview time has ended, please proceed to stop the interview. Say thank you to the candidate and end the interview."
-                        }
-                        
-                        # Add the message to context and let it be spoken through TTS
-                        await self.task.queue_frame(LLMMessagesAppendFrame([message]))
-                        await self.task.queue_frame(self.context_aggregator.user().get_context_frame())
-                        
-                        # Wait a bit for the message to be spoken before stopping
-                        await asyncio.sleep(10)
-
-                        end_message = {
-                            "type": "interview_ended",
-                            "message": "Interview time has ended"
-                        }
-                        await send_message_to_client(end_message)
-
-                        await self.stop()
-                        break
-                    
-                    # Create time update message
-                    time_message = {
-                        "role": "system",
-                        "content": f"Elapsed time is {elapsed_minutes} minutes and {elapsed_seconds} seconds, out of {self.duration} minutes."
-                    }
-                    
-                    # Update context with current time
-                    await self.task.queue_frame(LLMMessagesAppendFrame([time_message]))
-                    
-                    # Wait 1 second before next update
-                    await asyncio.sleep(1)
-                    
-                except Exception as e:
-                    logger.error(f"Error updating interview timer: {e}")
-                    break
-        except asyncio.CancelledError:
-            logger.info("Interview timer task cancelled")
-            raise
-        except Exception as e:
-            logger.error(f"Interview timer task failed: {e}")
-        finally:
-            logger.info("Interview timer task finished")
+    # Timer functionality removed to improve bot response time
 
     async def create_transport(self):
         self.aiohttp_session = aiohttp.ClientSession()
@@ -354,13 +294,6 @@ class InterviewFlow:
                 return
 
             logger.info(f"First participant joined: {participant}")
-            # Start the interview timer
-            self.interview_start_time = datetime.now()
-            logger.info(f"Interview timer started at: {self.interview_start_time}")
-            
-            # Start the timer task in the background without awaiting it
-            self.timer_task = asyncio.create_task(self.start_interview_timer())
-
             await self.flow_manager.initialize()
             pass
 
@@ -502,28 +435,8 @@ class InterviewFlow:
 
     async def stop(self):
         try:
-            # Stop the interview timer
-            if hasattr(self, 'timer_task') and self.timer_task:
-                logger.info("Cancelling interview timer task")
-                self.timer_task.cancel()
-                try:
-                    await self.timer_task
-                except asyncio.CancelledError:
-                    pass
-                self.timer_task = None
-            
-            # Calculate interview duration if not already done
-            interview_duration_seconds = None
-            interview_end_time = None
-            if self.interview_start_time:
-                interview_end_time = datetime.now()
-                duration = interview_end_time - self.interview_start_time
-                interview_duration_seconds = duration.total_seconds()
-                logger.info(
-                    f"Interview duration on stop: {interview_duration_seconds} seconds ({duration})"
-                )
-                # Clear the interview start time to stop the timer loop
-                self.interview_start_time = None
+            interview_end_time = datetime.now()
+            logger.info("Stopping interview session")
 
             # Save chat history when pipeline is canceled
             if hasattr(self, "flow_manager") and self.flow_manager:
@@ -575,7 +488,6 @@ class InterviewFlow:
                     if (
                         hasattr(self, "candidate_id")
                         and hasattr(self, "interview")
-                        and interview_duration_seconds is not None
                     ):
                         try:
                             self.db.update("candidate_interviews", {
@@ -610,13 +522,6 @@ class InterviewFlow:
                             if candidate_interview_id:
                                 analytics_service = InterviewAnalytics()
                                 analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
-                                details = {
-                                    "interview_duration_seconds": interview_duration_seconds,
-                                    "interview_start_time": self.interview_start_time.isoformat(),
-                                    "interview_end_time": interview_end_time.isoformat(),
-                                }
-
-                                analytics.update(details)
 
                                 logger.info(
                                     f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
@@ -637,13 +542,13 @@ class InterviewFlow:
                                     {
                                         "candidate_interview_id": candidate_interview_id.get("id"),
                                         "session_history": session_data.get("id"),
-                                        "created_at": self.interview_start_time.isoformat(),
+                                        "created_at": datetime.now().isoformat(),
                                         "updated_at": interview_end_time.isoformat(),
                                         "analytics": ix,
                                         "status": "Completed",
                                     },
                                 )
-                                logger.info("Analytics with duration saved during stop()")
+                                logger.info("Analytics saved during stop()")
                         except Exception as e:
                             logger.error(f"Failed to save analytics during stop(): {e}")
 
