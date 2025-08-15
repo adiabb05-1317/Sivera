@@ -1,9 +1,11 @@
 // Store types for state management
 export interface User {
   id: string;
+  name?: string;
   email: string;
   organization_id: string;
   role: "admin" | "recruiter" | "candidate";
+  logo_url?: string;
   created_at: string;
   updated_at: string;
 }

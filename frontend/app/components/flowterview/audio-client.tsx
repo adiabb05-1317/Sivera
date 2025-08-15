@@ -622,7 +622,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
   return (
     <div className="relative">
       <audio ref={audioRef} />
-      <Button
+      {/* <Button
         onClick={handleTestAssessments}
         className="fixed top-4 right-4 z-50 shadow-lg"
         style={{
@@ -635,7 +635,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           : currentAssessment.type === "notebook"
             ? "Test Coding Assessment"
             : "Close Assessments"}
-      </Button>
+      </Button> */}
     </div>
   );
 }

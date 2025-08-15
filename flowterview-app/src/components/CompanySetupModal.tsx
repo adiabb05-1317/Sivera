@@ -2,11 +2,10 @@
 
 import { useState, FormEvent, useRef, DragEvent } from "react";
 import { supabase } from "@/lib/supabase";
-import { authenticatedFetch } from "@/lib/auth-client";
+import { useUpdateOrganization } from "@/hooks/queries/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Building2, X, Loader2, ShieldCloseIcon } from "lucide-react";
-import { DrawerClose } from "./ui/drawer";
+import { Upload, Building2, X, Loader2 } from "lucide-react";
 
 interface CompanySetupModalProps {
   open: boolean;
@@ -31,8 +30,9 @@ export default function CompanySetupModal({
   const [file, setFile] = useState<File | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const updateOrganizationMutation = useUpdateOrganization();
 
   // Track if there are changes from the original values
   const hasNameChanged = name.trim() !== existingName.trim();
@@ -48,7 +48,6 @@ export default function CompanySetupModal({
       return;
     }
     setError(null);
-    setIsSubmitting(true);
 
     let logoUrl: string | null = null;
 
@@ -56,39 +55,30 @@ export default function CompanySetupModal({
       if (file) {
         const path = `${organizationId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
-          .from("company-logos")
+          .from("logos")
           .upload(path, file);
         if (uploadError) throw uploadError;
         const secondsInYear = 60 * 60 * 24 * 365;
         const { data: signedData, error: signedError } = await supabase.storage
-          .from("company-logos")
+          .from("logos")
           .createSignedUrl(path, secondsInYear);
         if (signedError) {
           console.error("Error creating signed URL:", signedError);
-          return null;
+          return;
         }
         logoUrl = signedData?.signedUrl || null;
       }
 
-      const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/organizations/${organizationId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, logo_url: logoUrl }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update organization (${response.status})`);
-      }
+      await updateOrganizationMutation.mutateAsync({
+        organizationId,
+        name,
+        logo_url: logoUrl,
+      });
 
       onCompleted();
     } catch (err: any) {
       console.error("Company setup error", err);
       setError(err.message || "Unexpected error");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -157,7 +147,7 @@ export default function CompanySetupModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Acme Corporation"
-                className="w-full border-gray-300 dark:border-gray-600 focus:border-app-blue-500 focus:ring-app-blue-500 dark:focus:border-app-blue-400 dark:focus:ring-app-blue-400 text-base shadow-sm"
+                className="w-full border-gray-300 dark:border-gray-600 focus:border-app-blue-500 focus:ring-app-blue-500 dark:focus:border-app-blue-400 dark:focus:ring-app-blue-400 text-sm shadow-sm"
                 required
                 autoComplete="off"
               />
@@ -176,11 +166,10 @@ export default function CompanySetupModal({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`relative group border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer ${
-                  isDragActive
+                className={`relative group border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer ${isDragActive
                     ? "border-app-blue-400 bg-app-blue-50 dark:bg-app-blue-900/20"
                     : "border-gray-300 dark:border-gray-600 hover:border-app-blue-300 dark:hover:border-app-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                }`}
+                  }`}
               >
                 {file ? (
                   <div className="flex items-center justify-center">
@@ -257,7 +246,7 @@ export default function CompanySetupModal({
                 <Button
                   type="button"
                   onClick={onCancel}
-                  disabled={isSubmitting}
+                  disabled={updateOrganizationMutation.isPending}
                   variant="outline"
                   className="cursor-pointer text-xs"
                 >
@@ -267,11 +256,13 @@ export default function CompanySetupModal({
               {(!isEditing || hasChanges) && (
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !name.trim()}
+                  disabled={
+                    updateOrganizationMutation.isPending || !name.trim()
+                  }
                   className="cursor-pointer text-xs"
                   variant="outline"
                 >
-                  {isSubmitting ? (
+                  {updateOrganizationMutation.isPending ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...

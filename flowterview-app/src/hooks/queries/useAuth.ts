@@ -1,10 +1,14 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, invalidateRelatedQueries } from '@/lib/query-client';
-import { authenticatedFetch, getCurrentUser, setUserContext } from '@/lib/auth-client';
-import { toast } from 'sonner';
-import { User, Organization } from '../../../store/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys, invalidateRelatedQueries } from "@/lib/query-client";
+import {
+  authenticatedFetch,
+  getCurrentUser,
+  setUserContext,
+} from "@/lib/auth-client";
+import { toast } from "sonner";
+import { User, Organization } from "../../../store/types";
 
 // Query hooks for auth-related data
 export const useUserProfile = (email?: string) => {
@@ -14,8 +18,8 @@ export const useUserProfile = (email?: string) => {
       if (!email) {
         // Get current user from Supabase
         const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error('No authenticated user');
-        
+        if (!currentUser) throw new Error("No authenticated user");
+
         // Ensure user context is set in cookies for authenticatedFetch
         await setUserContext(currentUser.id, currentUser.email!);
         email = currentUser.email!;
@@ -23,16 +27,18 @@ export const useUserProfile = (email?: string) => {
 
       // Fetch user profile from backend
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/users?email=${encodeURIComponent(email)}`
+        `${
+          process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+        }/api/v1/users?email=${encodeURIComponent(email)}`
       );
 
-      if (!response.ok) throw new Error('Failed to fetch user profile');
-      
+      if (!response.ok) throw new Error("Failed to fetch user profile");
+
       const userData = await response.json();
       if (Array.isArray(userData) && userData.length > 0) {
         return userData[0] as User;
       }
-      throw new Error('No user data found');
+      throw new Error("No user data found");
     },
     enabled: !!email,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -46,7 +52,7 @@ export const useUserProfile = (email?: string) => {
 
 export const useOrganization = (organizationId?: string) => {
   return useQuery({
-    queryKey: queryKeys.auth.organization(organizationId || ''),
+    queryKey: queryKeys.auth.organization(organizationId || ""),
     queryFn: async () => {
       if (!organizationId) return null;
 
@@ -54,7 +60,7 @@ export const useOrganization = (organizationId?: string) => {
         `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/organizations/${organizationId}`
       );
 
-      if (!response.ok) throw new Error('Failed to fetch organization');
+      if (!response.ok) throw new Error("Failed to fetch organization");
       return response.json() as unknown as Organization;
     },
     enabled: !!organizationId,
@@ -67,28 +73,84 @@ export const useUpdateOrganization = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, updates }: {
+    mutationFn: async ({
+      organizationId,
+      name,
+      logo_url,
+    }: {
       organizationId: string;
-      updates: Partial<Organization>;
+      name: string;
+      logo_url?: string | null;
     }) => {
       const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/organizations/${organizationId}`,
         {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, logo_url }),
         }
       );
 
-      if (!response.ok) throw new Error('Failed to update organization');
+      if (!response.ok)
+        throw new Error(`Failed to update organization (${response.status})`);
       return response.json() as unknown as Organization;
     },
-    onSuccess: (data, { organizationId }) => {
-      toast.success('Organization updated successfully');
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.organization(organizationId) });
+    onSuccess: (updatedOrg, { organizationId }) => {
+      toast.success("Organization updated successfully");
+      // Update the cache with the new data
+      queryClient.setQueryData(
+        queryKeys.auth.organization(organizationId),
+        updatedOrg
+      );
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.organization(organizationId),
+      });
     },
     onError: (error: any) => {
-      toast.error('Failed to update organization', {
+      toast.error("Failed to update organization", {
+        description: error.message,
+      });
+    },
+  });
+};
+
+// Mutation for updating user
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      name,
+      logo_url,
+    }: {
+      userId: string;
+      name: string;
+      logo_url?: string | null;
+    }) => {
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/users/${userId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, logo_url }),
+        }
+      );
+
+      if (!response.ok)
+        throw new Error(`Failed to update user (${response.status})`);
+      return response.json() as unknown as User;
+    },
+    onSuccess: (updatedUser) => {
+      toast.success("Profile updated successfully");
+      // Invalidate user queries to refetch fresh data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.user(),
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Failed to update profile", {
         description: error.message,
       });
     },

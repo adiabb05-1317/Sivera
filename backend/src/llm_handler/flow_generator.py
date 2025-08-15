@@ -7,36 +7,22 @@ from src.llm_handler.generic_llm import call_llm
 
 REQUIRED_NODES = [
     "introduction",
-    "background_discussion",
-    "coding_problem_introduction",
-    "jupyter_notebook_introduction",
-    "coding_problem_discussion",
-    "system_design_question",
-    "behavioral_questions",
-    "candidate_questions",
     "interview_conclusion",
-    "end",
 ]
 
 VALID_HANDLERS = {
-    "__function__:collect_candidate_info",
-    "__function__:process_background_info",
-    "__function__:present_coding_problem",
-    "__function__:present_jupyter_notebook",
-    "__function__:evaluate_problem_solving",
-    "__function__:present_system_design",
-    "__function__:evaluate_behavioral_response",
-    "__function__:handle_candidate_questions",
-    "__function__:conclude_interview",
-    "__function__:end_interview",
+    "__function__:evaluate_and_proceed",
 }
 
 
 def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
     """Validate the structure of a single node."""
-    # Validate task_messages
+    # All nodes must have role_messages and task_messages
+    if "role_messages" not in node:
+        raise ValueError(f"Node {node_name} missing role_messages")
     if "task_messages" not in node:
         raise ValueError(f"Node {node_name} missing task_messages")
+    
     if not isinstance(node["task_messages"], list):
         raise ValueError(f"Node {node_name} task_messages must be a list")
     for msg in node["task_messages"]:
@@ -45,6 +31,17 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
         if msg["role"] != "system":
             raise ValueError(f"Node {node_name} task message must have role 'system'")
 
+    # Validate conclusion node specific requirements
+    if node_name == "interview_conclusion":
+        if "post_actions" not in node:
+            raise ValueError("Conclusion node missing post_actions")
+        if not isinstance(node["post_actions"], list):
+            raise ValueError("Conclusion node post_actions must be a list")
+        if not any(action.get("type") == "end_conversation" for action in node["post_actions"]):
+            raise ValueError("Conclusion node must have end_conversation post action")
+        return  # Conclusion node doesn't need functions
+    
+    # All other nodes must have functions
     if "functions" not in node:
         raise ValueError(f"Node {node_name} missing functions")
     if not isinstance(node["functions"], list):
@@ -61,7 +58,6 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
             "description",
             "parameters",
             "handler",
-            "transition_to",
         ]
         for field in required_fields:
             if field not in function_obj:
@@ -69,15 +65,6 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
 
         if function_obj["handler"] not in VALID_HANDLERS:
             raise ValueError(f"Node {node_name} has invalid handler: {function_obj['handler']}")
-
-    # Validate end node specific requirements
-    if node_name == "end":
-        if "post_actions" not in node:
-            raise ValueError("End node missing post_actions")
-        if not isinstance(node["post_actions"], list):
-            raise ValueError("End node post_actions must be a list")
-        if not any(action.get("type") == "end_conversation" for action in node["post_actions"]):
-            raise ValueError("End node must have end_conversation post action")
 
 
 def validate_flow_json(flow_json: Dict[str, Any]) -> None:
@@ -134,9 +121,24 @@ async def generate_interview_flow_from_jd(job_role: str, job_description: str, s
         Exception: If the LLM call fails
     """
 
-    prompt = INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE.replace(
-        "{job_role}", job_role
-    ).replace("{job_description}", job_description.strip()).replace("{skills}", str(skills)).replace("{duration}", str(duration))
+    skills_list = ", ".join(skills)
+    skills_count = len(skills)
+    
+    # Calculate time allocation
+    introduction_time = 3  # minutes
+    conclusion_time = 3    # minutes
+    available_time = duration - introduction_time - conclusion_time
+    time_per_skill = max(2, available_time // skills_count) if skills_count > 0 else 5
+    
+    prompt = INTERVIEW_FLOW_GENERATION_PROMPT_TEMPLATE.format(
+        job_role=job_role,
+        job_description=job_description.strip(),
+        skills_required=skills_list,
+        skills_list=skills_list,
+        interview_duration=duration,
+        skills_count=skills_count,
+        time_per_skill=time_per_skill
+    )
 
     try:
         llm_response = await call_llm(

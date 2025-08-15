@@ -208,6 +208,30 @@ export async function fetchCandidatesSortedByJob() {
   return await response.json();
 }
 
+export async function fetchCandidatesByJob(jobId: string) {
+  const response = await authenticatedFetch(
+    `${
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+    }/api/v1/candidates/by-job/${encodeURIComponent(jobId)}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch candidates for job");
+  return await response.json();
+}
+
+export async function checkEmailExists(email: string, jobId?: string) {
+  const params = new URLSearchParams({ email });
+  if (jobId) params.append("job_id", jobId);
+
+  const response = await authenticatedFetch(
+    `${
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+    }/api/v1/candidates/check-email?${params.toString()}`
+  );
+  if (!response.ok) throw new Error("Failed to check email existence");
+  const data = await response.json();
+  return data.exists;
+}
+
 export async function fetchInterviewIdFromJobId(jobId: string) {
   const response = await authenticatedFetch(
     `${

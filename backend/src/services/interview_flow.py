@@ -127,7 +127,7 @@ class InterviewFlow:
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
-
+        # Remove time tracking functionality
 
         # TODO: here call linkedin api to get the profile
         # also get the additional links and their important information
@@ -194,8 +194,7 @@ class InterviewFlow:
         - Your job is to assess the candidate’s skills and experience. Be strict and critical in your evaluation.
         - Spend time asking questions based on the skills required for the job, ensure all the skills are assessed in the given time.
         - If the candidate absolutely doesn't know something or asks for help, offer only a very subtle hint.
-        - The duration of the interview is {self.duration} minutes, so you need to assess the candidate’s skills and experience within this time frame.
-        - A timer is provided for the interview duration. Make sure to monitor it and complete all necessary questions within the allotted time.
+        - Focus on assessing the candidate's skills and experience thoroughly for each required skill area.
 
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}" and introduce yourself as {self.bot_name} then proceed with the interview.
         You will be asking question based on the skills required for the job, which are: {self.skills}
@@ -240,7 +239,7 @@ class InterviewFlow:
     async def create(cls, url, bot_token, session_id, db_manager, job_id, bot_name="Sia"):
         return cls(url, bot_token, session_id, db_manager, job_id, bot_name)
 
-
+    # Timer functionality removed to improve bot response time
 
     async def create_transport(self):
         self.aiohttp_session = aiohttp.ClientSession()
@@ -295,8 +294,6 @@ class InterviewFlow:
                 return
 
             logger.info(f"First participant joined: {participant}")
-            logger.info("Interview participant joined - starting interview flow")
-
             await self.flow_manager.initialize()
             pass
 
@@ -438,7 +435,8 @@ class InterviewFlow:
 
     async def stop(self):
         try:
-            logger.info("Stopping interview flow")
+            interview_end_time = datetime.now()
+            logger.info("Stopping interview session")
 
             # Save chat history when pipeline is canceled
             if hasattr(self, "flow_manager") and self.flow_manager:
@@ -490,7 +488,6 @@ class InterviewFlow:
                     if (
                         hasattr(self, "candidate_id")
                         and hasattr(self, "interview")
-                        and interview_duration_seconds is not None
                     ):
                         try:
                             self.db.update("candidate_interviews", {
@@ -525,12 +522,6 @@ class InterviewFlow:
                             if candidate_interview_id:
                                 analytics_service = InterviewAnalytics()
                                 analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
-                                details = {
-                                    "interview_completed": True,
-                                    "completed_at": datetime.now().isoformat(),
-                                }
-
-                                analytics.update(details)
 
                                 logger.info(
                                     f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
@@ -552,12 +543,12 @@ class InterviewFlow:
                                         "candidate_interview_id": candidate_interview_id.get("id"),
                                         "session_history": session_data.get("id"),
                                         "created_at": datetime.now().isoformat(),
-                                        "updated_at": datetime.now().isoformat(),
+                                        "updated_at": interview_end_time.isoformat(),
                                         "analytics": ix,
                                         "status": "Completed",
                                     },
                                 )
-                                logger.info("Analytics with duration saved during stop()")
+                                logger.info("Analytics saved during stop()")
                         except Exception as e:
                             logger.error(f"Failed to save analytics during stop(): {e}")
 

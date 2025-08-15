@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import os
 import re
 from typing import List, Optional
 
@@ -46,6 +47,11 @@ class PhoneScreenResponse(BaseModel):
     max_retries: int
 
 
+class PhoneScreenStatusUpdate(BaseModel):
+    status: str
+    notes: Optional[str] = None
+
+
 def validate_phone_number(phone_number: str) -> str:
     """Validate and format phone number to international format"""
     if not phone_number:
@@ -85,40 +91,96 @@ def validate_phone_number(phone_number: str) -> str:
 async def trigger_phone_screen_call(phone_screen_attempt: dict, core_backend_url: str):
     """Trigger the actual phone screen call via the core backend"""
     try:
+        logger.info(f"🔔 Triggering phone screen call for candidate {phone_screen_attempt.get('candidate_id')}")
+        logger.info(f"📞 Phone number: {phone_screen_attempt.get('phone_number')}")
+        logger.info(f"🌐 Core backend URL: {core_backend_url}")
+        
+        # Get candidate and job data from local database
+        candidate_id = phone_screen_attempt["candidate_id"]
+        job_id = phone_screen_attempt["job_id"]
+        
+        logger.info(f"Looking for candidate {candidate_id} in database")
+        candidate = db.fetch_one("candidates", {"id": candidate_id})
+        if not candidate:
+            logger.error(f"Candidate {candidate_id} not found in local database")
+            # Let's also check what candidates are in the database
+            all_candidates = db.fetch_all("candidates", {})
+            logger.info(f"Available candidates in database: {[c.get('id') for c in all_candidates]}")
+            return False
+            
+        job = db.fetch_one("jobs", {"id": job_id})
+        if not job:
+            logger.error(f"Job {job_id} not found in local database")
+            return False
+            
+        organization = db.fetch_one("organizations", {"id": job["organization_id"]})
+        company_name = organization.get("name", "Unknown Company") if organization else "Unknown Company"
+        
+        # Get phone screen questions
+        phone_screen_id = job.get("phone_screen_id")
+        phone_screen_questions = []
+        if phone_screen_id:
+            phone_screen_record = db.fetch_one("phone_screen", {"id": phone_screen_id})
+            if phone_screen_record:
+                phone_screen_questions = phone_screen_record.get("questions", [])
+        
         payload = {
             "dialout_settings": {
-                "job_id": phone_screen_attempt["job_id"],
-                "candidate_id": phone_screen_attempt["candidate_id"],
-            }
+                "job_id": job_id,
+                "candidate_id": candidate_id,
+                "phone_number": phone_screen_attempt["phone_number"],
+                "sip_uri": f"sip:{phone_screen_attempt['phone_number'].replace('+', '')}@pstn.daily.co"
+            },
+            "candidate_data": {
+                "id": candidate_id,
+                "name": candidate.get("name", "Unknown"),
+                "email": candidate.get("email", ""),
+                "phone": phone_screen_attempt["phone_number"]
+            },
+            "job_data": {
+                "id": job_id,
+                "title": job.get("title", "Unknown Position"),
+                "organization_id": job["organization_id"],
+                "phone_screen_id": phone_screen_id
+            },
+            "organization_data": {
+                "id": job["organization_id"],
+                "name": company_name
+            },
+            "phone_screen_questions": phone_screen_questions
         }
 
+        logger.info(f"📤 Sending payload to core backend: {payload}")
+        
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{core_backend_url}/api/v1/phone_screening/connect",
                 json=payload,
                 headers={"Content-Type": "application/json"},
+                timeout=aiohttp.ClientTimeout(total=30)  # 30 second timeout
             ) as response:
                 if response.status == 200:
                     result = await response.json()
+                    logger.info(f"✅ Core backend response: {result}")
 
                     # Update phone screen attempt with call details
                     db.update(
                         "phone_screen_attempts",
                         {
                             "status": "in_progress",
-                            "attempted_at": datetime.now().isoformat(),
+                            "attempted_at": datetime.now(timezone.utc).isoformat(),
                             "call_id": result.get("call_id"),
                             "session_id": result.get("session_id"),
-                            "updated_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
                         },
                         {"id": phone_screen_attempt["id"]},
                     )
 
-                    logger.info(f"Phone screen call initiated for candidate {phone_screen_attempt['candidate_id']}")
+                    logger.info(f"🎉 Phone screen call initiated successfully for candidate {phone_screen_attempt['candidate_id']}")
                     return True
                 else:
                     error_text = await response.text()
-                    logger.error(f"Failed to initiate phone screen call: {response.status} - {error_text}")
+                    logger.error(f"❌ Failed to initiate phone screen call: {response.status} - {error_text}")
                     return False
 
     except Exception as e:
@@ -174,7 +236,7 @@ async def schedule_phone_screens_for_interview(interview_id: str):
                     continue
 
                 # Create phone screen attempt
-                scheduled_at = datetime.now() + timedelta(minutes=5)  # Schedule 5 minutes from now
+                scheduled_at = datetime.now(timezone.utc) + timedelta(minutes=5)  # Schedule 5 minutes from now
 
                 phone_screen_data = {
                     "candidate_id": candidate["id"],
@@ -205,18 +267,27 @@ async def process_scheduled_phone_screens():
     """Background task to process scheduled phone screens"""
     try:
         # Get all scheduled phone screens that are due
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
 
         scheduled_attempts = db.fetch_all("phone_screen_attempts", {"status": "scheduled"})
+        logger.info(f"Found {len(scheduled_attempts)} scheduled phone screen attempts")
 
-        core_backend_url = "https://core.sivera.io"  # Should be from env
+        core_backend_url = os.getenv("CORE_BACKEND_URL", "https://core.sivera.io")  # Fallback URL
+        
+        if not core_backend_url:
+            logger.error("CORE_BACKEND_URL environment variable not set")
+            return  
 
         for attempt in scheduled_attempts:
             scheduled_at = datetime.fromisoformat(attempt["scheduled_at"])
+            # Ensure timezone awareness - if no timezone info, assume UTC
+            if scheduled_at.tzinfo is None:
+                scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
 
             # Check if it's time to make the call
             if current_time >= scheduled_at:
-                logger.info(f"Processing phone screen for candidate {attempt['candidate_id']}")
+                logger.info(f"⏰ Time to call! Processing phone screen for candidate {attempt['candidate_id']}")
+                logger.info(f"📅 Scheduled: {scheduled_at} | Current: {current_time}")
 
                 success = await trigger_phone_screen_call(attempt, core_backend_url)
 
@@ -252,8 +323,12 @@ async def process_scheduled_phone_screens():
                             {"id": attempt["id"]},
                         )
                         logger.error(
-                            f"Phone screen failed after {max_retries} attempts for candidate {attempt['candidate_id']}"
+                            f"❌ Phone screen failed after {max_retries} attempts for candidate {attempt['candidate_id']}"
                         )
+            else:
+                # Log upcoming calls (not yet due)
+                time_diff = (scheduled_at - current_time).total_seconds() / 60  # minutes
+                logger.info(f"📋 Upcoming call for candidate {attempt['candidate_id']} in {time_diff:.1f} minutes")
 
     except Exception as e:
         logger.error(f"Error processing scheduled phone screens: {e}")
@@ -289,7 +364,7 @@ async def schedule_phone_screen(
             raise HTTPException(status_code=400, detail="Phone screen already scheduled")
 
         # Schedule the phone screen
-        scheduled_at = request.scheduled_at or (datetime.now() + timedelta(minutes=5)).isoformat()
+        scheduled_at = request.scheduled_at or (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
 
         phone_screen_data = {
             "candidate_id": request.candidate_id,
@@ -348,7 +423,9 @@ async def get_phone_screens_for_job(job_id: str, http_request: Request):
 
 @router.patch("/{phone_screen_id}/status")
 async def update_phone_screen_status(
-    phone_screen_id: str, status: str, notes: Optional[str] = None, http_request: Request = None
+    phone_screen_id: str, 
+    status_update: PhoneScreenStatusUpdate, 
+    http_request: Request
 ):
     """Update phone screen status (completed, failed, etc.)"""
     try:
@@ -361,24 +438,41 @@ async def update_phone_screen_status(
 
         # Verify access
         job = db.fetch_one("jobs", {"id": attempt["job_id"]})
+        if not job:
+            raise HTTPException(status_code=404, detail="Associated job not found")
+            
         if job["organization_id"] != user_context.organization_id:
             raise HTTPException(status_code=403, detail="Access denied")
 
+        # Validate status value
+        valid_statuses = ["scheduled", "in_progress", "completed", "failed", "cancelled"]
+        if status_update.status not in valid_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+
         # Update status
-        update_data = {"status": status, "updated_at": datetime.now().isoformat()}
+        update_data = {
+            "status": status_update.status, 
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
 
-        if notes:
-            update_data["notes"] = notes
+        if status_update.notes:
+            update_data["notes"] = status_update.notes
 
-        if status == "completed":
-            update_data["completed_at"] = datetime.now().isoformat()
-        elif status == "failed":
-            update_data["failed_at"] = datetime.now().isoformat()
+        if status_update.status == "completed":
+            update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+        elif status_update.status == "failed":
+            update_data["failed_at"] = datetime.now(timezone.utc).isoformat()
 
         db.update("phone_screen_attempts", update_data, {"id": phone_screen_id})
 
-        return {"success": True, "status": status}
+        logger.info(f"Updated phone screen {phone_screen_id} status to {status_update.status}")
+        return {"success": True, "status": status_update.status, "phone_screen_id": phone_screen_id}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error updating phone screen status: {e}")
         raise HTTPException(status_code=500, detail="Failed to update status")
@@ -394,6 +488,47 @@ async def trigger_scheduled_processing(http_request: Request):
     except Exception as e:
         logger.error(f"Error triggering phone screen processing: {e}")
         raise HTTPException(status_code=500, detail="Failed to trigger processing")
+
+
+@router.get("/debug-scheduled")
+async def debug_scheduled_phone_screens(http_request: Request):
+    """Debug endpoint to check scheduled phone screens and candidate data"""
+    try:
+        user_context = require_organization(http_request)
+        
+        # Get all scheduled attempts
+        scheduled_attempts = db.fetch_all("phone_screen_attempts", {"status": "scheduled"})
+        
+        # Get all candidates
+        all_candidates = db.fetch_all("candidates", {})
+        
+        # Get all jobs
+        all_jobs = db.fetch_all("jobs", {})
+        
+        debug_info = {
+            "scheduled_attempts_count": len(scheduled_attempts),
+            "total_candidates": len(all_candidates),
+            "total_jobs": len(all_jobs),
+            "scheduled_attempts": [
+                {
+                    "id": attempt.get("id"),
+                    "candidate_id": attempt.get("candidate_id"),
+                    "job_id": attempt.get("job_id"),
+                    "phone_number": attempt.get("phone_number"),
+                    "scheduled_at": attempt.get("scheduled_at"),
+                    "status": attempt.get("status")
+                }
+                for attempt in scheduled_attempts[:5]  # Limit to first 5 for debugging
+            ],
+            "candidate_ids": [c.get("id") for c in all_candidates[:10]],  # First 10 candidate IDs
+            "job_ids": [j.get("id") for j in all_jobs[:10]]  # First 10 job IDs
+        }
+        
+        return debug_info
+        
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/bulk-schedule")

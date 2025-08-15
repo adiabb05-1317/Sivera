@@ -635,7 +635,7 @@ export function PhoneInterviewSection({
               />
             </div>
             <div>
-              <Label htmlFor="scheduled_at">Scheduled At (Optional)</Label>
+              <Label htmlFor="scheduled_at">Scheduled At (UTC) - Optional</Label>
               <Input
                 id="scheduled_at"
                 type="datetime-local"
@@ -646,7 +646,11 @@ export function PhoneInterviewSection({
                     scheduled_at: e.target.value,
                   })
                 }
+                placeholder="UTC time - Leave empty to schedule in 5 minutes"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Time will be treated as UTC. Current UTC time: {new Date().toISOString().slice(0, 16)}
+              </p>
             </div>
           </div>
           <DialogFooter>
