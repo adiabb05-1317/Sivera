@@ -10,13 +10,16 @@ import { useState } from "react";
 
 export default function FlowterviewComponent() {
   const { setCurrentBotTranscript, isHeaderVisible } = usePathStore();
-  const { uploadRecording, isUploading, uploadProgress, uploadError } = useRecordingUpload();
-  const [recordingPermissionGranted, setRecordingPermissionGranted] = useState(false);
+  const { uploadRecording, isUploading, uploadProgress, uploadError } =
+    useRecordingUpload();
+  const [recordingPermissionGranted, setRecordingPermissionGranted] =
+    useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
-  const [activeScreenStream, setActiveScreenStream] = useState<MediaStream | null>(null);
-  
+  const [activeScreenStream, setActiveScreenStream] =
+    useState<MediaStream | null>(null);
+
   // Skip permission screen in development
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const handleClearTranscripts = () => {
     setCurrentBotTranscript("");
@@ -27,13 +30,17 @@ export default function FlowterviewComponent() {
   };
 
   const handleRecordingStop = async (recordingBlob: Blob) => {
-    console.log("🎥 Recording stopped, starting upload...", recordingBlob.size, "bytes");
-    
+    console.log(
+      "🎥 Recording stopped, starting upload...",
+      recordingBlob.size,
+      "bytes"
+    );
+
     if (recordingBlob.size === 0) {
       console.error("Recording blob is empty, skipping upload");
       return;
     }
-    
+
     try {
       console.log("📤 Uploading recording to backend...");
       await uploadRecording(recordingBlob);
@@ -49,16 +56,16 @@ export default function FlowterviewComponent() {
   };
 
   const handlePermissionGranted = (screenStream: MediaStream) => {
-    console.log('🎥 Permission granted with stream:', {
+    console.log("🎥 Permission granted with stream:", {
       videoTracks: screenStream.getVideoTracks().length,
       audioTracks: screenStream.getAudioTracks().length,
-      streamId: screenStream.id
+      streamId: screenStream.id,
     });
-    
+
     setRecordingPermissionGranted(true);
     setShowPermissionError(false);
     setActiveScreenStream(screenStream);
-    console.log('🎥 Screen recording will start with provided stream');
+    console.log("🎥 Screen recording will start with provided stream");
   };
 
   const handlePermissionDenied = () => {
@@ -66,16 +73,17 @@ export default function FlowterviewComponent() {
   };
 
   // Debug logging
-  console.log('FlowterviewComponent state:', {
+  console.log("FlowterviewComponent state:", {
     recordingPermissionGranted,
     isDevelopment,
     showPermissionError,
-    nodeEnv: process.env.NODE_ENV
+    nodeEnv: process.env.NODE_ENV,
   });
 
   // Only skip recording entirely if explicitly set
-  const shouldSkipRecording = isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === 'true';
-  
+  const shouldSkipRecording =
+    isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === "true";
+
   // Show permission screen first (unless skipping recording entirely)
   if (!recordingPermissionGranted && !shouldSkipRecording) {
     return (
@@ -95,8 +103,8 @@ export default function FlowterviewComponent() {
             Screen Recording Required
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 text-center max-w-md">
-            Screen recording permission is required to participate in this interview. 
-            Please refresh the page and grant permission to continue.
+            Screen recording permission is required to participate in this
+            interview. Please refresh the page and grant permission to continue.
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -129,7 +137,7 @@ export default function FlowterviewComponent() {
             SIVERA
           </h1>
         </div>
-        
+
         {/* Recording Controls and Status */}
         <div className="absolute top-4 right-4 z-50">
           <ScreenRecorder
@@ -138,7 +146,7 @@ export default function FlowterviewComponent() {
             onRecordingError={handleRecordingError}
             existingStream={activeScreenStream}
           />
-          
+
           {/* Upload Progress */}
           {(isUploading || uploadProgress) && (
             <div className="mt-2 p-2 bg-black/40 rounded-lg backdrop-blur-sm text-white text-sm">
@@ -147,7 +155,9 @@ export default function FlowterviewComponent() {
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Uploading recording...</span>
                   {uploadProgress && (
-                    <span className="font-mono">{uploadProgress.percentage}%</span>
+                    <span className="font-mono">
+                      {uploadProgress.percentage}%
+                    </span>
                   )}
                 </div>
               )}
@@ -159,10 +169,10 @@ export default function FlowterviewComponent() {
               )}
             </div>
           )}
-          
+
           {/* Upload Error */}
           {uploadError && (
-            <div className="mt-2 p-2 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm text-red-200 text-sm">
+            <div className="mt-0 p-2 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm text-sm">
               Upload failed: {uploadError}
             </div>
           )}
