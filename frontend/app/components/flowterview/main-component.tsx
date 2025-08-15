@@ -5,12 +5,12 @@ import Presentation from "./presentation-layer";
 import ScreenRecorder from "./screen-recorder";
 import RecordingPermission from "./recording-permission";
 import usePathStore from "@/app/store/PathStore";
-import useRecordingUpload from "@/app/hooks/useRecordingUpload";
+import useDirectS3Upload from "@/app/hooks/useDirectS3Upload";
 import { useState } from "react";
 
 export default function FlowterviewComponent() {
   const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } = usePathStore();
-  const { uploadRecording, isUploading, uploadProgress, uploadError } = useRecordingUpload();
+  const { uploadRecording } = useDirectS3Upload();
   const [recordingPermissionGranted, setRecordingPermissionGranted] = useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [activeScreenStream, setActiveScreenStream] = useState<MediaStream | null>(null);
@@ -23,29 +23,51 @@ export default function FlowterviewComponent() {
   };
 
   const handleRecordingStart = () => {
-    console.log("Recording started");
+    if (isDevelopment) {
+      console.log("Recording started");
+    }
   };
 
   const handleRecordingStop = async (recordingBlob: Blob) => {
-    console.log("🎥 Recording stopped, starting upload...", recordingBlob.size, "bytes");
-    console.log("🔍 Current store values at upload time:", { jobId, candidateId });
+    if (isDevelopment) {
+      console.log("🎥 Recording stopped, starting upload...", recordingBlob.size, "bytes");
+      console.log("🔍 Current store values at upload time:", { jobId, candidateId });
+      console.log("📋 Blob details:", {
+        size: recordingBlob.size,
+        type: recordingBlob.type,
+        sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2)
+      });
+    }
     
     if (recordingBlob.size === 0) {
-      console.error("Recording blob is empty, skipping upload");
+      if (isDevelopment) {
+        console.error("Recording blob is empty, skipping upload");
+      }
       return;
     }
     
+    // Validate blob is reasonable size (at least 1MB for any meaningful recording)
+    if (recordingBlob.size < 1024 * 1024) {
+      console.warn(`⚠️ Recording seems too small: ${recordingBlob.size} bytes. This might be corrupted.`);
+      // Don't return - still try to upload
+    }
+    
     try {
-      console.log("📤 Uploading recording to backend...");
+      if (isDevelopment) {
+        console.log("📤 Starting direct S3 upload...");
+      }
       await uploadRecording(recordingBlob);
-      console.log("✅ Recording uploaded successfully!");
+      if (isDevelopment) {
+        console.log("✅ Direct S3 upload completed successfully!");
+      }
     } catch (error) {
-      console.error("❌ Failed to upload recording:", error);
-      // You might want to retry or show user notification here
+      // Always log critical upload failures
+      console.error("❌ Failed to upload recording to S3:", error);
     }
   };
 
   const handleRecordingError = (error: string) => {
+    // Always log recording errors as they're critical
     console.error("Recording error:", error);
   };
 
@@ -131,43 +153,13 @@ export default function FlowterviewComponent() {
           </h1>
         </div>
         
-        {/* Recording Controls and Status */}
-        <div className="absolute top-4 right-4 z-50">
-          <ScreenRecorder
-            onRecordingStart={handleRecordingStart}
-            onRecordingStop={handleRecordingStop}
-            onRecordingError={handleRecordingError}
-            existingStream={activeScreenStream}
-          />
-          
-          {/* Upload Progress */}
-          {(isUploading || uploadProgress) && (
-            <div className="mt-2 p-2 bg-black/40 rounded-lg backdrop-blur-sm text-white text-sm">
-              {isUploading && (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Uploading recording...</span>
-                  {uploadProgress && (
-                    <span className="font-mono">{uploadProgress.percentage}%</span>
-                  )}
-                </div>
-              )}
-              {uploadProgress && uploadProgress.percentage === 100 && (
-                <div className="flex items-center gap-2 text-green-400">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span>Upload complete!</span>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Upload Error */}
-          {uploadError && (
-            <div className="mt-2 p-2 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm text-red-200 text-sm">
-              Upload failed: {uploadError}
-            </div>
-          )}
-        </div>
+        {/* Hidden Recording Component */}
+        <ScreenRecorder
+          onRecordingStart={handleRecordingStart}
+          onRecordingStop={handleRecordingStop}
+          onRecordingError={handleRecordingError}
+          existingStream={activeScreenStream}
+        />
       </header>
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-app-blue-800/40 via-app-blue-700/30 to-[#232336]/80 dark:from-app-blue-900/60 dark:via-[#292a3a]/60 dark:to-[#232336]/90 backdrop-blur-2xl" />
       <div className="h-[calc(100%-64px)]">

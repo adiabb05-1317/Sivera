@@ -1,22 +1,27 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import FlowterviewComponent from "./components/flowterview/main-component";
 import { usePathStore } from "./store/PathStore";
 
 export default function Home() {
   const searchParams = useSearchParams();
-  const { jobId, setJobId, setCandidateId } = usePathStore();
+  const router = useRouter();
+  const { jobId, setJobId, setCandidateId, setBotToken, setRoomUrl } = usePathStore();
 
-  // Extract URL parameters and set them in the store
+  // Extract URL parameters, set them in store, and clean URL
   useEffect(() => {
     const urlJobId = searchParams.get("job_id");
     const urlCandidateId = searchParams.get("candidate_id");
+    const botToken = searchParams.get("bot_token");
+    const roomUrl = searchParams.get("room_url");
     
     console.log("🔍 URL Parameters:", {
       urlJobId,
       urlCandidateId,
+      botToken: botToken ? "present" : "missing",
+      roomUrl: roomUrl ? "present" : "missing",
       currentJobId: jobId
     });
 
@@ -24,8 +29,20 @@ export default function Home() {
       console.log("✅ Setting jobId and candidateId from URL parameters");
       setJobId(urlJobId);
       setCandidateId(urlCandidateId);
+      
+      // Store additional parameters if present
+      if (botToken) {
+        setBotToken(botToken);
+      }
+      if (roomUrl) {
+        setRoomUrl(decodeURIComponent(roomUrl));
+      }
+      
+      // Clean URL by removing query parameters after extracting them
+      console.log("🧹 Cleaning URL query parameters...");
+      router.replace("/", undefined);
     }
-  }, [searchParams, setJobId, setCandidateId, jobId]);
+  }, [searchParams, setJobId, setCandidateId, setBotToken, setRoomUrl, jobId, router]);
 
   // Show error if no jobId is available
   if (!jobId) {

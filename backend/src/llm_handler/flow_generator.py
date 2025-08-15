@@ -67,44 +67,6 @@ def validate_node_structure(node: Dict[str, Any], node_name: str) -> None:
             raise ValueError(f"Node {node_name} has invalid handler: {function_obj['handler']}")
 
 
-def validate_flow_json(flow_json: Dict[str, Any]) -> None:
-    """
-    Validate the generated flow JSON structure.
-    Raises ValueError if validation fails.
-    """
-    # Validate top-level structure
-    if not isinstance(flow_json, dict):
-        raise ValueError("Flow JSON must be a dictionary")
-
-    if "initial_node" not in flow_json:
-        raise ValueError("Flow JSON missing initial_node")
-    if flow_json["initial_node"] != "introduction":
-        raise ValueError("initial_node must be 'introduction'")
-
-    if "nodes" not in flow_json:
-        raise ValueError("Flow JSON missing nodes")
-    if not isinstance(flow_json["nodes"], dict):
-        raise ValueError("nodes must be a dictionary")
-
-    # for node_name in REQUIRED_NODES:
-    #     if node_name not in flow_json["nodes"]:
-    #         raise ValueError(f"Missing required node: {node_name}")
-
-    # Validate each node's structure
-    for node_name, node in flow_json["nodes"].items():
-        validate_node_structure(node, node_name)
-
-    # for node_name, node in flow_json["nodes"].items():
-    #     if node_name == "end":
-    #         continue
-    #     transition_to = node["functions"][0]["function"]["transition_to"]
-    #     if transition_to not in REQUIRED_NODES:
-    #         raise ValueError(
-    #             f"Invalid transition_to in node {node_name}: {transition_to}"
-    #         )
-    #     if REQUIRED_NODES.index(transition_to) <= REQUIRED_NODES.index(node_name):
-    #         raise ValueError(f"Invalid transition order in node {node_name}")
-
 
 async def generate_interview_flow_from_jd(job_role: str, job_description: str, skills: List[str], duration: int) -> Dict[str, Any]:
     """
@@ -155,7 +117,6 @@ async def generate_interview_flow_from_jd(job_role: str, job_description: str, s
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON format: {str(e)}\nResponse: {llm_response[:100]}...")
 
-        validate_flow_json(flow_json)
         return flow_json
 
     except json.JSONDecodeError as e:

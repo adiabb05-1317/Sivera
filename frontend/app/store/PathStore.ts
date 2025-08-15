@@ -169,6 +169,14 @@ type TPathStore = {
   setAdditionalLinks: (
     additional_links: { name: string; url: string }[]
   ) => void;
+
+  // Bot token
+  botToken: string;
+  setBotToken: (botToken: string) => void;
+
+  // Room URL
+  roomUrl: string;
+  setRoomUrl: (roomUrl: string) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -307,6 +315,14 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setAdditionalLinks: (additional_links: { name: string; url: string }[]) =>
     set({ additional_links }),
 
+  // Bot token
+  botToken: "",
+  setBotToken: (botToken: string) => set({ botToken }),
+
+  // Room URL
+  roomUrl: "",
+  setRoomUrl: (roomUrl: string) => set({ roomUrl }),
+
   resetStore: () => {
     set({
       participants: [
@@ -350,6 +366,8 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       editorFontSize: 18,
       linkedin_profile: "",
       additional_links: [],
+      botToken: "",
+      roomUrl: "",
     });
   },
 

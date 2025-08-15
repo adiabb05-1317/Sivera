@@ -153,11 +153,11 @@ Each skill node should use the evaluate_and_proceed function with these properti
     }}
   ],
   "task_messages": [
-    {{
-      "role": "system",
-      "content": "Thank the candidate for their time, provide brief positive feedback about their technical discussion, explain next steps, and end professionally. Keep it under 100 words. **TIME MANAGEMENT**: This conclusion should take 2-3 minutes maximum. Be concise but thorough in your closing remarks."
-    }}
-  ],
+        {
+            "role": "system", 
+            "content": "Thank the candidate for their time, provide brief positive feedback about their technical discussion, explain next steps, and then CALL the end_interview function to conclude the session. Keep it under 100 words. **TIME MANAGEMENT**: This conclusion should take 2-3 minutes maximum. Be concise but thorough in your closing remarks."
+        }
+    ],
   "functions": [
     {{
       "type": "function",

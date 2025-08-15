@@ -52,8 +52,14 @@ class InterviewAnalytics:
         """
 
         for message in chat_history:
-            role = "Interviewer" if message["role"] == "assistant" else "Candidate"
-            context += f"{role}: {message['content']}\n\n"
+            role = "Interviewer" if message.get("role") == "assistant" else "Candidate"
+            # Handle different message structures that might come from flow_manager
+            content = ""
+            if isinstance(message, dict):
+                content = message.get('content', message.get('text', str(message)))
+            else:
+                content = str(message)
+            context += f"{role}: {content}\n\n"
 
         return context
 

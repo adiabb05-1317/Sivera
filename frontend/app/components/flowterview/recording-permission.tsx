@@ -52,13 +52,21 @@ export function RecordingPermission({
       setDebugInfo('Starting screen recording...');
       console.log('🎥 Starting screen recording immediately...');
       
-      // Start actual screen recording immediately (not just test)
+      // Start actual screen recording with high quality settings
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          mediaSource: 'screen',
-          cursor: 'always'
-        },
-        audio: true
+          cursor: 'always',
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 15 }
+        } as any,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 48000,
+          channelCount: 2
+        }
       });
 
       setDebugInfo('Validating screen selection...');

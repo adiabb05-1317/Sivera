@@ -201,6 +201,21 @@ class CloudStorageManager:
             logger.info("⬆️ Uploading to S3...")
             await asyncio.get_event_loop().run_in_executor(None, upload_sync)
             
+            # Verify upload by checking object size
+            try:
+                response = s3_client.head_object(Bucket=self.bucket_name, Key=object_key)
+                s3_file_size = response['ContentLength']
+                local_file_size = os.path.getsize(file_path)
+                
+                if s3_file_size != local_file_size:
+                    logger.error(f"❌ S3 upload size mismatch: local={local_file_size}, s3={s3_file_size}")
+                    raise Exception(f"Upload verification failed: size mismatch (local: {local_file_size}, S3: {s3_file_size})")
+                
+                logger.info(f"✅ Upload verified: {s3_file_size} bytes match local file")
+            except Exception as verify_error:
+                logger.error(f"❌ Upload verification failed: {verify_error}")
+                # Don't raise here - upload might still be valid
+            
             # Generate object URL
             object_url = f"https://{self.bucket_name}.s3.{aws_region}.amazonaws.com/{object_key}"
             logger.info(f"✅ Successfully uploaded to S3: {object_url}")
@@ -305,6 +320,283 @@ storage_manager = CloudStorageManager()
 @router.options("/upload")
 async def upload_recording_options():
     """Handle CORS preflight request for upload endpoint."""
+    return JSONResponse(
+        status_code=200,
+        content={"message": "CORS preflight successful"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@router.options("/presigned-url")
+async def presigned_url_options():
+    """Handle CORS preflight request for presigned URL endpoint."""
+    return JSONResponse(
+        status_code=200,
+        content={"message": "CORS preflight successful"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@router.post("/presigned-url")
+async def get_presigned_upload_url(
+    request: Request,
+    job_id: str = Form(...),
+    candidate_id: str = Form(...),
+    timestamp: str = Form(...),
+    file_size: int = Form(...),
+    interview_type: str = Form("ai_interview"),
+    round_number: int = Form(None),
+    interview_id: str = Form(None),
+    round_token: str = Form(None),
+    content_type: str = Form("video/webm")
+):
+    """
+    Generate pre-signed URL for direct S3 upload from client.
+    """
+    try:
+        # Validate file size (max 2GB)
+        max_size = 2 * 1024 * 1024 * 1024  # 2GB
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {max_size // (1024*1024)}MB."
+            )
+
+        # Check if S3 is configured
+        if not storage_manager.bucket_name:
+            raise HTTPException(
+                status_code=503,
+                detail="S3 storage not configured"
+            )
+
+        # Generate object key
+        file_extension = "webm"  # Default to webm
+        if content_type == "video/mp4":
+            file_extension = "mp4"
+        
+        object_key = storage_manager.generate_object_key(job_id, candidate_id, timestamp, file_extension)
+        
+        # Generate presigned URL
+        try:
+            import boto3
+            from botocore.exceptions import ClientError, NoCredentialsError
+        except ImportError:
+            raise HTTPException(status_code=500, detail="boto3 not installed")
+        
+        # Get AWS credentials
+        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+        
+        if not aws_access_key or not aws_secret_key:
+            raise HTTPException(status_code=500, detail="AWS credentials not configured")
+        
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=aws_region
+            )
+            
+            # Generate presigned URL for PUT operation (15 minutes expiry)
+            presigned_url = s3_client.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': storage_manager.bucket_name,
+                    'Key': object_key,
+                    'ContentType': content_type,
+                    'ServerSideEncryption': 'AES256'
+                },
+                ExpiresIn=900  # 15 minutes
+            )
+            
+            # Generate the final object URL
+            object_url = f"https://{storage_manager.bucket_name}.s3.{aws_region}.amazonaws.com/{object_key}"
+            
+            logger.info(f"📋 Generated presigned URL for: {object_key}")
+            logger.info(f"🗂️ Expected file size: {file_size} bytes")
+            
+            response_data = {
+                "success": True,
+                "presigned_url": presigned_url,
+                "object_key": object_key,
+                "object_url": object_url,
+                "bucket": storage_manager.bucket_name,
+                "region": aws_region,
+                "content_type": content_type,
+                "expires_in": 900,  # 15 minutes
+                "job_id": job_id,
+                "candidate_id": candidate_id,
+                "timestamp": timestamp
+            }
+            
+            return JSONResponse(status_code=200, content=response_data)
+            
+        except NoCredentialsError:
+            raise HTTPException(status_code=500, detail="AWS credentials not found")
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            logger.error(f"❌ AWS S3 error: {error_code}")
+            raise HTTPException(status_code=500, detail=f"S3 error: {error_code}")
+        except Exception as e:
+            logger.error(f"❌ Error generating presigned URL: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate presigned URL: {str(e)}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Unexpected error in presigned URL generation: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/confirm-upload")
+async def confirm_upload(
+    request: Request,
+    object_key: str = Form(...),
+    object_url: str = Form(...),
+    job_id: str = Form(...),
+    candidate_id: str = Form(...),
+    timestamp: str = Form(...),
+    file_size: int = Form(...),
+    interview_type: str = Form("ai_interview"),
+    round_number: int = Form(None),
+    interview_id: str = Form(None),
+    round_token: str = Form(None),
+    content_type: str = Form("video/webm")
+):
+    """
+    Confirm successful S3 upload and store metadata in database.
+    """
+    try:
+        # Verify the file exists in S3 and get actual size
+        try:
+            import boto3
+            from botocore.exceptions import ClientError
+            
+            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+            aws_region = os.getenv("AWS_REGION", "us-east-1")
+            
+            if aws_access_key and aws_secret_key:
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=aws_access_key,
+                    aws_secret_access_key=aws_secret_key,
+                    region_name=aws_region
+                )
+                
+                # Verify file exists and get actual size
+                try:
+                    response = s3_client.head_object(Bucket=storage_manager.bucket_name, Key=object_key)
+                    actual_file_size = response['ContentLength']
+                    
+                    logger.info(f"✅ S3 upload verified: {object_key}")
+                    logger.info(f"📊 File size: {actual_file_size} bytes")
+                    
+                    # Update file_size with actual size from S3
+                    file_size = actual_file_size
+                    
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchKey':
+                        logger.error(f"❌ File not found in S3: {object_key}")
+                        raise HTTPException(status_code=404, detail="File not found in S3")
+                    else:
+                        logger.error(f"❌ S3 verification error: {e}")
+                        # Continue anyway - file might exist but we can't verify
+                        
+        except Exception as e:
+            logger.warning(f"⚠️ Could not verify S3 upload: {e}")
+            # Continue anyway - don't fail the entire operation
+        
+        # Generate filename for database record
+        file_extension = object_key.split('.')[-1] if '.' in object_key else 'webm'
+        safe_filename = f"interview-recording-{job_id}-{candidate_id}-{timestamp}.{file_extension}"
+        
+        # Prepare metadata
+        metadata = {
+            "job_id": job_id,
+            "candidate_id": candidate_id,
+            "interview_id": interview_id,
+            "interview_type": interview_type,
+            "round_number": round_number,
+            "round_token": round_token,
+            "timestamp": timestamp,
+            "upload_time": datetime.utcnow().isoformat(),
+            "file_size": str(file_size),
+            "content_type": content_type,
+            "upload_method": "presigned_url"
+        }
+        
+        # Store recording info in database
+        try:
+            db = DatabaseManager()
+            
+            recording_data = {
+                "job_id": job_id,
+                "candidate_id": candidate_id,
+                "interview_id": interview_id,
+                "interview_type": interview_type,
+                "round_number": round_number,
+                "round_token": round_token,
+                "filename": safe_filename,
+                "file_size": file_size,
+                "storage_type": "s3",
+                "cloud_url": object_url,
+                "object_key": object_key,
+                "local_path": None,  # No local path for direct S3 uploads
+                "metadata": metadata,
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            logger.info(f"💾 Storing S3 upload metadata to database:")
+            logger.info(f"  📊 Storage type: s3 (direct upload)")
+            logger.info(f"  🔗 Cloud URL: {object_url}")
+            logger.info(f"  🔑 Object key: {object_key}")
+            logger.info(f"  📏 File size: {file_size} bytes")
+            
+            # Insert into database
+            db_result = db.execute_query("interview_recordings", recording_data)
+            logger.info(f"✅ Recording metadata saved to database with ID: {db_result.get('id')}")
+            
+            response_data = {
+                "success": True,
+                "message": "Upload confirmed and metadata stored",
+                "database_id": db_result.get('id'),
+                "object_key": object_key,
+                "object_url": object_url,
+                "file_size": file_size,
+                "storage_type": "s3"
+            }
+            
+            return JSONResponse(status_code=200, content=response_data)
+            
+        except Exception as db_error:
+            logger.error(f"❌ Failed to save recording metadata to database: {db_error}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Upload successful but failed to store metadata: {str(db_error)}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error confirming upload: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to confirm upload: {str(e)}")
+
+
+@router.options("/confirm-upload")
+async def confirm_upload_options():
+    """Handle CORS preflight request for confirm upload endpoint."""
     return JSONResponse(
         status_code=200,
         content={"message": "CORS preflight successful"},

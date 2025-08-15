@@ -29,20 +29,26 @@ export function useRecordingUpload(): UseRecordingUploadReturn {
   } = usePathStore();
 
   const uploadRecording = useCallback(async (recordingBlob: Blob) => {
-    console.log('📋 Upload Details:', {
-      blobSize: recordingBlob.size,
-      blobType: recordingBlob.type,
-      jobId,
-      candidateId,
-      roundNumber,
-      currentAssessment: currentAssessment?.title || 'None'
-    });
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      console.log('📋 Upload Details:', {
+        blobSize: recordingBlob.size,
+        blobType: recordingBlob.type,
+        jobId,
+        candidateId,
+        roundNumber,
+        currentAssessment: currentAssessment?.title || 'None'
+      });
+    }
 
     if (!jobId || !candidateId) {
       const errorMsg = `Missing job ID or candidate ID. JobId: "${jobId}", CandidateId: "${candidateId}"`;
       setUploadError(errorMsg);
-      console.error('❌ Upload failed:', errorMsg);
-      console.log('🔍 Current PathStore state:', { jobId, candidateId, roundNumber });
+      if (isDevelopment) {
+        console.error('❌ Upload failed:', errorMsg);
+        console.log('🔍 Current PathStore state:', { jobId, candidateId, roundNumber });
+      }
       return;
     }
 
@@ -77,7 +83,9 @@ export function useRecordingUpload(): UseRecordingUploadReturn {
       }
 
       const baseUrl = process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || 'http://localhost:8010';
-      console.log('🌐 Uploading to:', `${baseUrl}/api/v1/recordings/upload`);
+      if (isDevelopment) {
+        console.log('🌐 Uploading to:', `${baseUrl}/api/v1/recordings/upload`);
+      }
       
       // Create XMLHttpRequest to track upload progress
       await new Promise<void>((resolve, reject) => {
@@ -115,10 +123,13 @@ export function useRecordingUpload(): UseRecordingUploadReturn {
         xhr.send(formData);
       });
 
-      console.log('Recording uploaded successfully');
+      if (isDevelopment) {
+        console.log('Recording uploaded successfully');
+      }
       setUploadProgress({ loaded: recordingBlob.size, total: recordingBlob.size, percentage: 100 });
       
     } catch (error) {
+      // Always log critical errors, even in production
       console.error('Upload failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setUploadError(errorMessage);
