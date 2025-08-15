@@ -9,7 +9,7 @@ import useRecordingUpload from "@/app/hooks/useRecordingUpload";
 import { useState } from "react";
 
 export default function FlowterviewComponent() {
-  const { setCurrentBotTranscript, isHeaderVisible } = usePathStore();
+  const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } = usePathStore();
   const { uploadRecording, isUploading, uploadProgress, uploadError } = useRecordingUpload();
   const [recordingPermissionGranted, setRecordingPermissionGranted] = useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
@@ -28,6 +28,7 @@ export default function FlowterviewComponent() {
 
   const handleRecordingStop = async (recordingBlob: Blob) => {
     console.log("🎥 Recording stopped, starting upload...", recordingBlob.size, "bytes");
+    console.log("🔍 Current store values at upload time:", { jobId, candidateId });
     
     if (recordingBlob.size === 0) {
       console.error("Recording blob is empty, skipping upload");

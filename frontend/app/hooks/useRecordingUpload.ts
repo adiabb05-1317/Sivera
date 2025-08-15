@@ -34,12 +34,15 @@ export function useRecordingUpload(): UseRecordingUploadReturn {
       blobType: recordingBlob.type,
       jobId,
       candidateId,
-      roundNumber
+      roundNumber,
+      currentAssessment: currentAssessment?.title || 'None'
     });
 
     if (!jobId || !candidateId) {
-      setUploadError('Missing job ID or candidate ID');
-      console.error('❌ Upload failed: Missing job ID or candidate ID');
+      const errorMsg = `Missing job ID or candidate ID. JobId: "${jobId}", CandidateId: "${candidateId}"`;
+      setUploadError(errorMsg);
+      console.error('❌ Upload failed:', errorMsg);
+      console.log('🔍 Current PathStore state:', { jobId, candidateId, roundNumber });
       return;
     }
 

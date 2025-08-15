@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from src.core.config import Config
+from storage.db_manager import DatabaseManager
 
 router = APIRouter(
     prefix="/api/v1/recordings",
@@ -29,6 +30,80 @@ class CloudStorageManager:
         
         if not self.bucket_name:
             logger.warning("CLOUD_STORAGE_BUCKET not configured. Files will be stored locally only.")
+        else:
+            logger.info(f"Cloud storage configured: {self.provider} bucket '{self.bucket_name}'")
+        
+        # Validate AWS credentials if using S3
+        if self.provider == "s3" and self.bucket_name:
+            self._validate_aws_credentials()
+    
+    def _validate_aws_credentials(self):
+        """Validate AWS credentials and S3 access."""
+        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+        
+        if not aws_access_key:
+            logger.error("AWS_ACCESS_KEY_ID not configured")
+            return False
+        if not aws_secret_key:
+            logger.error("AWS_SECRET_ACCESS_KEY not configured")
+            return False
+            
+        logger.info(f"AWS credentials configured for region: {aws_region}")
+        logger.info(f"Access key ID: {aws_access_key[:8]}...")
+        
+        # Test boto3 import
+        try:
+            import boto3
+            logger.info("boto3 library available")
+        except ImportError:
+            logger.error("boto3 not installed. Run: pip install boto3")
+            return False
+            
+        # Test S3 connection
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=aws_region
+            )
+            
+            # Try to list bucket contents instead of head_bucket (requires fewer permissions)
+            try:
+                s3_client.list_objects_v2(Bucket=self.bucket_name, MaxKeys=1)
+                logger.info(f"✅ S3 bucket '{self.bucket_name}' is accessible")
+                return True
+            except s3_client.exceptions.NoSuchBucket:
+                logger.error(f"❌ S3 bucket '{self.bucket_name}' does not exist")
+                return False
+            except Exception as list_error:
+                logger.warning(f"⚠️ Cannot list bucket contents: {list_error}")
+                
+                # Try a simple put operation to test upload permissions
+                try:
+                    test_key = "test-connection/test.txt"
+                    s3_client.put_object(
+                        Bucket=self.bucket_name,
+                        Key=test_key,
+                        Body=b"Connection test",
+                        ServerSideEncryption='AES256'
+                    )
+                    # Clean up test object
+                    s3_client.delete_object(Bucket=self.bucket_name, Key=test_key)
+                    logger.info(f"✅ S3 bucket '{self.bucket_name}' upload test successful")
+                    return True
+                except Exception as upload_error:
+                    logger.error(f"❌ S3 upload test failed: {upload_error}")
+                    logger.warning(f"🔐 Check AWS permissions for bucket '{self.bucket_name}'")
+                    # Return True anyway - we'll handle upload errors gracefully
+                    return True
+                    
+        except Exception as e:
+            logger.error(f"❌ S3 credentials/bucket validation failed: {e}")
+            logger.warning("🔐 Required S3 permissions: s3:ListBucket, s3:PutObject, s3:PutObjectAcl")
+            return False
     
     async def upload_recording(
         self, 
@@ -67,25 +142,51 @@ class CloudStorageManager:
         """Upload to AWS S3."""
         try:
             import boto3
-            from botocore.exceptions import ClientError, NoCredentialsError
+            from botocore.exceptions import ClientError, NoCredentialsError, BotoCoreError
         except ImportError:
             raise Exception("boto3 not installed. Run: pip install boto3")
+        
+        # Get AWS credentials
+        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+        
+        if not aws_access_key or not aws_secret_key:
+            raise Exception("AWS credentials not configured. Check AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+        
+        logger.info(f"📤 Starting S3 upload: {object_key}")
+        logger.info(f"🗂️ File size: {os.path.getsize(file_path)} bytes")
         
         try:
             s3_client = boto3.client(
                 's3',
-                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                region_name=os.getenv("AWS_REGION", "us-east-1")
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=aws_region
             )
+            
+            # Determine content type from file extension
+            file_extension = object_key.split('.')[-1].lower()
+            content_type = {
+                'webm': 'video/webm',
+                'mp4': 'video/mp4',
+                'mov': 'video/quicktime'
+            }.get(file_extension, 'video/webm')
             
             # Prepare ExtraArgs for upload_fileobj
             extra_args = {
-                'ContentType': 'video/webm'
+                'ContentType': content_type,
+                'ServerSideEncryption': 'AES256'  # Enable server-side encryption
             }
             
             if metadata:
-                extra_args['Metadata'] = {k: str(v) for k, v in metadata.items()}
+                # S3 metadata keys must be lowercase and contain only alphanumeric characters and hyphens
+                clean_metadata = {}
+                for k, v in metadata.items():
+                    clean_key = k.lower().replace('_', '-')
+                    clean_metadata[clean_key] = str(v)
+                extra_args['Metadata'] = clean_metadata
+                logger.info(f"📋 Metadata: {clean_metadata}")
             
             def upload_sync():
                 with open(file_path, 'rb') as file:
@@ -96,10 +197,13 @@ class CloudStorageManager:
                         ExtraArgs=extra_args
                     )
             
+            # Upload to S3 asynchronously
+            logger.info("⬆️ Uploading to S3...")
             await asyncio.get_event_loop().run_in_executor(None, upload_sync)
             
-            object_url = f"https://{self.bucket_name}.s3.amazonaws.com/{object_key}"
-            logger.info(f"Successfully uploaded to S3: {object_url}")
+            # Generate object URL
+            object_url = f"https://{self.bucket_name}.s3.{aws_region}.amazonaws.com/{object_key}"
+            logger.info(f"✅ Successfully uploaded to S3: {object_url}")
             
             return {
                 "success": True,
@@ -108,12 +212,41 @@ class CloudStorageManager:
                 "object_key": object_key,
                 "url": object_url,
                 "local_path": file_path,
+                "region": aws_region,
+                "content_type": content_type,
                 "message": "File uploaded to S3 successfully"
             }
-        except NoCredentialsError:
-            raise Exception("AWS credentials not found")
+            
+        except NoCredentialsError as e:
+            error_msg = f"AWS credentials not found: {e}"
+            logger.error(f"❌ {error_msg}")
+            raise Exception(error_msg)
         except ClientError as e:
-            raise Exception(f"S3 upload failed: {e.response['Error']['Code']}")
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            error_msg = e.response.get('Error', {}).get('Message', str(e))
+            
+            # Provide specific guidance for common permission errors
+            if error_code == 'AccessDenied':
+                full_error = f"S3 Access Denied - Check bucket permissions. Required: s3:PutObject, s3:PutObjectAcl on bucket '{self.bucket_name}'"
+            elif error_code == 'NoSuchBucket':
+                full_error = f"S3 bucket '{self.bucket_name}' does not exist or is not accessible"
+            elif error_code == 'InvalidAccessKeyId':
+                full_error = f"Invalid AWS Access Key ID. Check AWS_ACCESS_KEY_ID environment variable"
+            elif error_code == 'SignatureDoesNotMatch':
+                full_error = f"Invalid AWS Secret Key. Check AWS_SECRET_ACCESS_KEY environment variable"
+            else:
+                full_error = f"S3 upload failed - {error_code}: {error_msg}"
+            
+            logger.error(f"❌ {full_error}")
+            raise Exception(full_error)
+        except BotoCoreError as e:
+            error_msg = f"Boto3 error: {e}"
+            logger.error(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected S3 upload error: {e}"
+            logger.error(f"❌ {error_msg}")
+            raise Exception(error_msg)
     
     async def _upload_to_gcs(self, file_path: str, object_key: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """Upload to Google Cloud Storage."""
@@ -254,9 +387,11 @@ async def upload_recording(
         # Upload to cloud storage
         upload_result = await storage_manager.upload_recording(local_file_path, object_key, metadata)
         
-        # Store recording info in database via Supabase
+        # Store recording info in database using DatabaseManager
         try:
-            supabase = request.app.state.supabase
+            # Create a new DatabaseManager instance for this request
+            db = DatabaseManager()
+            
             recording_data = {
                 "job_id": job_id,
                 "candidate_id": candidate_id,
@@ -267,19 +402,38 @@ async def upload_recording(
                 "filename": safe_filename,
                 "file_size": file_size,
                 "storage_type": upload_result.get("storage_type", "local"),
-                "cloud_url": upload_result.get("url"),
+                "cloud_url": upload_result.get("url"),  # S3 URL stored here
                 "object_key": object_key if upload_result.get("success") else None,
                 "local_path": local_file_path,
                 "metadata": metadata,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
             }
             
-            result = supabase.table("interview_recordings").insert(recording_data).execute()
-            logger.info(f"Recording metadata saved to database: {result.data}")
+            logger.info(f"💾 Storing recording metadata to database:")
+            logger.info(f"  📊 Storage type: {recording_data['storage_type']}")
+            logger.info(f"  🔗 Cloud URL: {recording_data['cloud_url']}")
+            logger.info(f"  🔑 Object key: {recording_data['object_key']}")
+            
+            # Insert into database
+            db_result = db.execute_query("interview_recordings", recording_data)
+            logger.info(f"✅ Recording metadata saved to database with ID: {db_result.get('id')}")
+            
+            # Verify the database entry was created
+            if db_result and db_result.get('id'):
+                verification = db.fetch_one("interview_recordings", {"id": db_result.get('id')})
+                if verification:
+                    logger.info(f"🔍 Database verification successful:")
+                    logger.info(f"  📋 Record found with cloud_url: {verification.get('cloud_url')}")
+                    logger.info(f"  📋 Storage type: {verification.get('storage_type')}")
+                else:
+                    logger.warning("⚠️ Database verification failed - record not found after insert")
             
         except Exception as db_error:
-            logger.error(f"Failed to save recording metadata to database: {db_error}")
+            logger.error(f"❌ Failed to save recording metadata to database: {db_error}")
+            logger.error(f"📋 Recording data that failed to save: {recording_data}")
             # Continue anyway - file is still saved
+            logger.warning("📝 Recording file uploaded but metadata not saved to database")
         
         # Prepare response
         response_data = {
@@ -298,6 +452,20 @@ async def upload_recording(
             **upload_result
         }
         
+        # Add database information to response if available
+        if 'db_result' in locals() and db_result:
+            response_data["database"] = {
+                "record_id": db_result.get('id'),
+                "stored": True,
+                "storage_type_in_db": recording_data.get('storage_type'),
+                "cloud_url_in_db": recording_data.get('cloud_url')
+            }
+        else:
+            response_data["database"] = {
+                "stored": False,
+                "error": "Failed to save to database"
+            }
+        
         return JSONResponse(status_code=200, content=response_data)
         
     except HTTPException:
@@ -311,16 +479,20 @@ async def upload_recording(
 async def list_recordings(request: Request, job_id: str):
     """List all recordings for a specific job."""
     try:
-        supabase = request.app.state.supabase
-        result = supabase.table("interview_recordings").select("*").eq("job_id", job_id).execute()
+        db = DatabaseManager()
+        recordings = db.fetch_all("interview_recordings", {"job_id": job_id})
+        
+        logger.info(f"📋 Found {len(recordings)} recordings for job {job_id}")
         
         return JSONResponse(status_code=200, content={
             "success": True,
-            "recordings": result.data
+            "job_id": job_id,
+            "count": len(recordings),
+            "recordings": recordings
         })
         
     except Exception as e:
-        logger.error(f"Error listing recordings: {e}")
+        logger.error(f"❌ Error listing recordings: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list recordings: {str(e)}")
 
 
@@ -328,13 +500,15 @@ async def list_recordings(request: Request, job_id: str):
 async def get_recording_download_url(request: Request, recording_id: str):
     """Get download URL for a specific recording."""
     try:
-        supabase = request.app.state.supabase
-        result = supabase.table("interview_recordings").select("*").eq("id", recording_id).execute()
+        db = DatabaseManager()
+        recording = db.fetch_one("interview_recordings", {"id": recording_id})
         
-        if not result.data:
+        if not recording:
             raise HTTPException(status_code=404, detail="Recording not found")
         
-        recording = result.data[0]
+        logger.info(f"📥 Getting download info for recording {recording_id}")
+        logger.info(f"📊 Storage type: {recording.get('storage_type')}")
+        logger.info(f"🔗 Cloud URL: {recording.get('cloud_url', 'None')}")
         
         # Return cloud URL if available, otherwise local path info
         download_info = {
@@ -342,13 +516,20 @@ async def get_recording_download_url(request: Request, recording_id: str):
             "recording_id": recording_id,
             "filename": recording["filename"],
             "file_size": recording["file_size"],
-            "storage_type": recording["storage_type"]
+            "storage_type": recording["storage_type"],
+            "job_id": recording.get("job_id"),
+            "candidate_id": recording.get("candidate_id"),
+            "interview_type": recording.get("interview_type"),
+            "created_at": recording.get("created_at")
         }
         
-        if recording["cloud_url"]:
+        if recording.get("cloud_url"):
             download_info["download_url"] = recording["cloud_url"]
+            download_info["access_type"] = "direct"
+            download_info["message"] = "Direct S3 download URL available"
         else:
-            download_info["local_path"] = recording["local_path"]
+            download_info["local_path"] = recording.get("local_path")
+            download_info["access_type"] = "local"
             download_info["message"] = "File stored locally, contact administrator for access"
         
         return JSONResponse(status_code=200, content=download_info)
@@ -356,5 +537,41 @@ async def get_recording_download_url(request: Request, recording_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting recording download URL: {e}")
+        logger.error(f"❌ Error getting recording download URL: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get download URL: {str(e)}")
+
+
+@router.get("/test-db-connection")
+async def test_database_connection():
+    """Test endpoint to verify database connectivity for recordings table"""
+    try:
+        db = DatabaseManager()
+        
+        # Test fetching all recordings
+        recordings = db.fetch_all("interview_recordings", {})
+        
+        logger.info(f"🧪 Database test successful - found {len(recordings)} recordings")
+        
+        # Show some stats
+        s3_recordings = [r for r in recordings if r.get('storage_type') == 's3']
+        local_recordings = [r for r in recordings if r.get('storage_type') == 'local']
+        with_cloud_urls = [r for r in recordings if r.get('cloud_url')]
+        
+        return JSONResponse(status_code=200, content={
+            "success": True,
+            "message": "Database connection successful",
+            "stats": {
+                "total_recordings": len(recordings),
+                "s3_recordings": len(s3_recordings),
+                "local_recordings": len(local_recordings),
+                "recordings_with_cloud_urls": len(with_cloud_urls)
+            },
+            "recent_recordings": recordings[-3:] if recordings else []  # Last 3 recordings
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Database test failed: {e}")
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "message": f"Database test failed: {str(e)}"
+        })
