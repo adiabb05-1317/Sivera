@@ -6,7 +6,7 @@ import ScreenRecorder from "./screen-recorder";
 import RecordingPermission from "./recording-permission";
 import usePathStore from "@/app/store/PathStore";
 import useDirectS3Upload from "@/app/hooks/useDirectS3Upload";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function FlowterviewComponent() {
   const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } = usePathStore();
@@ -46,8 +46,8 @@ export default function FlowterviewComponent() {
       return;
     }
     
-    // Validate blob is reasonable size (at least 1MB for any meaningful recording)
-    if (recordingBlob.size < 1024 * 1024) {
+    // Validate blob is reasonable size (at least 500KB for any meaningful recording with new optimized settings)
+    if (recordingBlob.size < 512 * 1024) {
       console.warn(`⚠️ Recording seems too small: ${recordingBlob.size} bytes. This might be corrupted.`);
       // Don't return - still try to upload
     }
@@ -88,13 +88,19 @@ export default function FlowterviewComponent() {
     setShowPermissionError(true);
   };
 
-  // Debug logging
-  console.log('FlowterviewComponent state:', {
-    recordingPermissionGranted,
-    isDevelopment,
-    showPermissionError,
-    nodeEnv: process.env.NODE_ENV
-  });
+  // Debug logging - only log once per minute to reduce noise
+  const currentTime = Date.now();
+  const lastLogTime = useRef(0);
+  
+  if (isDevelopment && currentTime - lastLogTime.current > 60000) { // Log only every 60 seconds
+    console.log('FlowterviewComponent state:', {
+      recordingPermissionGranted,
+      isDevelopment,
+      showPermissionError,
+      nodeEnv: process.env.NODE_ENV
+    });
+    lastLogTime.current = currentTime;
+  }
 
   // Only skip recording entirely if explicitly set
   const shouldSkipRecording = isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === 'true';

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import usePathStore from "@/app/store/PathStore";
 
 interface RecordingPermissionProps {
   onPermissionGranted: (screenStream: MediaStream) => void;
@@ -24,8 +23,8 @@ export function RecordingPermission({
     const settings = videoTrack.getSettings();
     
     // Check if it's entire screen (not window or tab)
-    const isLikelyEntireScreen = settings.width && settings.height && 
-      (settings.width >= 1920 || settings.height >= 1080);
+    const isLikelyEntireScreen = Boolean(settings.width && settings.height && 
+      (settings.width >= 1920 || settings.height >= 1080));
     
     // Check the display surface (if available)
     const displaySurface = (settings as any).displaySurface;
@@ -52,21 +51,24 @@ export function RecordingPermission({
       setDebugInfo('Starting screen recording...');
       console.log('🎥 Starting screen recording immediately...');
       
-      // Start actual screen recording with high quality settings
+      // Start screen recording with optimized settings for smaller files
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: 'always',
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 15 }
+          width: { ideal: 1920, max: 1920 },       // 1080p is sufficient 
+          height: { ideal: 1080, max: 1080 },      // Standard resolution
+          frameRate: { ideal: 30, max: 30 },       // 30fps is sufficient for screen recording
+          aspectRatio: { ideal: 16/9 },            // Maintain aspect ratio
+          resizeMode: 'crop-and-scale'             // Allow browser optimization
         } as any,
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 48000,
-          channelCount: 2
-        }
+          echoCancellation: true,                  // Enable for better quality
+          noiseSuppression: true,                  // Reduce background noise
+          autoGainControl: true,                   // Auto-adjust levels
+          sampleRate: 44100,                       // Standard sample rate
+          channelCount: 1,                         // Mono for smaller size
+          latency: 0.01                            // Low latency
+        } as any
       });
 
       setDebugInfo('Validating screen selection...');

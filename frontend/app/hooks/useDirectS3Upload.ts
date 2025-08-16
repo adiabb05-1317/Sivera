@@ -163,6 +163,7 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         // Configure S3 upload
         xhr.open('PUT', preSignedData.presigned_url);
         xhr.setRequestHeader('Content-Type', preSignedData.content_type);
+        xhr.setRequestHeader('Content-Encoding', 'identity'); // Disable additional compression
         xhr.timeout = 600000; // 10 minutes timeout for large files
         xhr.send(recordingBlob);
       });

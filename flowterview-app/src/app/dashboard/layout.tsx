@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
 
   // Use TanStack Query auth for authentication state and user data
-  const { user, organization, isLoading: authLoading } = useAuth();
+  const { user, organization, isLoading: authLoading, isAuthenticated } = useAuth();
   const isLoading = authLoading;
   const queryClient = useQueryClient();
   const {
@@ -122,16 +122,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [pathname, pathSegments, interviewDetails]);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    // Only redirect to login if we're definitely not authenticated
+    // Check both isLoading AND isAuthenticated to avoid race conditions
+    if (!isLoading && !user && !isAuthenticated) {
+      console.log('🔄 Dashboard: Redirecting to login - no user and not authenticated');
       router.push("/auth/login");
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (user && user.role === "candidate") {
+    // Only redirect candidates to /dashboard/candidate if they're on the main dashboard page
+    // This prevents breaking deep links to specific pages like interviews/[id]
+    if (user && user.role === "candidate" && pathname === "/dashboard") {
       router.push("/dashboard/candidate");
     }
-  }, [user, router]);
+  }, [user, router, pathname]);
 
   // Show company setup modal if organization name is empty
   useEffect(() => {
