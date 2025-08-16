@@ -72,7 +72,8 @@ export const useAnalytics = () => {
 // Candidate analytics query - lazy loaded when needed
 export const useCandidateAnalytics = (
   candidateId: string,
-  interviewId: string
+  interviewId: string,
+  options?: { enabled?: boolean }
 ) => {
   const candidateAnalyticsQuery = useQuery({
     queryKey: queryKeys.candidates.analytics(candidateId, interviewId),
@@ -90,7 +91,10 @@ export const useCandidateAnalytics = (
       const data = await response.json();
       return data.analytics;
     },
-    enabled: !!(candidateId && interviewId), // Only fetch if both IDs are provided
+    enabled:
+      options?.enabled !== undefined
+        ? options.enabled && !!(candidateId && interviewId)
+        : !!(candidateId && interviewId), // Only fetch if both IDs are provided and enabled is true
     staleTime: 10 * 60 * 1000, // Candidate analytics are relatively stable
     gcTime: 30 * 60 * 1000, // Cache for 30 minutes
   });

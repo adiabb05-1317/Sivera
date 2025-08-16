@@ -24,7 +24,12 @@ import CompanySetupModal from "@/components/CompanySetupModal";
 import UserSetupModal from "@/components/UserSetupModal";
 import { Loader2 } from "lucide-react";
 
-import { useAuth, useInterviewDetails } from "@/hooks/useStores";
+import {
+  useAuth,
+  useInterviewDetails,
+  useCandidates,
+  useJobs,
+} from "@/hooks/useStores";
 import { invalidateRelatedQueries } from "@/lib/query-client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -44,7 +49,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     showCompanySetupModal,
     setShowCompanySetupModal,
     showUserSetupModal,
-    setShowUserSetupModal
+    setShowUserSetupModal,
   } = useAuthStore();
 
   // Helper function to check if a string is a valid UUID
@@ -54,17 +59,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return uuidRegex.test(str);
   };
 
-  // Extract interviewId for use in breadcrumbs
+  // Extract IDs for use in breadcrumbs
   const pathSegments = pathname.split("/").filter(Boolean);
   const interviewId =
     pathSegments[1] === "interviews" &&
-      pathSegments[2] &&
-      isValidUUID(pathSegments[2])
+    pathSegments[2] &&
+    isValidUUID(pathSegments[2])
       ? pathSegments[2]
+      : undefined;
+
+  // Extract candidate analytics IDs
+  const candidateAnalyticsJobId =
+    pathSegments[1] === "analytics" &&
+    pathSegments[2] &&
+    isValidUUID(pathSegments[2])
+      ? pathSegments[2]
+      : undefined;
+
+  const candidateAnalyticsCandidateId =
+    pathSegments[1] === "analytics" &&
+    pathSegments[3] &&
+    isValidUUID(pathSegments[3])
+      ? pathSegments[3]
       : undefined;
 
   // Use TanStack Query for interview details when needed
   const { interviewDetails } = useInterviewDetails(interviewId || "");
+
+  // Use hooks for candidate and job details when needed for breadcrumbs
+  const { getCandidateById, isLoading: candidatesLoading } = useCandidates();
+  const { getJobById, isLoading: jobsLoading } = useJobs();
+
+  // Always try to get the details if we have IDs, regardless of loading state
+  const candidateDetails = getCandidateById(
+    candidateAnalyticsCandidateId ?? ""
+  );
+  const jobDetails = getJobById(candidateAnalyticsJobId ?? "");
 
   // Generate breadcrumb items based on pathname - memoized to update when data changes
   const breadcrumbs = useMemo(() => {
@@ -83,7 +113,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       for (let i = 1; i < pathSegments.length; i++) {
         currentPath += `/${pathSegments[i]}`;
         const fullPath = `/dashboard${currentPath}`;
-        const isLast = i === pathSegments.length - 1;
 
         let label = pathSegments[i]
           .split("-")
@@ -91,12 +120,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           .join(" ");
 
         // Special handling for interview details page
-        if (pathSegments[i - 1] === "interviews" && isLast) {
+        if (pathSegments[1] === "interviews") {
           // Check if this is a UUID (interview ID) or a route path
           if (isValidUUID(pathSegments[i])) {
             // This is an interview ID, try to get the interview title
-            if (interviewDetails?.title) {
-              label = interviewDetails.title;
+            if (interviewDetails?.job.title) {
+              label = interviewDetails.job.title;
             } else {
               // Fallback to a more user-friendly format of the ID
               label = "Interview";
@@ -110,6 +139,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           }
         }
 
+        if (pathSegments[1] === "analytics") {
+          if (i === 2 && isValidUUID(pathSegments[i])) {
+            // Job ID segment - use actual job title if available
+            if (jobDetails?.title) {
+              label = jobDetails.title;
+            } else {
+              label = "Job"; // Fallback while loading
+            }
+          } else if (i === 3 && isValidUUID(pathSegments[i])) {
+            console.log(candidateDetails);
+            if (candidateDetails?.name) {
+              label = candidateDetails.name;
+            } else {
+              label = "Candidate"; // Fallback while loading
+            }
+          }
+        }
+
         breadcrumbs.push({
           label,
           href: fullPath,
@@ -119,7 +166,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     return breadcrumbs;
-  }, [pathname, pathSegments, interviewDetails]);
+  }, [pathname, pathSegments, interviewDetails, candidateDetails, jobDetails]);
 
 
   if (process.env.NODE_ENV === 'development') {
@@ -161,7 +208,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       // Close modal if user now has a name
       setShowUserSetupModal(false);
     }
-  }, [user, organization, showCompanySetupModal, showUserSetupModal, setShowUserSetupModal]);
+  }, [
+    user,
+    organization,
+    showCompanySetupModal,
+    showUserSetupModal,
+    setShowUserSetupModal,
+  ]);
 
   // Helper function to handle organization update completion
   const handleCompanySetupCompleted = async () => {

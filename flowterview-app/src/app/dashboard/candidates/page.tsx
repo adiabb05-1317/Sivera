@@ -68,7 +68,9 @@ const CandidateViewDialog = ({
   handleSendInvite: (candidate: any) => void;
 }) => {
   const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const candidatesQuery = useCandidates();
+  const router = useRouter();
 
   // Fetch interview ID for this candidate's job
   useEffect(() => {
@@ -92,10 +94,11 @@ const CandidateViewDialog = ({
     fetchInterviewId();
   }, [candidate.job_id]);
 
-  // Use TanStack Query for candidate analytics - only fetch if interview ID is available
+  // Only fetch analytics when showAnalytics is true
   const candidateAnalytics = useCandidateAnalytics(
     candidate.id,
-    interviewId || ""
+    interviewId || "",
+    { enabled: showAnalytics }
   );
 
   const handleShowAnalytics = () => {
@@ -106,18 +109,20 @@ const CandidateViewDialog = ({
       return;
     }
 
-    // Analytics will be automatically fetched by TanStack Query
-    if (candidateAnalytics.error) {
-      toast.error("Error", {
-        description: "Failed to load analytics",
-      });
-    }
+    setShowAnalytics(true);
   };
 
   const handleViewMoreDetails = () => {
-    toast.info("More Details", {
-      description: "Detailed analytics view coming soon!",
-    });
+    if (!candidate.job_id) {
+      toast.error("Error", {
+        description: "Job information not found for this candidate",
+      });
+      return;
+    }
+
+    // Navigate to candidate-specific analytics page
+    router.push(`/dashboard/analytics/${candidate.job_id}/${candidate.id}`);
+    onClose(); // Close the dialog
   };
 
   const handleRemoveCandidate = async (candidate: any) => {
@@ -132,70 +137,73 @@ const CandidateViewDialog = ({
           <DialogTitle className="tracking-tight">Candidate</DialogTitle>
           <DialogDescription>{candidate.name}</DialogDescription>
         </DialogHeader>
+        {/* Show analytics section at the top if loaded */}
+        {showAnalytics && candidate.status === "Interviewed" && (
+          <div>
+            {candidateAnalytics.isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-xs text-gray-500">
+                  Loading Analytics...
+                </span>
+              </div>
+            ) : candidateAnalytics.analytics ? (
+              <InterviewAnalytics
+                analyticsData={candidateAnalytics.analytics}
+              />
+            ) : candidateAnalytics.error ? (
+              <p className="text-xs text-red-500">Failed to load analytics</p>
+            ) : null}
+          </div>
+        )}
+
         <DialogFooter>
           <div className="flex flex-col gap-2 w-full">
-            {candidate.status === "Interviewed" && (
-              <>
-                {/* Analytics Section with TanStack Query */}
-                {!candidateAnalytics.analytics &&
-                !candidateAnalytics.isLoading ? (
-                  <Button
-                    variant="outline"
-                    onClick={handleShowAnalytics}
-                    disabled={!interviewId}
-                    className="cursor-pointer text-xs"
-                  >
-                    <Brain className="h-4 w-4" />
-                    Show Analytics
-                  </Button>
-                ) : candidateAnalytics.isLoading ? (
-                  <Button
-                    variant="outline"
-                    disabled
-                    className="cursor-pointer text-xs"
-                  >
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading Analytics...
-                  </Button>
-                ) : candidateAnalytics.analytics ? (
-                  <InterviewAnalytics
-                    analyticsData={candidateAnalytics.analytics}
-                  />
-                ) : null}
+            {/* Show "Show Analytics" button only if analytics haven't been loaded yet */}
+            {candidate.status === "Interviewed" && !showAnalytics && (
+              <Button
+                variant="outline"
+                onClick={handleShowAnalytics}
+                disabled={!interviewId}
+                className="cursor-pointer text-xs"
+              >
+                <Brain className="h-4 w-4" />
+                Show Analytics
+              </Button>
+            )}
 
-                {/* View Detailed Analysis Button - Only show when analytics are displayed */}
-                {candidateAnalytics.analytics && (
-                  <Button
-                    variant="outline"
-                    onClick={handleViewMoreDetails}
-                    className="cursor-pointer text-xs"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                    View Detailed Analysis
-                  </Button>
-                )}
-              </>
+            {/* Show "View Detailed Analysis" button only after analytics are loaded */}
+            {showAnalytics && candidateAnalytics.analytics && (
+              <Button
+                variant="outline"
+                onClick={handleViewMoreDetails}
+                className="cursor-pointer text-xs"
+              >
+                <ArrowRight className="h-4 w-4" />
+                View Detailed Analysis
+              </Button>
             )}
+
             {candidate.resume_url && (
-              <>
-                <Button
-                  onClick={() => window.open(candidate.resume_url, "_blank")}
-                  variant="outline"
-                  className="cursor-pointer text-xs"
-                >
-                  <Eye className="h-4 w-4" />
-                  View Resume
-                </Button>
-                <Button
-                  onClick={() => handleRemoveCandidate(candidate)}
-                  variant="outline"
-                  className="cursor-pointer text-xs"
-                >
-                  <Trash className="h-4 w-4" />
-                  Remove Candidate
-                </Button>
-              </>
+              <Button
+                onClick={() => window.open(candidate.resume_url, "_blank")}
+                variant="outline"
+                className="cursor-pointer text-xs"
+              >
+                <Eye className="h-4 w-4" />
+                View Resume
+              </Button>
             )}
+
+            <Button
+              onClick={() => handleRemoveCandidate(candidate)}
+              variant="outline"
+              className="cursor-pointer text-xs"
+            >
+              <Trash className="h-4 w-4" />
+              Remove Candidate
+            </Button>
+
             {!candidate.resume_url && (
               <p className="text-sm text-gray-500">No resume available.</p>
             )}

@@ -9,20 +9,23 @@ import useDirectS3Upload from "@/app/hooks/useDirectS3Upload";
 import { useState, useRef } from "react";
 
 export default function FlowterviewComponent() {
-  const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } = usePathStore();
+  const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } =
+    usePathStore();
   const { uploadRecording } = useDirectS3Upload();
-  const [recordingPermissionGranted, setRecordingPermissionGranted] = useState(false);
+  const [recordingPermissionGranted, setRecordingPermissionGranted] =
+    useState(false);
   const [showPermissionError, setShowPermissionError] = useState(false);
-  const [activeScreenStream, setActiveScreenStream] = useState<MediaStream | null>(null);
-  
+  const [activeScreenStream, setActiveScreenStream] =
+    useState<MediaStream | null>(null);
+
   // Skip permission screen in development
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const handleClearTranscripts = () => {
     setCurrentBotTranscript("");
   };
 
-  const handleRecordingStart = () => {
+  const handleRecordingStart = (): void => {
     if (isDevelopment) {
       console.log("Recording started");
     }
@@ -30,15 +33,22 @@ export default function FlowterviewComponent() {
 
   const handleRecordingStop = async (recordingBlob: Blob) => {
     if (isDevelopment) {
-      console.log("🎥 Recording stopped, starting upload...", recordingBlob.size, "bytes");
-      console.log("🔍 Current store values at upload time:", { jobId, candidateId });
+      console.log(
+        "🎥 Recording stopped, starting upload...",
+        recordingBlob.size,
+        "bytes"
+      );
+      console.log("🔍 Current store values at upload time:", {
+        jobId,
+        candidateId,
+      });
       console.log("📋 Blob details:", {
         size: recordingBlob.size,
         type: recordingBlob.type,
-        sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2)
+        sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2),
       });
     }
-    
+
     if (recordingBlob.size === 0) {
       if (isDevelopment) {
         console.error("Recording blob is empty, skipping upload");
@@ -51,7 +61,7 @@ export default function FlowterviewComponent() {
       console.warn(`⚠️ Recording seems too small: ${recordingBlob.size} bytes. This might be corrupted.`);
       // Don't return - still try to upload
     }
-    
+
     try {
       if (isDevelopment) {
         console.log("📤 Starting direct S3 upload...");
@@ -72,16 +82,16 @@ export default function FlowterviewComponent() {
   };
 
   const handlePermissionGranted = (screenStream: MediaStream) => {
-    console.log('🎥 Permission granted with stream:', {
+    console.log("🎥 Permission granted with stream:", {
       videoTracks: screenStream.getVideoTracks().length,
       audioTracks: screenStream.getAudioTracks().length,
-      streamId: screenStream.id
+      streamId: screenStream.id,
     });
-    
+
     setRecordingPermissionGranted(true);
     setShowPermissionError(false);
     setActiveScreenStream(screenStream);
-    console.log('🎥 Screen recording will start with provided stream');
+    console.log("🎥 Screen recording will start with provided stream");
   };
 
   const handlePermissionDenied = () => {
@@ -103,8 +113,9 @@ export default function FlowterviewComponent() {
   }
 
   // Only skip recording entirely if explicitly set
-  const shouldSkipRecording = isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === 'true';
-  
+  const shouldSkipRecording =
+    isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === "true";
+
   // Show permission screen first (unless skipping recording entirely)
   if (!recordingPermissionGranted && !shouldSkipRecording) {
     return (
@@ -124,8 +135,8 @@ export default function FlowterviewComponent() {
             Screen Recording Required
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 text-center max-w-md">
-            Screen recording permission is required to participate in this interview. 
-            Please refresh the page and grant permission to continue.
+            Screen recording permission is required to participate in this
+            interview. Please refresh the page and grant permission to continue.
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -158,7 +169,7 @@ export default function FlowterviewComponent() {
             SIVERA
           </h1>
         </div>
-        
+
         {/* Hidden Recording Component */}
         <ScreenRecorder
           onRecordingStart={handleRecordingStart}

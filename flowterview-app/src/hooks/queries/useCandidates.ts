@@ -248,7 +248,9 @@ export const useCandidates = (filters?: Record<string, any>) => {
 
     // Transform grouped data to flat array for UI components
     allCandidates: candidatesQuery.data
-      ? Object.values(candidatesQuery.data).flat()
+      ? Array.isArray(candidatesQuery.data)
+        ? candidatesQuery.data // Already an array
+        : Object.values(candidatesQuery.data).filter(Array.isArray).flat()
       : [],
 
     // Loading states
@@ -279,11 +281,18 @@ export const useCandidates = (filters?: Record<string, any>) => {
     getCandidateById: (candidateId: string) => {
       if (!candidatesQuery.data) return undefined;
 
-      for (const candidates of Object.values(candidatesQuery.data)) {
-        const candidate = (candidates as any[]).find(
-          (c: any) => c.id === candidateId
-        );
-        if (candidate) return candidate;
+      // Handle both object and array data structures
+      if (Array.isArray(candidatesQuery.data)) {
+        // If data is directly an array
+        return candidatesQuery.data.find((c: any) => c.id === candidateId);
+      }
+
+      // If data is an object with job IDs as keys
+      for (const [key, candidates] of Object.entries(candidatesQuery.data)) {
+        if (Array.isArray(candidates)) {
+          const candidate = candidates.find((c: any) => c.id === candidateId);
+          if (candidate) return candidate;
+        }
       }
       return undefined;
     },

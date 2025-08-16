@@ -267,7 +267,9 @@ async def create_bulk_candidates(bulk_request: BulkCandidateIn, request: Request
                 candidate_dict["created_at"] = datetime.now().isoformat()
                 candidate_dict["updated_at"] = datetime.now().isoformat()
 
+                print(f"[DEBUG] Creating candidate: {candidate_dict['name']}")
                 created_candidate = db.execute_query("candidates", candidate_dict)
+                print(f"[DEBUG] Created candidate: {created_candidate}")
                 created_candidates.append(created_candidate)
 
             except Exception as e:
