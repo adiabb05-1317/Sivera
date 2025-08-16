@@ -444,11 +444,6 @@ export function PhoneInterviewSection({
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {screen.retry_count > 0 && (
-                            <span className="text-xs text-orange-600 dark:text-orange-400">
-                              Retry {screen.retry_count}/{screen.max_retries}
-                            </span>
-                          )}
                           <Badge
                             variant="outline"
                             className={getStatusColor(screen.status)}
@@ -635,7 +630,9 @@ export function PhoneInterviewSection({
               />
             </div>
             <div>
-              <Label htmlFor="scheduled_at">Scheduled At (UTC) - Optional</Label>
+              <Label htmlFor="scheduled_at">
+                Scheduled At (UTC) - Optional
+              </Label>
               <Input
                 id="scheduled_at"
                 type="datetime-local"
@@ -649,7 +646,8 @@ export function PhoneInterviewSection({
                 placeholder="UTC time - Leave empty to schedule in 5 minutes"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Time will be treated as UTC. Current UTC time: {new Date().toISOString().slice(0, 16)}
+                Time will be treated as UTC. Current UTC time:{" "}
+                {new Date().toISOString().slice(0, 16)}
               </p>
             </div>
           </div>

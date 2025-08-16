@@ -25,19 +25,38 @@ class InterviewAnalytics:
 
         Format your response as a JSON with the following structure:
         {{
-            "summary": "Brief summary here",
-            "good_at": "What would he be good at? (2-3 sentences)",
-            "good_at_skills": ["skill1", "skill2", ...],
-            "not_good_at": "What would he not be good at? (2-3 sentences)",
-            "not_good_at_skills": ["skill1", "skill2", ...],
-            "technical_topics": ["topic1", "topic2", ...],
-            "strengths": ["strength1", "strength2", ...],
-            "weaknesses": ["weakness1", "weakness2", ...],
-            "areas_for_improvement": ["area1", "area2", ...],
-            "communication_score": X (1-10 scale),
-            "technical_score": X (1-10 scale),
-            "overall_assessment": "Brief overall assessment",
-            "overall_score": X (1-10 scale)
+            "summary": string ("Brief summary here"),
+            "good_at": string ("What would he be good at? (2-3 sentences)"),
+            "good_at_skills": array[string] ("skill1", "skill2", ...),
+            "not_good_at": string ("What would he not be good at? (2-3 sentences)"),
+            "not_good_at_skills": array[string] ("skill1", "skill2", ...),
+            "technical_topics": array[string] ("topic1", "topic2", ...),
+            "strengths": array[string] ("strength1", "strength2", ...),
+            "weaknesses": array[string] ("weakness1", "weakness2", ...),
+            "areas_for_improvement": array[string] ("area1", "area2", ...),
+            "communication_score": number (1-10 scale),
+            "technical_score": number (1-10 scale),
+            "overall_assessment": string ("Brief overall assessment"),
+            "overall_score": number (1-10 scale)
+        }}
+
+        For each and every single analysis, like "good_at", "not_good_at" & all the other fields,
+        make sure you give a perfect explanation in writing, in a very granular level, and in a very detailed way.
+        This will be seen by the recruiter for his business, so he needs extreme transparency and clarity on why that decision was made.
+        So you also need to give them in JSON format combined with the main JSON.
+
+        {{
+            "good_at_explanation": string
+            "good_at_skills_explanation": array[string] ("skill1", "skill2", ...),
+            "not_good_at_explanation": string ("What would he not be good at? (2-3 sentences)"),
+            "not_good_at_skills_explanation": array[string] ("skill1", "skill2", ...),
+            "strengths_explanation": array[string] ("strength1", "strength2", ...),
+            "weaknesses_explanation": array[string] ("weakness1", "weakness2", ...),
+            "areas_for_improvement_explanation": array[string] ("area1", "area2", ...),
+            "communication_score_explanation": string ("Communication score explanation"),
+            "technical_score_explanation": string ("Technical score explanation"),
+            "overall_assessment_explanation": string ("Overall assessment explanation"),
+            "overall_score_explanation": string ("Overall score explanation"),
         }}
 
         Job Information:

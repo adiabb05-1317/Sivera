@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Draggable } from "@hello-pangea/dnd";
+import { useRouter } from "next/navigation";
 import { Button } from "./button";
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
     stageId,
   }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const router = useRouter();
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -176,6 +178,20 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                     Join Interview
                   </DropdownMenuItem>
                 )}
+              {candidate.status === "Interviewed" && (
+                <DropdownMenuItem
+                  className="text-xs cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(
+                      `/dashboard/analytics/${candidate.job_id}/${candidate.id}`
+                    );
+                  }}
+                >
+                  <Eye className="h-4 w-4" />
+                  Show Analytics
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

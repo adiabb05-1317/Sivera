@@ -87,7 +87,9 @@ export const InterviewAnalytics: React.FC<InterviewAnalyticsProps> = ({
                         : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
-                    {analyticsData.data?.overall_score || "N/A"}/10
+                    {analyticsData.data?.overall_score
+                      ? `${analyticsData.data?.overall_score}/10`
+                      : "N/A"}
                   </span>
                 </div>
               </div>

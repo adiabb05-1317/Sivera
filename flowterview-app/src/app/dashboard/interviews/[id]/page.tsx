@@ -1126,7 +1126,7 @@ export default function InterviewDetailsPage() {
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
-  const [selectedTimer, setSelectedTimer] = useState(10);
+  const [selectedTimer, setSelectedTimer] = useState<30 | 45 | 60>(30); // Default to first option in timerOptions
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
 
   // Process toggle states - initialize with defaults, will be updated from DB
@@ -1239,11 +1239,11 @@ export default function InterviewDetailsPage() {
   useEffect(() => {
     const skillCount = selectedSkills.length;
     if (skillCount >= 11) {
-      setSelectedTimer(30);
+      setSelectedTimer(60);
     } else if (skillCount >= 6) {
-      setSelectedTimer(20);
+      setSelectedTimer(45);
     } else {
-      setSelectedTimer(10);
+      setSelectedTimer(30);
     }
   }, [selectedSkills.length]);
 
@@ -2350,21 +2350,9 @@ export default function InterviewDetailsPage() {
             };
           }
         );
-        console.log(
-          "Merged invited candidates:",
-          mergedInvitedCandidates.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            interview_status: c.interview_status,
-            status: c.status,
-          }))
-        );
+
         setInvitedCandidates(mergedInvitedCandidates);
       } else {
-        console.log(
-          "Using direct invited candidates:",
-          details.candidates.invited
-        );
         setInvitedCandidates(details.candidates.invited || []);
       }
 
@@ -2376,7 +2364,8 @@ export default function InterviewDetailsPage() {
 
       // Set timer duration from flow data
       if (details.duration) {
-        setSelectedTimer(details.duration);
+        const durationAsNumber = Number(details.duration);
+        setSelectedTimer(durationAsNumber as 30 | 45 | 60);
       }
 
       // Set process stages from the job data (stored in jobs table as jsonb)
@@ -3235,12 +3224,13 @@ export default function InterviewDetailsPage() {
                       <CarouselContent>
                         {timerOptions.map((time) => {
                           const status = getTimerStatus(time);
+                          const isSelected = selectedTimer === time;
                           return (
                             <CarouselItem key={time} className="basis-1/3">
                               <div className="p-1">
                                 <Card
                                   className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                                    selectedTimer === time
+                                    isSelected
                                       ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
                                       : status.disabled
                                       ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
@@ -3248,7 +3238,7 @@ export default function InterviewDetailsPage() {
                                   }`}
                                   onClick={() => {
                                     if (!status.disabled) {
-                                      setSelectedTimer(time);
+                                      setSelectedTimer(time as 30 | 45 | 60);
                                     }
                                   }}
                                   title={
@@ -3260,7 +3250,7 @@ export default function InterviewDetailsPage() {
                                   <CardContent className="flex aspect-square items-center justify-center p-6">
                                     <span
                                       className={`text-lg font-semibold flex flex-col items-center justify-center ${
-                                        selectedTimer === time
+                                        isSelected
                                           ? "text-app-blue-600 dark:text-app-blue-400"
                                           : status.disabled
                                           ? "text-gray-400 dark:text-gray-600"

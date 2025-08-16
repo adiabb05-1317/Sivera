@@ -17,6 +17,7 @@ import {
   UploadCloud,
   Check,
   Info,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -436,7 +437,6 @@ export default function InviteCandidatesPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log("handleSubmit");
     e.preventDefault();
     setInterviewError("");
     setFormError("");
@@ -459,8 +459,6 @@ export default function InviteCandidatesPage() {
     setIsSubmitting(true);
 
     try {
-      console.log("Submitting candidates");
-
       // CRITICAL: Determine jobId and interviewId with bulletproof validation
       let jobId = "";
       let interviewId = "";
@@ -521,16 +519,11 @@ export default function InviteCandidatesPage() {
         status: candidate.status as any,
       }));
 
-      console.log("Submitting bulk candidates with verified IDs:", {
-        jobId,
-        interviewId,
-      });
       await submitBulkCandidates({
         candidates: candidatesData,
         jobId,
         interviewId,
       });
-      console.log("Bulk candidates submitted successfully");
 
       setIsSent(true);
       refreshCandidates();
@@ -931,21 +924,13 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
               variant="outline"
             >
               {isSubmitting || bulkLoading ? (
-                <>
-                  <Send className="mr-1 h-4 w-4 animate-spin" />
-                  {bulkProgress || "Submitting..."}
-                </>
-              ) : validatingEmails.size > 0 ? (
-                <>
-                  <Send className="mr-1 h-4 w-4" />
-                  Validating emails...
-                </>
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Send className="mr-1 h-4 w-4" />
-                  Save Candidate(s)
-                </>
+                <Send className="mr-1 h-4 w-4" />
               )}
+              {isSubmitting || bulkLoading
+                ? "Submitting..."
+                : "Save Candidate(s)"}
             </Button>
           </div>
         </form>

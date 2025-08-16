@@ -8,3 +8,5 @@ credentials.json
 .flaskenv*
 !.env.project
 !.env.vault
+
+*.webm
