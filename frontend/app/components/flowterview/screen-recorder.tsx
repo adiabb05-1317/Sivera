@@ -106,11 +106,11 @@ export function ScreenRecorder({
       let options: MediaRecorderOptions = {};
       
       const mimeTypes = [
-        'video/webm;codecs=vp9',         // Best compression for screen content
-        'video/webm;codecs=vp8',         // Good compression, wide compatibility  
-        'video/webm;codecs=h264',        // Hardware acceleration support
+        'video/webm;codecs=h264',        // H.264 in WebM container - best compatibility
+        'video/webm;codecs=vp9',         // VP9 codec - excellent compression
+        'video/webm;codecs=vp8',         // VP8 codec - wide compatibility  
         'video/webm',                    // WebM fallback
-        'video/mp4;codecs=h264',         // H.264 in MP4 container
+        'video/mp4;codecs=h264',         // MP4 fallback (rarely supported)
         'video/mp4'                      // MP4 fallback
       ];
       
@@ -128,18 +128,18 @@ export function ScreenRecorder({
         throw new Error('No supported video codec found for recording');
       }
       
-      // Much more aggressive compression for smaller files while maintaining quality
-      if (options.mimeType?.includes('vp9')) {
+      // Optimized bitrate settings for WebM with H.264 codec for best compatibility
+      if (options.mimeType?.includes('h264')) {
+        // H.264 codec - excellent browser compatibility and hardware acceleration
+        options.videoBitsPerSecond = 2500000;  // 2.5Mbps - optimal for screen content
+        options.audioBitsPerSecond = 128000;   // 128Kbps - better audio quality
+      } else if (options.mimeType?.includes('vp9')) {
         // VP9 codec - excellent compression for screen content
         options.videoBitsPerSecond = 1500000;  // 1.5Mbps - still excellent for screen content  
         options.audioBitsPerSecond = 64000;    // 64Kbps - good audio quality, smaller size
       } else if (options.mimeType?.includes('vp8')) {
         // VP8 codec - good compression
         options.videoBitsPerSecond = 1800000;  // 1.8Mbps for VP8
-        options.audioBitsPerSecond = 64000;    // 64Kbps audio
-      } else if (options.mimeType?.includes('h264')) {
-        // H.264 codec - hardware optimized
-        options.videoBitsPerSecond = 2000000;  // 2Mbps for H.264
         options.audioBitsPerSecond = 64000;    // 64Kbps audio
       } else if (options.mimeType?.includes('webm')) {
         // Generic WebM fallback
@@ -152,10 +152,13 @@ export function ScreenRecorder({
         options.bitsPerSecond = options.videoBitsPerSecond + options.audioBitsPerSecond;
       }
       
-      // Additional quality enhancement (using only duration-based keyframes for compatibility)
-      // Note: Only specify one keyframe setting to avoid MediaRecorder conflicts
-      if (options.mimeType?.includes('webm')) {
-        (options as any).videoKeyFrameIntervalDuration = 2000; // Keyframe every 2 seconds for quality
+      // Additional quality enhancement for web streaming compatibility
+      if (options.mimeType?.includes('h264')) {
+        // Optimize H.264 for streaming playback
+        (options as any).videoKeyFrameIntervalDuration = 2000; // Keyframes every 2 seconds for H.264
+      } else if (options.mimeType?.includes('webm')) {
+        // Optimize WebM for streaming playback
+        (options as any).videoKeyFrameIntervalDuration = 1000; // More frequent keyframes for better seeking
       }
       
       console.log('📹 MediaRecorder options:', options);
@@ -170,12 +173,13 @@ export function ScreenRecorder({
         }
         
         if (event.data && event.data.size > 0) {
-          // Store chunks without modification to prevent corruption
-          recordedChunksRef.current.push(event.data);
+          // Create a new Blob from the data to ensure it's properly stored
+          const chunkBlob = new Blob([event.data], { type: event.data.type });
+          recordedChunksRef.current.push(chunkBlob);
           
           if (isDevelopment) {
             const totalSize = recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
-            console.log('✅ Added chunk #' + recordedChunksRef.current.length + ', size:', (event.data.size / 1024).toFixed(1), 'KB, total:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
+            console.log('✅ Added chunk, total size:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
             
             // Memory management warning
             if (totalSize > 500 * 1024 * 1024) { // 500MB warning
@@ -212,6 +216,7 @@ export function ScreenRecorder({
         // Validate chunks before creating blob
         const validChunks = recordedChunksRef.current.filter(chunk => chunk && chunk.size > 0);
         
+        
         if (validChunks.length === 0) {
           console.error('❌ Recording completed but no valid data chunks collected');
           onRecordingError?.('Recording failed - no data collected');
@@ -220,7 +225,11 @@ export function ScreenRecorder({
         
         // Create blob with proper MIME type matching the MediaRecorder
         const mimeType = options.mimeType || 'video/webm';
-        const recordingBlob = new Blob(validChunks, { type: mimeType });
+        
+        // Ensure chunks are properly ordered and complete
+        const recordingBlob = new Blob(validChunks, { 
+          type: mimeType 
+        });
         
         console.log('✅ Screen recording completed:', {
           size: recordingBlob.size,
@@ -250,7 +259,7 @@ export function ScreenRecorder({
       mediaRecorder.onerror = (event) => {
         console.error("❌ MediaRecorder error:", event);
         onRecordingError?.("Recording failed");
-        stopRecording();
+        stopRecording(); // Error handler - fire and forget
       };
 
       mediaRecorder.onstart = () => {
@@ -316,23 +325,24 @@ export function ScreenRecorder({
             timestamp: new Date().toISOString()
           });
           
-          // ONLY stop if interview is actually ending
-          if (callStatus === 'left' || callStatus === 'leaving') {
-            console.log('✅ Interview ended legitimately - stopping recording');
-            stopRecording();
-            return;
-          }
-          
-          // For any other case, DO NOT STOP - just log and continue
-          console.warn('⚠️ Track ended but interview is still active - IGNORING and continuing recording');
-          console.warn('📊 Current state:', {
+          // If screen sharing ends for any reason, end the interview immediately
+          console.log('🛑 Screen sharing ended - ending interview immediately');
+          console.log('📊 Final recording state:', {
             duration,
             callStatus,
             recordingState: mediaRecorderRef.current?.state,
             chunksCollected: recordedChunksRef.current.length
           });
           
-          // Do NOT call stopRecording() here - let the recording continue
+          // Stop recording and end interview
+          await stopRecording();
+          
+          // Trigger interview end through the store
+          const { setCallStatus } = usePathStore.getState();
+          setCallStatus('left');
+          
+          // Show message to user
+          alert('Interview ended: Screen sharing was stopped. The interview has been terminated.');
         });
         
         // Enhanced track event monitoring
@@ -400,7 +410,7 @@ export function ScreenRecorder({
     }
   }, [isRecording, onRecordingStart, onRecordingStop, onRecordingError]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback(async () => {
     if (mediaRecorderRef.current && isRecording) {
       const duration = recordingStartTimeRef.current 
         ? (Date.now() - recordingStartTimeRef.current) / 1000 
@@ -420,9 +430,12 @@ export function ScreenRecorder({
       try {
         if (mediaRecorderRef.current.state === 'recording') {
           console.log('🔄 Stopping MediaRecorder and finalizing...');
-          // Request final data collection BEFORE stopping
+          
+          // Request final data collection BEFORE stopping to ensure complete recording
           try {
             mediaRecorderRef.current.requestData();
+            // Small delay to ensure data is collected
+            await new Promise(resolve => setTimeout(resolve, 100));
           } catch (requestError) {
             console.warn('Could not request final data:', requestError);
           }
@@ -432,11 +445,21 @@ export function ScreenRecorder({
         } else if (mediaRecorderRef.current.state === 'paused') {
           console.log('🔄 Resuming and stopping paused MediaRecorder...');
           mediaRecorderRef.current.resume();
+          // Wait a bit longer to ensure resume happens
           setTimeout(() => {
             if (mediaRecorderRef.current?.state === 'recording') {
-              mediaRecorderRef.current.stop();
+              try {
+                mediaRecorderRef.current.requestData();
+              } catch (e) {
+                console.warn('Could not request final data after resume:', e);
+              }
+              setTimeout(() => {
+                if (mediaRecorderRef.current?.state === 'recording') {
+                  mediaRecorderRef.current.stop();
+                }
+              }, 100);
             }
-          }, 100);
+          }, 200);
         } else {
           console.log('🔄 MediaRecorder already in state:', mediaRecorderRef.current.state);
         }
@@ -504,7 +527,7 @@ export function ScreenRecorder({
       // Add shorter delay to ensure all chunks are captured
       setTimeout(() => {
         console.log('🔚 Executing delayed recording stop...');
-        stopRecording();
+        stopRecording(); // Delayed stop - fire and forget
       }, 1000); // Reduced to 1 second for faster response
     } else if (isRecording && callStatus !== 'left' && isDevelopment) {
       console.log(`📝 Recording continues - call status "${callStatus}" is not a stop condition`);

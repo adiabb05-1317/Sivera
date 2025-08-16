@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   Save,
   Loader2,
   Phone,
-  FileText,
+
   Bot,
   Route,
   Search,
@@ -28,7 +28,7 @@ import {
   AlertTriangle,
   Eye,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -69,7 +69,8 @@ import {
   getUserContext,
 } from "@/lib/auth-client";
 import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
-import { InterviewAnalytics } from "@/components/ui/interview-analytics";
+
+import { useInterviewAnalytics } from "@/hooks/queries/useAnalytics";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -1261,89 +1262,62 @@ export default function InterviewDetailsPage() {
     }
   }, [noteDialog.open]);
 
-  // Fetch AI scores for interviewed candidates
-  const fetchAIScores = useCallback(async () => {
-    try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
 
-      // Get candidates with status "Interviewed" or interview_status "Completed"
-      const interviewedCandidateIds = invitedCandidates
-        .filter(
-          (c) =>
-            c.status === "Interviewed" ||
-            (c.interview_status &&
-              c.interview_status.toLowerCase() === "completed")
-        )
-        .map((c) => c.id);
 
-      console.log(
-        "Candidates eligible for AI scores:",
-        interviewedCandidateIds.length,
-        interviewedCandidateIds
-      );
+  // Use React Query to fetch analytics for all candidates in this interview
+  const {
+    analytics: interviewAnalytics,
+    isLoading: isLoadingAnalytics,
+    error: analyticsError,
+    refetch: _refetchAnalytics,
+  } = useInterviewAnalytics(id as string);
 
-      if (interviewedCandidateIds.length === 0) return;
-
-      // Fetch analytics data for these candidates
-      const response = await authenticatedFetch(
-        `${backendUrl}/api/v1/analytics/interview/${id}/candidates`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            candidate_ids: interviewedCandidateIds,
-          }),
-        },
-        false
-      );
-
-      if (response.ok) {
-        const analyticsData = await response.json();
-        console.log("Analytics data received:", analyticsData);
-
-        // Update stages with actual AI scores and sort by score (high to low)
-        setStages((currentStages) =>
-          currentStages.map((stage) => {
-            const updatedCandidates = stage.candidates.map((candidate) => {
-              const analytics = analyticsData.find(
-                (a: any) => a.candidate_id === candidate.id
-              );
-
-              if (analytics && analytics.data?.overall_score) {
-                return {
-                  ...candidate,
-                  ai_score: analytics.data.overall_score,
-                };
-              }
-
-              return candidate;
-            });
-
-            // Sort candidates by AI score (descending: high to low)
-            const sortedCandidates = sortCandidatesByScore([
-              ...updatedCandidates,
-            ]);
-
-            return {
-              ...stage,
-              candidates: sortedCandidates,
-            };
-          })
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching AI scores:", error);
-    }
-  }, [id]); // Remove invitedCandidates from dependencies to prevent infinite loop
-
+  // Update stages with analytics data when it's available
   useEffect(() => {
-    if (invitedCandidates.length > 0) {
-      fetchAIScores();
+    if (interviewAnalytics && interviewAnalytics.candidates && interviewAnalytics.candidates.length > 0) {
+      console.log("Analytics data received via React Query:", interviewAnalytics);
+
+      setStages((currentStages) =>
+        currentStages.map((stage) => {
+          const updatedCandidates = stage.candidates.map((candidate) => {
+            const analytics = interviewAnalytics.candidates.find(
+              (a: any) => a.candidate_id === candidate.id
+            );
+
+            if (analytics && analytics.data?.overall_score) {
+              return {
+                ...candidate,
+                ai_score: analytics.data.overall_score,
+              };
+            }
+
+            return candidate;
+          });
+
+          // Sort candidates by AI score (descending: high to low)
+          const sortedCandidates = sortCandidatesByScore([
+            ...updatedCandidates,
+          ]);
+
+          return {
+            ...stage,
+            candidates: sortedCandidates,
+          };
+        })
+      );
     }
-  }, [fetchAIScores, invitedCandidates.length]); // Use .length instead of the array itself
+  }, [interviewAnalytics]);
+
+  // Log analytics loading state for debugging
+  useEffect(() => {
+    console.log("Analytics loading state:", isLoadingAnalytics);
+    if (analyticsError) {
+      console.error("Analytics error:", analyticsError);
+    }
+    if (interviewAnalytics) {
+      console.log("Interview analytics received:", interviewAnalytics);
+    }
+  }, [isLoadingAnalytics, analyticsError, interviewAnalytics]);
 
   // Initialize pipeline stages
   useEffect(() => {
@@ -2309,11 +2283,9 @@ export default function InterviewDetailsPage() {
     setSelectedCandidates(new Set());
     setCurrentNumRounds(originalNumRounds);
 
-    // Re-fetch AI scores after stages are reset (use setTimeout to ensure state update happens first)
+    // Re-fetch AI scores after stages are reset (handled automatically by React Query)
     setTimeout(() => {
-      if (invitedCandidates.length > 0) {
-        fetchAIScores();
-      }
+      _refetchAnalytics();
     }, 0);
 
     toast.success("Changes discarded", {
@@ -2598,7 +2570,7 @@ export default function InterviewDetailsPage() {
           let group = candidatesByNextStage.find(
             (g) =>
               g.nextStage.id === nextStage.id &&
-              g.currentStage === currentStage.title
+              g.currentStage === currentStage?.title
           );
           if (!group) {
             group = {

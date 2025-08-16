@@ -78,7 +78,7 @@ export function RecordingPermission({
         // Stop the stream
         screenStream.getTracks().forEach(track => track.stop());
         
-        setError('Please select "Entire Screen" when prompted. Window or tab recording is not allowed.');
+        setError('❌ ENTIRE SCREEN REQUIRED: You must select "Entire Screen" when prompted. Window or tab recording is not allowed for interview security. Please try again and select "Entire Screen".');
         setIsGranting(false);
         setDebugInfo('');
         return;
