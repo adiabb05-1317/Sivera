@@ -1337,13 +1337,13 @@ export default function InterviewDetailsPage() {
     } catch (error) {
       console.error("Error fetching AI scores:", error);
     }
-  }, [invitedCandidates, id]);
+  }, [id]); // Remove invitedCandidates from dependencies to prevent infinite loop
 
   useEffect(() => {
     if (invitedCandidates.length > 0) {
       fetchAIScores();
     }
-  }, [fetchAIScores, invitedCandidates]);
+  }, [fetchAIScores, invitedCandidates.length]); // Use .length instead of the array itself
 
   // Initialize pipeline stages
   useEffect(() => {
@@ -2402,7 +2402,7 @@ export default function InterviewDetailsPage() {
       setCurrentNumRounds(numRounds);
       setOriginalNumRounds(numRounds);
     }
-  }, [details, allCandidates]);
+  }, [details, allCandidates?.length]); // Use length instead of the array itself to prevent infinite loops
 
   const handleSaveChanges = async () => {
     const user_id = getCookie("user_id");

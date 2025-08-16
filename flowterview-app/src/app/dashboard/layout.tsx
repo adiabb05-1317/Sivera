@@ -121,14 +121,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return breadcrumbs;
   }, [pathname, pathSegments, interviewDetails]);
 
-  useEffect(() => {
-    // Only redirect to login if we're definitely not authenticated
-    // Check both isLoading AND isAuthenticated to avoid race conditions
-    if (!isLoading && !user && !isAuthenticated) {
-      console.log('🔄 Dashboard: Redirecting to login - no user and not authenticated');
-      router.push("/auth/login");
-    }
-  }, [user, isLoading, isAuthenticated, router]);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Dashboard Layout: Middleware handles auth, client-side check disabled');
+  }
 
   useEffect(() => {
     // Only redirect candidates to /dashboard/candidate if they're on the main dashboard page
