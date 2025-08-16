@@ -442,11 +442,26 @@ class InterviewFlow:
             if hasattr(self, "flow_manager") and self.flow_manager:
                 try:
                     message_history = self.flow_manager.get_current_context()
-                    filtered_messages = [
-                        msg
-                        for msg in message_history
-                        if (msg["role"] == "user" or msg["role"] == "assistant")
-                    ]
+                    logger.info(f"Raw message history structure: {type(message_history)}")
+                    if message_history:
+                        logger.info(f"First message example: {message_history[0] if isinstance(message_history, list) and len(message_history) > 0 else 'N/A'}")
+                    
+                    filtered_messages = []
+                    for msg in message_history:
+                        # Handle different message structures
+                        if isinstance(msg, dict):
+                            role = msg.get("role")
+                            if role in ["user", "assistant"]:
+                                # Ensure the message has content field
+                                if "content" not in msg and "text" in msg:
+                                    msg["content"] = msg["text"]
+                                elif "content" not in msg:
+                                    msg["content"] = str(msg)
+                                filtered_messages.append(msg)
+                        else:
+                            logger.warning(f"Unexpected message type: {type(msg)}, content: {msg}")
+                    
+                    logger.info(f"Filtered {len(filtered_messages)} messages from {len(message_history) if message_history else 0} total messages")
 
                     merged_messages = []
                     current_user_message = ""
@@ -520,12 +535,16 @@ class InterviewFlow:
                                 },
                             )
                             if candidate_interview_id:
-                                analytics_service = InterviewAnalytics()
-                                analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
+                                try:
+                                    analytics_service = InterviewAnalytics()
+                                    analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
 
-                                logger.info(
-                                    f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
-                                )
+                                    logger.info(
+                                        f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                                    )
+                                except Exception as analytics_error:
+                                    logger.error(f"Failed to generate analytics: {analytics_error}")
+                                    analytics = {"error": f"Analytics generation failed: {str(analytics_error)}"}
 
                                 ix = str(uuid.uuid4())
                                 self.db.execute_query("interview_analytics", {

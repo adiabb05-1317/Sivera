@@ -263,7 +263,14 @@ function InterviewContent() {
   };
 
   const proceedToInterview = () => {
-    router.push(`/`);
+    // Pass jobId and candidateId as URL parameters to ensure they're available
+    const params = new URLSearchParams({
+      job_id: interviewData.jobId,
+      candidate_id: interviewData.candidateId,
+      bot_token: interviewData.botToken,
+      room_url: encodeURIComponent(interviewData.roomUrl)
+    });
+    router.push(`/?${params.toString()}`);
   };
 
   if (currentStep === "verifying") {
