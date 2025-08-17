@@ -300,24 +300,38 @@ async def delete_candidate(candidate_id: str, request: Request):
         if candidate["organization_id"] != organization_id:
             raise HTTPException(status_code=403, detail="Access denied")
         
-        # TODO: More parameters to check.
+        # Check if candidate can be deleted
         candidate_interviews = db.fetch_all("candidate_interviews", {"candidate_id": candidate_id})
         candidate_interview_rounds = db.fetch_all("candidate_interview_round", {"candidate_id": candidate_id})
-        if len(candidate_interview_rounds) > 0 or len(candidate_interviews) > 0 or candidate["status"] == "Accepted":
-            raise HTTPException(status_code=500, detail="Candidate is already in an interview or already accepted")
+        
+        # Only prevent deletion if candidate is accepted or has active interview rounds
+        if candidate["status"] == "Accepted":
+            raise HTTPException(status_code=400, detail="Cannot delete accepted candidates")
+        
+        # With CASCADE DELETE constraints, we only need to handle the interviews.candidates_invited array
+        # All other related data will be automatically deleted by the database
+        if len(candidate_interview_rounds) > 0 or len(candidate_interviews) > 0:
+            print(f"[DEBUG] Found {len(candidate_interviews)} interviews and {len(candidate_interview_rounds)} interview rounds for candidate {candidate_id}")
+            print(f"[DEBUG] These will be automatically deleted by CASCADE constraints")
 
         # Get current interviews for this job
         interviews = db.fetch_all("interviews", {"job_id": candidate["job_id"]})
         for interview in interviews:
             current_invited = interview.get("candidates_invited", [])
             if candidate_id in current_invited:
-                # Remove the candidate from the array
                 updated_invited = [cid for cid in current_invited if cid != candidate_id]
                 db.update("interviews", {"candidates_invited": updated_invited}, {"id": interview["id"]})
+        # Delete the candidate
         db.delete("candidates", {"id": candidate_id})
-        return {"success": True, "message": "Candidate deleted"}
+        print(f"[DEBUG] Successfully deleted candidate {candidate_id}")
+        
+        return {"success": True, "message": "Candidate deleted successfully"}
     except DatabaseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"[ERROR] Database error deleting candidate {candidate_id}: {e}")
+        raise HTTPException(status_code=400, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        print(f"[ERROR] Unexpected error deleting candidate {candidate_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/upload-resume")
 async def upload_resume(

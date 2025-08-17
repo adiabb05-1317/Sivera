@@ -324,6 +324,11 @@ async def optimize_recording_video_internal(recording_id: str, object_key: str, 
     This is called automatically after upload.
     """
     try:
+        # Check if optimization is enabled
+        if not Config.VIDEO_OPTIMIZATION_ENABLED:
+            logger.info("🎬 Video optimization disabled - skipping")
+            return {"success": False, "reason": "Video optimization disabled"}
+        
         # Check if FFmpeg is available
         if not video_optimizer._check_ffmpeg():
             logger.warning("⚠️ FFmpeg not available - skipping automatic optimization")

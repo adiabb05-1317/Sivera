@@ -165,6 +165,34 @@ class InterviewFlow:
             self.skills = ["Java", "Python", "Langchain", "RabbitMQ", "AWS"]
             self.duration = 20
 
+        # Ensure flow_config is always set
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.warning("flow_config not set, using default configuration")
+            try:
+                with open("src/services/flows/default.json", "r") as f:
+                    self.flow_config = json.load(f)
+                logger.info("Loaded default flow configuration successfully")
+            except FileNotFoundError:
+                logger.error("Default flow configuration file not found")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in default flow configuration: {e}")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+        
+        # Log flow_config status
+        logger.info(f"Flow config type: {type(self.flow_config)}")
+        logger.info(f"Flow config keys: {list(self.flow_config.keys()) if isinstance(self.flow_config, dict) else 'Not a dict'}")
+
         # Fetch resume content during initialization
         self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
 
@@ -361,6 +389,13 @@ class InterviewFlow:
             observers=[self.rtvi_observer],
         )
 
+        # Ensure flow_config is available before creating FlowManager
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.error("flow_config is not available, cannot create FlowManager")
+            raise ValueError("flow_config is required for FlowManager initialization")
+        
+        logger.info(f"Creating FlowManager with flow_config: {type(self.flow_config)}")
+        
         self.flow_manager = FlowManager(
             task=self.task,
             llm=self.llm,
@@ -439,7 +474,7 @@ class InterviewFlow:
             logger.info("Stopping interview session")
 
             # Save chat history when pipeline is canceled
-            if hasattr(self, "flow_manager") and self.flow_manager:
+            if hasattr(self, "flow_manager") and self.flow_manager and hasattr(self.flow_manager, 'get_current_context'):
                 try:
                     message_history = self.flow_manager.get_current_context()
                     logger.info(f"Raw message history structure: {type(message_history)}")
@@ -536,14 +571,37 @@ class InterviewFlow:
                             )
                             if candidate_interview_id:
                                 try:
-                                    analytics_service = InterviewAnalytics()
-                                    analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
+                                    # Validate data before analytics
+                                    logger.info(f"Preparing analytics with {len(filtered_messages)} messages")
+                                    logger.info(f"Job title: {getattr(self, 'job_title', 'N/A')}")
+                                    logger.info(f"Job description: {getattr(self, 'job_description', 'N/A')}")
+                                    logger.info(f"Resume: {getattr(self, 'resume', 'N/A')[:100]}...")
+                                    logger.info(f"Additional links: {getattr(self, 'additional_links_info', 'N/A')}")
+                                    
+                                    # Ensure we have valid data for analytics
+                                    if not filtered_messages:
+                                        logger.warning("No chat messages available for analytics")
+                                        analytics = {"error": "No chat messages available for analysis"}
+                                    elif not getattr(self, 'job_title', None):
+                                        logger.warning("No job title available for analytics")
+                                        analytics = {"error": "No job title available for analysis"}
+                                    else:
+                                        analytics_service = InterviewAnalytics()
+                                        analytics = await analytics_service.analyze_interview(
+                                            getattr(self, 'job_title', 'Unknown Position'),
+                                            getattr(self, 'job_description', 'No description available'),
+                                            getattr(self, 'resume', 'No resume available'),
+                                            getattr(self, 'additional_links_info', 'No additional links'),
+                                            filtered_messages
+                                        )
 
-                                    logger.info(
-                                        f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
-                                    )
+                                        logger.info(
+                                            f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                                        )
+                                        logger.info(f"Analytics keys: {list(analytics.keys()) if isinstance(analytics, dict) else 'Not a dict'}")
                                 except Exception as analytics_error:
                                     logger.error(f"Failed to generate analytics: {analytics_error}")
+                                    logger.error(f"Analytics error details: {type(analytics_error).__name__}: {str(analytics_error)}")
                                     analytics = {"error": f"Analytics generation failed: {str(analytics_error)}"}
 
                                 ix = str(uuid.uuid4())

@@ -24,7 +24,7 @@ class VideoOptimizer:
         except Exception as e:
             logger.warning(f"⚠️ Failed to cleanup temp dir: {e}")
     
-    def optimize_webm_for_streaming(self, input_path: str, output_path: Optional[str] = None) -> Tuple[bool, str]:
+    def optimize_webm_for_streaming(self, input_path: str, output_path: Optional[str] = None, force_optimize: bool = False) -> Tuple[bool, str]:
         """
         Optimize WebM file for web streaming by moving metadata to beginning.
         
@@ -56,6 +56,15 @@ class VideoOptimizer:
             original_info = self._get_video_info(input_path)
             if original_info:
                 logger.info(f"📊 Original file: {original_info}")
+            
+            # Check file size - skip optimization for very large files unless forced
+            file_size = os.path.getsize(input_path)
+            from src.core.config import Config
+            max_size_for_optimization = Config.VIDEO_OPTIMIZATION_MAX_SIZE_MB * 1024 * 1024
+            
+            if not force_optimize and file_size > max_size_for_optimization:
+                logger.info(f"📏 File too large ({file_size / 1024 / 1024:.1f}MB) - skipping optimization")
+                return True, input_path  # Return original file as "optimized"
             
             # Optimize WebM for web streaming
             success = self._run_ffmpeg_optimization(input_path, output_path)
@@ -132,13 +141,19 @@ class VideoOptimizer:
         - Proper codec settings for web playback
         """
         try:
-            # FFmpeg command for WebM optimization
+            # FFmpeg command for fast WebM optimization with proper seeking
             cmd = [
                 'ffmpeg',
                 '-i', input_path,
-                '-c:v', 'libvpx-vp9',           # VP9 codec for best compression
-                '-crf', '30',                   # Constant quality (good balance)
+                '-c:v', 'libvpx',               # VP8 codec for faster encoding
+                '-crf', '25',                   # Slightly better quality
                 '-b:v', '0',                    # Let CRF control bitrate
+                '-deadline', 'realtime',        # Fastest encoding speed
+                '-cpu-used', '8',               # Maximum speed optimization
+                '-g', '30',                     # Keyframe interval (every 30 frames)
+                '-keyint_min', '30',            # Minimum keyframe interval
+                '-auto-alt-ref', '1',           # Enable alternate reference frames
+                '-lag-in-frames', '25',         # Lag frames for better compression
                 '-c:a', 'libopus',              # Opus audio codec
                 '-b:a', '128k',                 # Audio bitrate
                 '-movflags', '+faststart',      # Move metadata to beginning
