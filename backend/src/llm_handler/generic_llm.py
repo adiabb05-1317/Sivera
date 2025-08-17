@@ -14,7 +14,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 async def call_llm(
     prompt: str,
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-2.5-pro",
     temperature: float = 0.6,
     max_tokens: Optional[int] = None,
 ) -> str:
