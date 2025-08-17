@@ -1,31 +1,5 @@
-#!/usr/bin/env python3
-"""
-Daily.co Room Cleanup Script
-
-This script connects to the Daily.co API and deletes rooms to avoid hitting the 50-room limit.
-It can be run manually or as a scheduled task.
-
-Usage:
-    cd backend && uv run -m src.scripts.cleanup_daily_rooms [options]
-
-    Run this command to see all rooms without deleting them:
-    `cd backend && uv run -m src.scripts.cleanup_daily_rooms --dry-run`
-
-    To clean everything and keep only the 5 most recent rooms:
-    `cd backend && uv run -m src.scripts.cleanup_daily_rooms --force`
-
-    You can run the script before starting the server to ensure you have room capacity:
-    `cd backend && uv run -m src.scripts.cleanup_daily_rooms && python main.py`
-
-Options:
-    --force          Force cleanup of all rooms regardless of pattern matching
-    --dry-run        Show what would be deleted without actually deleting
-    --all            Delete all rooms (use with caution)
-    --count N        Number of rooms to leave (default: 5)
-    --pattern STR    Only delete rooms with names matching pattern (default: flowterview)
-"""
-
 import argparse
+import re
 import asyncio
 import os
 import sys
@@ -51,7 +25,7 @@ BOLD = "\033[1m"
 
 async def cleanup_rooms(
     api_key: str,
-    pattern: str = "flowterview",
+    pattern: str = "flowterview|sivera",
     force: bool = False,
     dry_run: bool = False,
     delete_all: bool = False,
@@ -83,8 +57,13 @@ async def cleanup_rooms(
                 f"{YELLOW}Force mode: Deleting {len(rooms_to_delete)} rooms, keeping {len(rooms_to_keep)} most recent rooms{ENDC}"
             )
         else:
-            # Normal mode - delete rooms matching pattern
-            rooms_to_delete = [r for r in rooms if pattern.lower() in r.get("name", "").lower()]
+            # Normal mode - delete rooms matching pattern (supports regex)    
+            pattern_regex = re.compile(pattern.lower())
+            rooms_to_delete = [
+                r for r in rooms 
+                if pattern_regex.search(r.get("name", "").lower()) or 
+                   pattern_regex.search(r.get("url", "").lower())
+            ]
             print(
                 f"{BLUE}Pattern mode: Found {len(rooms_to_delete)} rooms matching pattern '{pattern}'{ENDC}"
             )
@@ -150,8 +129,8 @@ def parse_args():
     parser.add_argument(
         "--pattern",
         type=str,
-        default="flowterview",
-        help="Only delete rooms matching pattern",
+        default="flowterview|sivera",
+        help="Only delete rooms with names/URLs matching pattern (default: flowterview|sivera, supports regex)",
     )
     return parser.parse_args()
 

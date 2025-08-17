@@ -45,7 +45,8 @@ class ConnectionManager:
                 if await is_room_expired(room):
                     expired_rooms.append(room_name)
 
-                elif "flowterview" in room_name.lower() or "flowterview" in room_url.lower():
+                elif ("flowterview" in room_name.lower() or "flowterview" in room_url.lower() or
+                      "sivera" in room_name.lower() or "sivera" in room_url.lower()):
                     flowterview_rooms.append(room_name)
 
             rooms_to_delete = expired_rooms + flowterview_rooms
