@@ -8,10 +8,11 @@ class InterviewAnalytics:
     def __init__(self):
         pass
 
-    def _prepare_prompt(self, job_title: str, job_description: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> str:
+    def _prepare_prompt(self, job_title: str, job_description: str, candidate_name: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> str:
         """Prepare the prompt for the LLM to analyze the interview."""
         context = f"""
         You are an expert interview analyzer. Review the following interview conversation and provide detailed analytics.
+        You will be assessing the candidate (the person who is being interviewed, {candidate_name}) and the interviewer (Sia, the person who is interviewing).
 
         Analyze the following aspects:
         1. Overall summary of the interview (2-3 sentences)
@@ -64,6 +65,7 @@ class InterviewAnalytics:
         Job Description: {job_description}
 
         Candidate Information:
+        Name: {candidate_name}
         Resume: {resume}
         Additional Links Info: {additional_links_info}
 
@@ -82,7 +84,7 @@ class InterviewAnalytics:
 
         return context
 
-    async def analyze_interview(self, job_title: str, job_description: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def analyze_interview(self, job_title: str, job_description: str, candidate_name: str, resume: str, additional_links_info: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Analyze the interview chat history and return structured analytics.
 
@@ -93,7 +95,7 @@ class InterviewAnalytics:
             Dictionary containing structured interview analysis
         """
         try:
-            prompt = self._prepare_prompt(job_title, job_description, resume, additional_links_info, chat_history)
+            prompt = self._prepare_prompt(job_title, job_description, candidate_name, resume, additional_links_info, chat_history)
             response = await generic_llm.call_llm(prompt)
 
             try:

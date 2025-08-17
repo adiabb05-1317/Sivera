@@ -537,7 +537,7 @@ class InterviewFlow:
                             if candidate_interview_id:
                                 try:
                                     analytics_service = InterviewAnalytics()
-                                    analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
+                                    analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.candidate_name, self.resume, self.additional_links_info, filtered_messages)
 
                                     logger.info(
                                         f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
