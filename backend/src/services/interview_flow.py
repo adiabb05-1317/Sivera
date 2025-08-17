@@ -198,8 +198,31 @@ class InterviewFlow:
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
-        tts_instructions = Config.TTS_CONFIG[Config.TTS_CONFIG.get("provider")]["instructions"]
+        
+        # Map provider names to configuration keys
+        provider_config_map = {
+            "elevenlabs": "elevenlabs",
+            "cartesia": "cartesia", 
+            "rime": "rime",
+            "google": "google",
+            "aws": "aws_polly"  # Map "aws" provider to "aws_polly" config key
+        }
+        
+        provider = Config.TTS_CONFIG.get("provider", "elevenlabs")
+        config_key = provider_config_map.get(provider, provider)
+        tts_instructions = Config.TTS_CONFIG[config_key]["instructions"]
+        
         self.llm = LLMFactory.create_llm_service()
+        
+        # Register cleanup handlers for proper resource management
+        import atexit
+        atexit.register(self._cleanup_resources)
+        
+        # Suppress nanobind warnings if configured
+        if Config.SUPPRESS_NANOBIND_WARNINGS:
+            import warnings
+            warnings.filterwarnings("ignore", message="nanobind: leaked")
+            logger.info("Nanobind warnings suppressed")
 
         # Get formatted links information
         links_info = self.get_formatted_links_info()
@@ -648,8 +671,84 @@ class InterviewFlow:
             if hasattr(self, "aiohttp_session"):
                 await self.aiohttp_session.close()
 
+            # Clean up audio resources to prevent nanobind memory leaks
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "close"):
+                        await self.tts.close()
+                    elif hasattr(self.tts, "__del__"):
+                        del self.tts
+                    logger.info("TTS service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up TTS service: {e}")
+
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "close"):
+                        await self.stt.close()
+                    elif hasattr(self.stt, "__del__"):
+                        del self.stt
+                    logger.info("STT service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up STT service: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "close"):
+                        await self.runner.close()
+                    elif hasattr(self.runner, "__del__"):
+                        del self.runner
+                    logger.info("Pipeline runner cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up pipeline runner: {e}")
+
+            # Force garbage collection to clean up any remaining references
+            import gc
+            gc.collect()
+
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
+
+    def _cleanup_resources(self):
+        """
+        Cleanup method called by atexit to ensure resources are properly released.
+        This helps prevent nanobind memory leaks.
+        """
+        try:
+            # Clean up TTS service
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "__del__"):
+                        del self.tts
+                    self.tts = None
+                except Exception as e:
+                    logger.warning(f"Error in TTS cleanup: {e}")
+
+            # Clean up STT service
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "__del__"):
+                        del self.stt
+                    self.stt = None
+                except Exception as e:
+                    logger.warning(f"Error in STT cleanup: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "__del__"):
+                        del self.runner
+                    self.runner = None
+                except Exception as e:
+                    logger.warning(f"Error in runner cleanup: {e}")
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+        except Exception as e:
+            logger.warning(f"Error in resource cleanup: {e}")
 
     def _inject_dynamic_content_into_flow(self, context):
         """
