@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
 
   // Use TanStack Query auth for authentication state and user data
-  const { user, organization, isLoading: authLoading } = useAuth();
+  const { user, organization, isLoading: authLoading, isAuthenticated } = useAuth();
   const isLoading = authLoading;
   const queryClient = useQueryClient();
   const {
@@ -168,17 +168,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return breadcrumbs;
   }, [pathname, pathSegments, interviewDetails, candidateDetails, jobDetails]);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/auth/login");
-    }
-  }, [user, isLoading, router]);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Dashboard Layout: Middleware handles auth, client-side check disabled');
+  }
 
   useEffect(() => {
-    if (user && user.role === "candidate") {
+    // Only redirect candidates to /dashboard/candidate if they're on the main dashboard page
+    // This prevents breaking deep links to specific pages like interviews/[id]
+    if (user && user.role === "candidate" && pathname === "/dashboard") {
       router.push("/dashboard/candidate");
     }
-  }, [user, router]);
+  }, [user, router, pathname]);
 
   // Show company setup modal if organization name is empty
   useEffect(() => {

@@ -56,6 +56,23 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       });
     }
 
+    // Validate recording blob
+    if (!recordingBlob || recordingBlob.size === 0) {
+      const errorMsg = 'Recording blob is empty or invalid';
+      setUploadError(errorMsg);
+      if (isDevelopment) {
+        console.error('❌ Upload failed:', errorMsg, { recordingBlob });
+      }
+      return;
+    }
+
+    // Validate blob type
+    if (!recordingBlob.type || !recordingBlob.type.startsWith('video/')) {
+      if (isDevelopment) {
+        console.warn('⚠️ Recording blob type is not video:', recordingBlob.type);
+      }
+    }
+
     if (!jobId || !candidateId) {
       const errorMsg = `Missing job ID or candidate ID. JobId: "${jobId}", CandidateId: "${candidateId}"`;
       setUploadError(errorMsg);
@@ -99,13 +116,35 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         formData.append('round_token', roundToken);
       }
 
+      if (isDevelopment) {
+        console.log('🌐 Requesting pre-signed URL from:', `${baseUrl}/api/v1/recordings/presigned-url`);
+        console.log('📋 Form data being sent:', {
+          job_id: jobId,
+          candidate_id: candidateId,
+          timestamp,
+          file_size: recordingBlob.size,
+          content_type: recordingBlob.type || 'video/webm',
+          interview_type: interviewType,
+          round_number: roundNumber,
+          round_token: roundToken
+        });
+      }
+
       const preSignedResponse = await fetch(`${baseUrl}/api/v1/recordings/presigned-url`, {
         method: 'POST',
         body: formData
       });
 
       if (!preSignedResponse.ok) {
-        throw new Error(`Failed to get pre-signed URL: ${preSignedResponse.status} ${preSignedResponse.statusText}`);
+        const errorText = await preSignedResponse.text();
+        if (isDevelopment) {
+          console.error('❌ Pre-signed URL request failed:', {
+            status: preSignedResponse.status,
+            statusText: preSignedResponse.statusText,
+            responseText: errorText
+          });
+        }
+        throw new Error(`Failed to get pre-signed URL: ${preSignedResponse.status} ${preSignedResponse.statusText} - ${errorText}`);
       }
 
       const preSignedData: PreSignedUrlResponse = await preSignedResponse.json();
@@ -148,6 +187,13 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
             }
             resolve();
           } else {
+            if (isDevelopment) {
+              console.error('❌ S3 upload failed:', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText
+              });
+            }
             reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
           }
         });
@@ -163,6 +209,7 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         // Configure S3 upload
         xhr.open('PUT', preSignedData.presigned_url);
         xhr.setRequestHeader('Content-Type', preSignedData.content_type);
+        xhr.setRequestHeader('Content-Encoding', 'identity'); // Disable additional compression
         xhr.timeout = 600000; // 10 minutes timeout for large files
         xhr.send(recordingBlob);
       });
@@ -205,8 +252,16 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         console.log('✅ Upload confirmed and metadata stored:', {
           databaseId: confirmData.database_id,
           objectUrl: confirmData.object_url,
-          fileSize: confirmData.file_size
+          fileSize: confirmData.file_size,
+          optimizationStatus: confirmData.optimization_status
         });
+      }
+
+      // Show optimization status to user
+      if (confirmData.optimization_status === 'completed') {
+        console.log('🎬 Video automatically optimized for web streaming!');
+      } else if (confirmData.optimization_status === 'failed') {
+        console.warn('⚠️ Video optimization failed - manual optimization may be needed');
       }
 
       setUploadProgress({ loaded: recordingBlob.size, total: recordingBlob.size, percentage: 100 });
@@ -215,6 +270,18 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       console.error('❌ Direct S3 upload failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setUploadError(errorMessage);
+      
+      // In development, provide more detailed error information
+      if (isDevelopment) {
+        console.error('🔍 Upload failure details:', {
+          error: error,
+          errorMessage: errorMessage,
+          blobSize: recordingBlob.size,
+          blobType: recordingBlob.type,
+          jobId,
+          candidateId
+        });
+      }
     } finally {
       setIsUploading(false);
       // Clear progress after 3 seconds
@@ -223,6 +290,12 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       }, 3000);
     }
   }, [jobId, candidateId, roundNumber]);
+
+  // Expose upload function globally for debugging in development
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    (window as any).testS3Upload = uploadRecording;
+    (window as any).getPathStoreState = () => usePathStore.getState();
+  }
 
   return {
     uploadRecording,
