@@ -125,8 +125,13 @@ export const useInterviewAnalytics = (interviewId: string) => {
       return response.json();
     },
     enabled: !!interviewId,
-    staleTime: 5 * 60 * 1000, // Interview analytics fresh for 5 minutes
-    gcTime: 20 * 60 * 1000, // Cache for 20 minutes
+    staleTime: 5 * 60 * 1000, // Analytics fresh for 5 minutes
+    gcTime: 2 * 60 * 60 * 1000, // Keep in cache for 2 hours
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Refetch on mount if data is stale
+    refetchOnReconnect: true, // Refetch on network reconnect
+    retry: 2, // Retry failed requests
+    refetchInterval: false, // Don't poll for updates
   });
 
   return {

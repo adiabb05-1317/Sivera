@@ -165,13 +165,64 @@ class InterviewFlow:
             self.skills = ["Java", "Python", "Langchain", "RabbitMQ", "AWS"]
             self.duration = 20
 
+        # Ensure flow_config is always set
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.warning("flow_config not set, using default configuration")
+            try:
+                with open("src/services/flows/default.json", "r") as f:
+                    self.flow_config = json.load(f)
+                logger.info("Loaded default flow configuration successfully")
+            except FileNotFoundError:
+                logger.error("Default flow configuration file not found")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in default flow configuration: {e}")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+        
+        # Log flow_config status
+        logger.info(f"Flow config type: {type(self.flow_config)}")
+        logger.info(f"Flow config keys: {list(self.flow_config.keys()) if isinstance(self.flow_config, dict) else 'Not a dict'}")
+
         # Fetch resume content during initialization
         self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
-        tts_instructions = Config.TTS_CONFIG[Config.TTS_CONFIG.get("provider")]["instructions"]
+        
+        # Map provider names to configuration keys
+        provider_config_map = {
+            "elevenlabs": "elevenlabs",
+            "cartesia": "cartesia", 
+            "rime": "rime",
+            "google": "google",
+            "aws": "aws_polly"  # Map "aws" provider to "aws_polly" config key
+        }
+        
+        provider = Config.TTS_CONFIG.get("provider", "elevenlabs")
+        config_key = provider_config_map.get(provider, provider)
+        tts_instructions = Config.TTS_CONFIG[config_key]["instructions"]
+        
         self.llm = LLMFactory.create_llm_service()
+        
+        # Register cleanup handlers for proper resource management
+        import atexit
+        atexit.register(self._cleanup_resources)
+        
+        # Suppress nanobind warnings if configured
+        if Config.SUPPRESS_NANOBIND_WARNINGS:
+            import warnings
+            warnings.filterwarnings("ignore", message="nanobind: leaked")
+            logger.info("Nanobind warnings suppressed")
 
         # Get formatted links information
         links_info = self.get_formatted_links_info()
@@ -361,6 +412,13 @@ class InterviewFlow:
             observers=[self.rtvi_observer],
         )
 
+        # Ensure flow_config is available before creating FlowManager
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.error("flow_config is not available, cannot create FlowManager")
+            raise ValueError("flow_config is required for FlowManager initialization")
+        
+        logger.info(f"Creating FlowManager with flow_config: {type(self.flow_config)}")
+        
         self.flow_manager = FlowManager(
             task=self.task,
             llm=self.llm,
@@ -439,7 +497,7 @@ class InterviewFlow:
             logger.info("Stopping interview session")
 
             # Save chat history when pipeline is canceled
-            if hasattr(self, "flow_manager") and self.flow_manager:
+            if hasattr(self, "flow_manager") and self.flow_manager and hasattr(self.flow_manager, 'get_current_context'):
                 try:
                     message_history = self.flow_manager.get_current_context()
                     logger.info(f"Raw message history structure: {type(message_history)}")
@@ -536,14 +594,38 @@ class InterviewFlow:
                             )
                             if candidate_interview_id:
                                 try:
-                                    analytics_service = InterviewAnalytics()
-                                    analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.candidate_name, self.resume, self.additional_links_info, filtered_messages)
+                                    # Validate data before analytics
+                                    logger.info(f"Preparing analytics with {len(filtered_messages)} messages")
+                                    logger.info(f"Job title: {getattr(self, 'job_title', 'N/A')}")
+                                    logger.info(f"Job description: {getattr(self, 'job_description', 'N/A')}")
+                                    logger.info(f"Resume: {getattr(self, 'resume', 'N/A')[:100]}...")
+                                    logger.info(f"Additional links: {getattr(self, 'additional_links_info', 'N/A')}")
+                                    
+                                    # Ensure we have valid data for analytics
+                                    if not filtered_messages:
+                                        logger.warning("No chat messages available for analytics")
+                                        analytics = {"error": "No chat messages available for analysis"}
+                                    elif not getattr(self, 'job_title', None):
+                                        logger.warning("No job title available for analytics")
+                                        analytics = {"error": "No job title available for analysis"}
+                                    else:
+                                        analytics_service = InterviewAnalytics()
+                                        analytics = await analytics_service.analyze_interview(
+                                            job_title=self.job_title,
+                                            job_description=self.job_description,
+                                            candidate_name=self.candidate_name,
+                                            resume=self.resume,
+                                            additional_links_info=self.additional_links_info,
+                                            chat_history=filtered_messages
+                                        )
 
-                                    logger.info(
-                                        f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
-                                    )
+                                        logger.info(
+                                            f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                                        )
+                                        logger.info(f"Analytics keys: {list(analytics.keys()) if isinstance(analytics, dict) else 'Not a dict'}")
                                 except Exception as analytics_error:
                                     logger.error(f"Failed to generate analytics: {analytics_error}")
+                                    logger.error(f"Analytics error details: {type(analytics_error).__name__}: {str(analytics_error)}")
                                     analytics = {"error": f"Analytics generation failed: {str(analytics_error)}"}
 
                                 ix = str(uuid.uuid4())
@@ -590,8 +672,84 @@ class InterviewFlow:
             if hasattr(self, "aiohttp_session"):
                 await self.aiohttp_session.close()
 
+            # Clean up audio resources to prevent nanobind memory leaks
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "close"):
+                        await self.tts.close()
+                    elif hasattr(self.tts, "__del__"):
+                        del self.tts
+                    logger.info("TTS service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up TTS service: {e}")
+
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "close"):
+                        await self.stt.close()
+                    elif hasattr(self.stt, "__del__"):
+                        del self.stt
+                    logger.info("STT service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up STT service: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "close"):
+                        await self.runner.close()
+                    elif hasattr(self.runner, "__del__"):
+                        del self.runner
+                    logger.info("Pipeline runner cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up pipeline runner: {e}")
+
+            # Force garbage collection to clean up any remaining references
+            import gc
+            gc.collect()
+
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
+
+    def _cleanup_resources(self):
+        """
+        Cleanup method called by atexit to ensure resources are properly released.
+        This helps prevent nanobind memory leaks.
+        """
+        try:
+            # Clean up TTS service
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "__del__"):
+                        del self.tts
+                    self.tts = None
+                except Exception as e:
+                    logger.warning(f"Error in TTS cleanup: {e}")
+
+            # Clean up STT service
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "__del__"):
+                        del self.stt
+                    self.stt = None
+                except Exception as e:
+                    logger.warning(f"Error in STT cleanup: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "__del__"):
+                        del self.runner
+                    self.runner = None
+                except Exception as e:
+                    logger.warning(f"Error in runner cleanup: {e}")
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+        except Exception as e:
+            logger.warning(f"Error in resource cleanup: {e}")
 
     def _inject_dynamic_content_into_flow(self, context):
         """

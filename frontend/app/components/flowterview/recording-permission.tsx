@@ -48,15 +48,16 @@ export function RecordingPermission({
         throw new Error("Screen sharing is not supported in this browser");
       }
 
+      setDebugInfo("Starting screen recording...");
       console.log("🎥 Starting screen recording immediately...");
 
-      // Start screen recording with optimized settings for smaller files
+      // Start screen recording with high-quality settings for crisp output
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: "always",
-          width: { ideal: 1920, max: 1920 }, // 1080p is sufficient
-          height: { ideal: 1080, max: 1080 }, // Standard resolution
-          frameRate: { ideal: 30, max: 30 }, // 30fps is sufficient for screen recording
+          width: { ideal: 1920, max: 2560 }, // Allow up to 1440p for better quality
+          height: { ideal: 1080, max: 1440 }, // Higher resolution support
+          frameRate: { ideal: 30, max: 60 }, // Allow 60fps for smoother recording
           aspectRatio: { ideal: 16 / 9 }, // Maintain aspect ratio
           resizeMode: "crop-and-scale", // Allow browser optimization
         } as any,

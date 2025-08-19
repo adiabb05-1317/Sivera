@@ -8,6 +8,7 @@ import {
 } from "./supabase-hooks";
 import { useJobs, useCandidates, useInterviews } from "@/hooks/useStores";
 import { useSession } from "@supabase/auth-helpers-react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -46,6 +47,7 @@ export default function InviteCandidatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const interviewIdFromQuery = searchParams.get("interview");
+  const queryClient = useQueryClient();
 
   // CRITICAL: Use ref to track current request and prevent race conditions
   const currentJobSelectionRef = useRef<string | null>(null);
@@ -526,10 +528,25 @@ export default function InviteCandidatesPage() {
       });
 
       setIsSent(true);
+      
+      // Refresh hooks and invalidate all related caches
       refreshCandidates();
       refreshInterviews();
 
-      console.log("Refreshing candidates and interviews");
+      // Comprehensive cache invalidation to ensure fresh data everywhere
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["analytics"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["interviews"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["candidates"],
+        })
+      ]);
+
+      console.log("Successfully refreshed candidates, interviews, and analytics caches");
     } catch (err) {
       console.error("Error in handleSubmit:", err);
       setFormError(

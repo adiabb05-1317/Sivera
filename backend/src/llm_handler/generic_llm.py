@@ -48,6 +48,10 @@ async def call_llm(
         if not response or not hasattr(response, "text"):
             raise ValueError("No valid response received from the model")
 
+        # Check if response.text is None
+        if response.text is None:
+            raise ValueError("Response text is None - model may have failed to generate content")
+
         # Clean the response text to ensure it's valid JSON
         response_text = response.text.strip()
 

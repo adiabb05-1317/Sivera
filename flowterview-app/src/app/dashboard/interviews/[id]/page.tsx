@@ -63,6 +63,7 @@ import {
   useCandidates,
   useInterviews,
 } from "@/hooks/useStores";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   authenticatedFetch,
   getCookie,
@@ -73,6 +74,7 @@ import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
 import { useInterviewAnalytics } from "@/hooks/queries/useAnalytics";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAnalyticsStore } from "@/store/analytics-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1092,6 +1094,7 @@ export default function InterviewDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
+  const queryClient = useQueryClient();
 
   // Use our store hooks instead of manual API calls
   const {
@@ -1107,6 +1110,24 @@ export default function InterviewDetailsPage() {
   // Get all candidates to merge with interview candidates for complete data
   const { candidates: allCandidates, refresh: refreshCandidates } =
     useCandidates();
+
+  // React Query will handle data fetching automatically - no manual refresh needed
+
+  // Simplified visibility handling - React Query will handle most refetching automatically
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Only invalidate candidates since they might change from invite actions
+        queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [queryClient]);
 
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
@@ -1269,28 +1290,160 @@ export default function InterviewDetailsPage() {
     analytics: interviewAnalytics,
     isLoading: isLoadingAnalytics,
     error: analyticsError,
-    refetch: _refetchAnalytics,
+    refetch: refetchAnalytics,
   } = useInterviewAnalytics(id as string);
+
+  // Get analytics store
+  const {
+    interviewAnalytics: storedAnalytics,
+    setInterviewAnalytics,
+    getCandidateScore,
+    hasAnalytics: hasStoredAnalytics,
+  } = useAnalyticsStore();
 
   // Update stages with analytics data when it's available
   useEffect(() => {
-    if (interviewAnalytics && interviewAnalytics.candidates && interviewAnalytics.candidates.length > 0) {
-      console.log("Analytics data received via React Query:", interviewAnalytics);
+    if (isLoadingAnalytics) {
+      console.log("⏳ Analytics still loading, skipping update");
+      return;
+    }
 
-      setStages((currentStages) =>
-        currentStages.map((stage) => {
+    const analyticsArray = interviewAnalytics?.analytics || [];
+    const hasStoredData = hasStoredAnalytics(id as string);
+    const totalCandidates = stages.reduce((acc, stage) => acc + stage.candidates.length, 0);
+    
+    console.log("🔍 Analytics effect triggered:", {
+      analyticsFromQuery: analyticsArray.length,
+      hasStoredData,
+      candidatesCount: totalCandidates
+    });
+
+    // Don't process analytics if we don't have candidates loaded yet
+    if (totalCandidates === 0) {
+      console.log("⏳ No candidates loaded yet, skipping analytics processing");
+      return;
+    }
+
+    // Process if we have either fresh analytics OR stored analytics
+    if (analyticsArray.length > 0 || hasStoredData) {
+      // Prioritize fresh React Query data, fallback to stored data
+      const effectiveAnalytics = analyticsArray.length > 0 
+        ? analyticsArray 
+        : (storedAnalytics[id as string] || []);
+
+      if (effectiveAnalytics.length === 0) {
+        console.log("❌ No analytics data available from any source");
+        return;
+      }
+
+      console.log("✅ Processing analytics:", {
+        source: analyticsArray.length > 0 ? 'React Query' : 'Zustand Store',
+        count: effectiveAnalytics.length,
+        analyticsData: effectiveAnalytics
+      });
+
+      // Debug: Log candidate IDs and analytics candidate IDs for matching
+      const candidateIds = stages.flatMap(stage => stage.candidates.map(c => c.id));
+      const analyticsCandidateIds = effectiveAnalytics.map((a: any) => a.candidate_id);
+      console.log("🔍 Debug matching:", {
+        candidateIds,
+        analyticsCandidateIds,
+        matches: analyticsCandidateIds.filter(id => candidateIds.includes(id))
+      });
+      // Store fresh analytics in Zustand if we got them from React Query
+      if (analyticsArray.length > 0) {
+        setInterviewAnalytics(id as string, analyticsArray);
+      }
+
+      // Check if any candidate needs an AI score update before triggering setState
+      const needsUpdate = stages.some(stage =>
+        stage.candidates.some(candidate => {
+          const analytics = effectiveAnalytics.find((a: any) => a.candidate_id === candidate.id);
+          if (analytics && analytics.data) {
+            let data = analytics.data;
+            if (typeof data === 'string') {
+              try {
+                data = JSON.parse(data);
+              } catch (e) {
+                return false;
+              }
+            }
+            return data && typeof data.overall_score === 'number' && candidate.ai_score !== data.overall_score;
+          }
+          return false;
+        })
+      );
+
+      if (!needsUpdate) {
+        console.log("🔄 No analytics updates needed - all AI scores already match");
+        return;
+      }
+
+      console.log("🔍 Processing analytics for stages update");
+      
+      setStages((currentStages) => {
+        return currentStages.map((stage) => {
           const updatedCandidates = stage.candidates.map((candidate) => {
-            const analytics = interviewAnalytics.candidates.find(
+            const analytics = effectiveAnalytics.find(
               (a: any) => a.candidate_id === candidate.id
             );
 
-            if (analytics && analytics.data?.overall_score) {
-              return {
-                ...candidate,
-                ai_score: analytics.data.overall_score,
-              };
+            if (analytics && analytics.data) {
+              let data = analytics.data;
+              if (typeof data === 'string') {
+                try {
+                  data = JSON.parse(data);
+                } catch (e) {
+                  return candidate;
+                }
+              }
+
+              if (data && typeof data.overall_score === 'number') {
+                console.log(`🎯 Setting AI score for candidate ${candidate.name}:`, data.overall_score);
+                return {
+                  ...candidate,
+                  ai_score: data.overall_score,
+                };
+              }
             }
 
+            return candidate;
+          });
+
+          return {
+            ...stage,
+            candidates: updatedCandidates,
+          };
+        });
+      });
+    } else if (hasStoredAnalytics(id as string) && !isLoadingAnalytics) {
+      // Use stored analytics if available
+      console.log("📦 Using stored analytics data");
+      
+      setStages((currentStages) => {
+        // Check if stages already have the correct AI scores from stored data
+        const needsUpdate = currentStages.some(stage => 
+          stage.candidates.some(candidate => {
+            const score = getCandidateScore(id as string, candidate.id);
+            return score !== null && candidate.ai_score !== score;
+          })
+        );
+
+        if (!needsUpdate) {
+          console.log("🔄 No update needed - stored AI scores already match");
+          return currentStages;
+        }
+
+        return currentStages.map((stage) => {
+          const updatedCandidates = stage.candidates.map((candidate) => {
+            const score = getCandidateScore(id as string, candidate.id);
+            if (score !== null) {
+              console.log(`🎯 Found stored AI score for candidate ${candidate.name}:`, score);
+              return {
+                ...candidate,
+                ai_score: score,
+              };
+            }
             return candidate;
           });
 
@@ -1303,10 +1456,12 @@ export default function InterviewDetailsPage() {
             ...stage,
             candidates: sortedCandidates,
           };
-        })
-      );
+        });
+      });
+    } else if (!isLoadingAnalytics) {
+      console.log("❌ No analytics data available or analytics array is empty");
     }
-  }, [interviewAnalytics]);
+  }, [interviewAnalytics, isLoadingAnalytics, id, stages]);
 
   // Log analytics loading state for debugging
   useEffect(() => {
@@ -1318,6 +1473,22 @@ export default function InterviewDetailsPage() {
       console.log("Interview analytics received:", interviewAnalytics);
     }
   }, [isLoadingAnalytics, analyticsError, interviewAnalytics]);
+
+  // React Query will handle refetching automatically with proper cache settings
+  // No manual refetch needed here
+
+  // Add cache invalidation when candidates are moved (in stageMoveCandidate)
+  // This is already added in the stageMoveCandidate function above
+
+  // Invalidate analytics cache on component mount to ensure fresh data
+  useEffect(() => {
+    if (id) {
+      console.log("🔄 Invalidating analytics cache on mount");
+      queryClient.invalidateQueries({
+        queryKey: ["analytics", "interview", id],
+      });
+    }
+  }, [id, queryClient]);
 
   // Initialize pipeline stages
   useEffect(() => {
@@ -1600,6 +1771,11 @@ export default function InterviewDetailsPage() {
 
     // Original move logic for non-human interview stages
     performCandidateMove(candidate, sourceStageId, destinationStageId);
+    
+    // Invalidate analytics cache when candidate is moved
+    queryClient.invalidateQueries({
+      queryKey: ["analytics", "interview", id],
+    });
   };
 
   // Helper function to perform the actual candidate move
@@ -2285,7 +2461,7 @@ export default function InterviewDetailsPage() {
 
     // Re-fetch AI scores after stages are reset (handled automatically by React Query)
     setTimeout(() => {
-      _refetchAnalytics();
+              refetchAnalytics();
     }, 0);
 
     toast.success("Changes discarded", {

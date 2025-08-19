@@ -21,7 +21,7 @@ from src.router.round_router import router as round_router
 from src.router.user_router import router as user_router
 from src.utils.logger import intercept_standard_logging
 from src.services.phone_screen_scheduler import PhoneScreenScheduler
-from src.services.video_optimizer import VideoOptimizer
+
 import asyncio
 
 intercept_standard_logging()

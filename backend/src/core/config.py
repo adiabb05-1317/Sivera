@@ -108,6 +108,15 @@ class Config:
     CHUNK_OVERLAP = 50
     LLM_TEMPERATURE = 0.2
 
+    # Audio Processing Configuration
+    SUPPRESS_NANOBIND_WARNINGS = os.getenv("SUPPRESS_NANOBIND_WARNINGS", "false").lower() == "true"
+    
+    # Video Optimization Configuration
+    VIDEO_OPTIMIZATION_MAX_SIZE_MB = int(os.getenv("VIDEO_OPTIMIZATION_MAX_SIZE_MB", "500"))  # 500MB default
+    FFMPEG_TIMEOUT = int(os.getenv("FFMPEG_TIMEOUT", "300"))  # 5 minutes default timeout
+    VIDEO_OPTIMIZATION_ENABLED = os.getenv("VIDEO_OPTIMIZATION_ENABLED", "true").lower() == "true"
+    AUTO_OPTIMIZE_VIDEOS = os.getenv("AUTO_OPTIMIZE_VIDEOS", "true").lower() == "true"
+
     # TTS Configuration
     # TODO: add instructions for other TTS providers
     TTS_CONFIG = {
@@ -119,6 +128,17 @@ class Config:
             "stability": float(os.getenv("ELEVENLABS_STABILITY", "0.8")),
             "clarity": float(os.getenv("ELEVENLABS_CLARITY", "0.9")),
             "similarity_boost": float(os.getenv("ELEVENLABS_SIMILARITY_BOOST", "0.8")),
+            "instructions": ""
+        },
+        "aws_polly": {
+            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "region": os.getenv("AWS_REGION", "us-east-1"),
+            "voice_id": os.getenv("AWS_POLLY_VOICE_ID", "Ruth"),
+            "engine": os.getenv("AWS_POLLY_ENGINE", "neural"),
+            "language": os.getenv("AWS_POLLY_LANGUAGE", "en"),
+            "rate": os.getenv("AWS_POLLY_RATE", "+10%"),
+            "volume": os.getenv("AWS_POLLY_VOLUME", "loud"),
             "instructions": ""
         },
         "cartesia": {
@@ -284,6 +304,12 @@ class Config:
             "SUPABASE_URL",
             "SUPABASE_KEY",
         ]
+
+        if cls.TTS_CONFIG["provider"] == "aws_polly":
+            required_vars.extend([
+                "AWS_ACCESS_KEY_ID",
+                "AWS_SECRET_ACCESS_KEY",
+            ])
 
         missing = [var for var in required_vars if not getattr(cls, var)]
         if missing:

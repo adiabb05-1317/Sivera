@@ -91,9 +91,6 @@ class Config:
         },
     }
 
-    AUTO_OPTIMIZE_VIDEOS: bool = os.getenv("AUTO_OPTIMIZE_VIDEOS", "true").lower() == "true"
-    FFMPEG_TIMEOUT: int = int(os.getenv("FFMPEG_TIMEOUT", "300"))  # 5 minutes
-    VIDEO_OPTIMIZATION_ENABLED: bool = os.getenv("VIDEO_OPTIMIZATION_ENABLED", "true").lower() == "true"
 
     @classmethod
     def init(cls):
