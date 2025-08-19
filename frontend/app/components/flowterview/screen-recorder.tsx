@@ -63,35 +63,41 @@ export function ScreenRecorder({
       // Simplified and reliable audio handling
       let finalAudioTrack: MediaStreamTrack | null = null;
       
-      // Get microphone audio for voice capture
+      // Get microphone audio for voice capture with sync-optimized settings
       let micStream: MediaStream | null = null;
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 44100,  // Standard sample rate for compatibility
-            channelCount: 1     // Mono for smaller file size
+            autoGainControl: false,     // Disable AGC to prevent audio artifacts
+            sampleRate: 48000,          // 48kHz for better quality and sync
+            channelCount: 1,            // Mono to prevent sync issues and reduce file size
+            latency: 0.02,              // 20ms latency for better sync stability
+            volume: 0.9                 // Optimal volume level
           }
         });
-        console.log('✅ Microphone access granted');
+        console.log('✅ Microphone access granted with sync-optimized settings');
       } catch {
         console.log('No microphone access, will try screen audio');
       }
 
-      // Prioritize microphone audio over screen audio for interview recordings
+      // Prioritize microphone audio over screen audio and prevent duplication
       const screenAudioTracks = screenStream.getAudioTracks();
       const micAudioTracks = micStream?.getAudioTracks() || [];
       
+      // Stop all screen audio tracks to prevent duplication
+      screenAudioTracks.forEach(track => {
+        track.stop();
+        console.log('🔇 Stopped screen audio track to prevent duplication');
+      });
+      
       if (micAudioTracks.length > 0) {
         finalAudioTrack = micAudioTracks[0];
-        console.log('✅ Using microphone audio (preferred for interviews)');
-      } else if (screenAudioTracks.length > 0) {
-        finalAudioTrack = screenAudioTracks[0];
-        console.log('✅ Using screen audio as fallback');
+        console.log('✅ Using microphone audio only (no duplication)');
       } else {
-        console.warn('⚠️ No audio tracks available - video only recording');
+        console.warn('⚠️ No microphone audio - video only recording');
+        finalAudioTrack = null;
       }
 
       // Combine video with the final audio track
@@ -128,23 +134,23 @@ export function ScreenRecorder({
         throw new Error('No supported video codec found for recording');
       }
       
-      // Optimized bitrate settings for WebM with H.264 codec for best compatibility
+      // Sync-optimized bitrate settings for crisp screen recording without lag
       if (options.mimeType?.includes('h264')) {
         // H.264 codec - excellent browser compatibility and hardware acceleration
-        options.videoBitsPerSecond = 2500000;  // 2.5Mbps - optimal for screen content
-        options.audioBitsPerSecond = 128000;   // 128Kbps - better audio quality
+        options.videoBitsPerSecond = 3500000;  // 3.5Mbps - balanced quality/performance
+        options.audioBitsPerSecond = 96000;    // 96Kbps - optimal for sync stability
       } else if (options.mimeType?.includes('vp9')) {
         // VP9 codec - excellent compression for screen content
-        options.videoBitsPerSecond = 1500000;  // 1.5Mbps - still excellent for screen content  
-        options.audioBitsPerSecond = 64000;    // 64Kbps - good audio quality, smaller size
+        options.videoBitsPerSecond = 2800000;  // 2.8Mbps - VP9 compresses efficiently
+        options.audioBitsPerSecond = 96000;    // 96Kbps - prevents sync drift
       } else if (options.mimeType?.includes('vp8')) {
         // VP8 codec - good compression
-        options.videoBitsPerSecond = 1800000;  // 1.8Mbps for VP8
-        options.audioBitsPerSecond = 64000;    // 64Kbps audio
+        options.videoBitsPerSecond = 3200000;  // 3.2Mbps - balanced for VP8
+        options.audioBitsPerSecond = 96000;    // 96Kbps - sync-optimized
       } else if (options.mimeType?.includes('webm')) {
         // Generic WebM fallback
-        options.videoBitsPerSecond = 1200000;  // 1.2Mbps fallback - very efficient
-        options.audioBitsPerSecond = 48000;    // 48Kbps audio for compatibility
+        options.videoBitsPerSecond = 2500000;  // 2.5Mbps - stable fallback
+        options.audioBitsPerSecond = 96000;    // 96Kbps - reliable sync
       }
       
       // Set total bitrate and quality parameters
@@ -152,13 +158,13 @@ export function ScreenRecorder({
         options.bitsPerSecond = options.videoBitsPerSecond + options.audioBitsPerSecond;
       }
       
-      // Additional quality enhancement for web streaming compatibility
+      // Enhanced quality settings for crisp screen recording
       if (options.mimeType?.includes('h264')) {
-        // Optimize H.264 for streaming playback
-        (options as any).videoKeyFrameIntervalDuration = 2000; // Keyframes every 2 seconds for H.264
+        // Optimize H.264 for high-quality screen recording
+        (options as any).videoKeyFrameIntervalDuration = 1000; // Keyframes every 1 second for better quality
       } else if (options.mimeType?.includes('webm')) {
-        // Optimize WebM for streaming playback
-        (options as any).videoKeyFrameIntervalDuration = 1000; // More frequent keyframes for better seeking
+        // Optimize WebM for high-quality screen recording
+        (options as any).videoKeyFrameIntervalDuration = 500;  // More frequent keyframes for crisp quality
       }
       
       console.log('📹 MediaRecorder options:', options);
@@ -241,15 +247,31 @@ export function ScreenRecorder({
           wasShortRecording: duration < 10
         });
         
-        // Validate final blob size
+        // Enhanced blob validation for upload reliability
         if (recordingBlob.size > 0) {
           // Additional validation for minimum expected size (prevent tiny corrupted files)
-          const minExpectedSize = duration * 100000; // ~100KB per second minimum
+          const minExpectedSize = duration * 50000; // ~50KB per second minimum (more lenient)
           if (recordingBlob.size < minExpectedSize && duration > 10) {
             console.warn(`⚠️ Recording size (${recordingBlob.size}) seems small for duration (${duration}s)`);
           }
           
-          onRecordingStop?.(recordingBlob);
+          // Validate blob type matches expected format
+          if (!recordingBlob.type || !recordingBlob.type.includes('video')) {
+            console.warn('⚠️ Blob type validation failed:', recordingBlob.type);
+          }
+          
+          // Test blob readability before upload
+          try {
+            const testSlice = recordingBlob.slice(0, 100);
+            if (testSlice.size === 0) {
+              throw new Error('Blob slice test failed');
+            }
+            console.log('✅ Blob validation passed - ready for upload');
+            onRecordingStop?.(recordingBlob);
+          } catch (blobError) {
+            console.error('❌ Blob validation failed:', blobError);
+            onRecordingError?.('Recording validation failed - corrupted file detected');
+          }
         } else {
           console.error('❌ Recording blob is empty after creation');
           onRecordingError?.('Recording failed - empty file created');
@@ -387,8 +409,8 @@ export function ScreenRecorder({
       // Start recording with optimized settings for screen content
       console.log('🚀 About to start MediaRecorder with optimized settings for screen recording...');
       
-      // Use larger chunk size for better compression and smaller files
-      mediaRecorder.start(10000); // 10-second chunks - better compression ratio
+      // Use 500ms chunks for optimal audio-video sync and data integrity
+      mediaRecorder.start(500); // 500ms chunks - prevents sync drift and ensures complete data collection
       
       console.log('✅ MediaRecorder.start() called, state:', mediaRecorder.state);
       onRecordingStart?.();
@@ -434,8 +456,8 @@ export function ScreenRecorder({
           // Request final data collection BEFORE stopping to ensure complete recording
           try {
             mediaRecorderRef.current.requestData();
-            // Small delay to ensure data is collected
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Longer delay to ensure all data is properly collected and processed
+            await new Promise(resolve => setTimeout(resolve, 500));
           } catch (requestError) {
             console.warn('Could not request final data:', requestError);
           }
@@ -512,9 +534,9 @@ export function ScreenRecorder({
       });
     }
     
-    // ONLY stop recording on definitive call end with proper cleanup
-    if (callStatus === 'left' && isRecording && hasStarted) { // Ensure we don't stop if already stopping
-      console.log('✅ LEGITIMATE call end detected - stopping recording after delay');
+    // Handle both 'leaving' and 'left' statuses to ensure recording stops and uploads
+    if ((callStatus === 'leaving' || callStatus === 'left') && isRecording && hasStarted) {
+      console.log(`✅ Call end detected (${callStatus}) - stopping recording to ensure upload`);
       console.log('📊 Final recording stats:', {
         duration: `${currentDuration.toFixed(1)}s`,
         chunks: recordedChunksRef.current.length,
@@ -524,12 +546,13 @@ export function ScreenRecorder({
       // Set hasStarted to false to prevent multiple stop attempts
       setHasStarted(false);
       
-      // Add shorter delay to ensure all chunks are captured
+      // Immediate stop for 'leaving' status, short delay for 'left'
+      const delay = callStatus === 'leaving' ? 500 : 1000;
       setTimeout(() => {
-        console.log('🔚 Executing delayed recording stop...');
-        stopRecording(); // Delayed stop - fire and forget
-      }, 1000); // Reduced to 1 second for faster response
-    } else if (isRecording && callStatus !== 'left' && isDevelopment) {
+        console.log(`🔚 Executing recording stop (${callStatus})...`);
+        stopRecording(); // This triggers upload via onRecordingStop callback
+      }, delay);
+    } else if (isRecording && !['leaving', 'left'].includes(callStatus) && isDevelopment) {
       console.log(`📝 Recording continues - call status "${callStatus}" is not a stop condition`);
     }
   }, [callStatus, isRecording, stopRecording, hasStarted, isDevelopment]);

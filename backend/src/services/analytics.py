@@ -110,6 +110,12 @@ class InterviewAnalytics:
         try:
             prompt = self._prepare_prompt(job_title, job_description, candidate_name, resume, additional_links_info, chat_history)
             response = await generic_llm.call_llm(prompt)
+            
+            # Check if response is None
+            if response is None:
+                logger.error("LLM returned None response")
+                return {"error": "LLM returned empty response"}
+            
             logger.info(f"LLM response received, length: {len(response)} characters")
             
             # Parse response

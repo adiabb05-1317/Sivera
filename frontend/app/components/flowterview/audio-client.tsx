@@ -107,14 +107,23 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
     );
   };
 
-  // Handle interview end the same way as the end call button
+  // Handle interview end ensuring recording is saved
   const handleInterviewEnd = () => {
+    console.log("🚨 Interview ending - ensuring recording upload...");
+    
+    // First set to leaving to trigger recording stop and upload
     setCallStatus("leaving");
 
+    // Give more time for recording to stop and upload (increased from 1200ms to 3000ms)
     setTimeout(() => {
-      resetStore();
+      console.log("🔚 Interview cleanup - setting final status to 'left'");
       setCallStatus("left");
-    }, 1200);
+      
+      // Additional delay before reset to ensure upload completes
+      setTimeout(() => {
+        resetStore();
+      }, 2000);
+    }, 3000);
   };
 
   const getOriginUrl = (url: string): string => {

@@ -13,7 +13,6 @@ from loguru import logger
 
 from src.core.config import Config
 from storage.db_manager import DatabaseManager
-from src.services.video_optimizer import video_optimizer
 
 router = APIRouter(
     prefix="/api/v1/recordings",
@@ -174,10 +173,12 @@ class CloudStorageManager:
                 'mov': 'video/quicktime'
             }.get(file_extension, 'video/webm')
             
-            # Prepare ExtraArgs for upload_fileobj
+            # Prepare ExtraArgs for upload_fileobj with streaming optimization
             extra_args = {
                 'ContentType': content_type,
-                'ServerSideEncryption': 'AES256'  # Enable server-side encryption
+                'ServerSideEncryption': 'AES256',  # Enable server-side encryption
+                'CacheControl': 'public, max-age=31536000',  # 1 year cache for videos
+                'ContentDisposition': f'inline; filename="{object_key.split("/")[-1]}"'
             }
             
             if metadata:
@@ -318,128 +319,6 @@ class CloudStorageManager:
 storage_manager = CloudStorageManager()
 
 
-async def optimize_recording_video_internal(recording_id: str, object_key: str, cloud_url: str) -> dict:
-    """
-    Internal function to optimize a recording's video file for web streaming.
-    This is called automatically after upload.
-    """
-    try:
-        # Check if optimization is enabled
-        if not Config.VIDEO_OPTIMIZATION_ENABLED:
-            logger.info("🎬 Video optimization disabled - skipping")
-            return {"success": False, "reason": "Video optimization disabled"}
-        
-        # Check if FFmpeg is available
-        if not video_optimizer._check_ffmpeg():
-            logger.warning("⚠️ FFmpeg not available - skipping automatic optimization")
-            return {"success": False, "reason": "FFmpeg not available"}
-        
-        # Download from S3
-        import boto3
-        from botocore.exceptions import ClientError
-        
-        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-        aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-        aws_region = os.getenv("AWS_REGION", "us-east-1")
-        
-        if not aws_access_key or not aws_secret_key:
-            logger.warning("⚠️ AWS credentials not configured - skipping optimization")
-            return {"success": False, "reason": "AWS credentials not configured"}
-        
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=aws_access_key,
-            aws_secret_access_key=aws_secret_key,
-            region_name=aws_region
-        )
-        
-        # Extract bucket from cloud_url
-        bucket_name = cloud_url.split('/')[2].split('.')[0]
-        
-        # Download to temp file
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
-            temp_path = temp_file.name
-            
-            logger.info(f"📥 Downloading from S3 for optimization: {bucket_name}/{object_key}")
-            s3_client.download_file(bucket_name, object_key, temp_path)
-            
-            # Optimize the video
-            logger.info(f"🎬 Optimizing video: {temp_path}")
-            success, optimized_path = video_optimizer.optimize_webm_for_streaming(temp_path)
-            
-            if success:
-                # Upload optimized version back to S3
-                optimized_key = object_key.replace('.webm', '_optimized.webm')
-                
-                logger.info(f"📤 Uploading optimized video: {optimized_key}")
-                s3_client.upload_file(
-                    optimized_path,
-                    bucket_name,
-                    optimized_key,
-                    ExtraArgs={
-                        'ContentType': 'video/webm',
-                        'ServerSideEncryption': 'AES256'
-                    }
-                )
-                
-                # Generate new cloud URL
-                optimized_cloud_url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{optimized_key}"
-                
-                # Update database with optimized version
-                db = DatabaseManager()
-                optimized_filename = f"interview-recording-{recording_id}_optimized.webm"
-                
-                update_data = {
-                    "filename": optimized_filename,
-                    "object_key": optimized_key,
-                    "cloud_url": optimized_cloud_url,
-                    "updated_at": datetime.utcnow().isoformat()
-                }
-                
-                # Add metadata about optimization
-                metadata = {
-                    "optimized": True,
-                    "optimization_date": datetime.utcnow().isoformat(),
-                    "original_object_key": object_key,
-                    "original_cloud_url": cloud_url,
-                    "auto_optimized": True
-                }
-                
-                # Convert to proper JSON string
-                import json
-                metadata_json = json.dumps(metadata)
-                
-                update_data["metadata"] = metadata_json
-                
-                db.update("interview_recordings", {"id": recording_id}, update_data)
-                
-                # Cleanup temp files
-                os.unlink(temp_path)
-                os.unlink(optimized_path)
-                
-                logger.info(f"✅ Internal video optimization completed successfully")
-                logger.info(f"🔗 New optimized URL: {optimized_cloud_url}")
-                
-                return {
-                    "success": True,
-                    "optimized_url": optimized_cloud_url,
-                    "optimized_key": optimized_key
-                }
-                
-            else:
-                # Cleanup temp file
-                os.unlink(temp_path)
-                logger.error("❌ Internal video optimization failed")
-                return {"success": False, "reason": "Optimization process failed"}
-                
-    except ClientError as e:
-        logger.error(f"❌ S3 error during internal optimization: {e}")
-        return {"success": False, "reason": f"S3 error: {str(e)}"}
-    except Exception as e:
-        logger.error(f"❌ Error during internal video optimization: {e}")
-        return {"success": False, "reason": f"Optimization error: {str(e)}"}
-
 
 @router.options("/upload")
 async def upload_recording_options():
@@ -532,13 +411,21 @@ async def get_presigned_upload_url(
             )
             
             # Generate presigned URL for PUT operation (15 minutes expiry)
+            # Add streaming-optimized headers for seamless video playback
             presigned_url = s3_client.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': storage_manager.bucket_name,
                     'Key': object_key,
                     'ContentType': content_type,
-                    'ServerSideEncryption': 'AES256'
+                    'ServerSideEncryption': 'AES256',
+                    'CacheControl': 'public, max-age=31536000',  # 1 year cache for videos
+                    'ContentDisposition': f'inline; filename="{object_key.split("/")[-1]}"',
+                    'Metadata': {
+                        'optimized-for-streaming': 'true',
+                        'upload-method': 'direct-s3',
+                        'content-encoding': 'identity'
+                    }
                 },
                 ExpiresIn=900  # 15 minutes
             )
@@ -691,24 +578,6 @@ async def confirm_upload(
             recording_id = db_result.get('id')
             logger.info(f"✅ Recording metadata saved to database with ID: {recording_id}")
             
-            # Automatically optimize the video for web streaming (if enabled)
-            optimization_result = None
-            if Config.AUTO_OPTIMIZE_VIDEOS and Config.VIDEO_OPTIMIZATION_ENABLED:
-                try:
-                    logger.info(f"🎬 Starting automatic video optimization for recording {recording_id}")
-                    optimization_result = await optimize_recording_video_internal(recording_id, object_key, object_url)
-                    
-                    if optimization_result and optimization_result.get('success'):
-                        logger.info(f"✅ Automatic video optimization completed successfully")
-                    else:
-                        logger.warning(f"⚠️ Automatic video optimization failed, but upload was successful")
-                        
-                except Exception as opt_error:
-                    logger.warning(f"⚠️ Automatic video optimization failed: {opt_error}")
-                    # Don't fail the upload if optimization fails
-            else:
-                logger.info(f"⏭️ Automatic video optimization disabled - skipping")
-            
             response_data = {
                 "success": True,
                 "message": "Upload confirmed and metadata stored",
@@ -716,8 +585,7 @@ async def confirm_upload(
                 "object_key": object_key,
                 "object_url": object_url,
                 "file_size": file_size,
-                "storage_type": "s3",
-                "optimization_status": "completed" if optimization_result and optimization_result.get('success') else "failed"
+                "storage_type": "s3"
             }
             
             return JSONResponse(status_code=200, content=response_data)
@@ -1011,271 +879,3 @@ async def test_database_connection():
         })
 
 
-@router.post("/optimize/{recording_id}")
-async def optimize_recording_video(request: Request, recording_id: str):
-    """
-    Optimize a recording's video file for web streaming.
-    Downloads from S3, optimizes, and re-uploads.
-    """
-    try:
-        db = DatabaseManager()
-        recording = db.fetch_one("interview_recordings", {"id": recording_id})
-        
-        if not recording:
-            raise HTTPException(status_code=404, detail="Recording not found")
-        
-        if recording.get("storage_type") != "s3":
-            raise HTTPException(status_code=400, detail="Only S3 recordings can be optimized")
-        
-        if not recording.get("cloud_url"):
-            raise HTTPException(status_code=400, detail="Recording has no cloud URL")
-        
-        logger.info(f"🎬 Starting video optimization for recording {recording_id}")
-        logger.info(f"📊 Original file: {recording.get('filename')}")
-        logger.info(f"🔗 Cloud URL: {recording.get('cloud_url')}")
-        
-        # Download from S3
-        try:
-            import boto3
-            from botocore.exceptions import ClientError
-            
-            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-            aws_region = os.getenv("AWS_REGION", "us-east-1")
-            
-            if not aws_access_key or not aws_secret_key:
-                raise HTTPException(status_code=500, detail="AWS credentials not configured")
-            
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=aws_access_key,
-                aws_secret_access_key=aws_secret_key,
-                region_name=aws_region
-            )
-            
-            # Extract bucket and key from cloud_url
-            cloud_url = recording["cloud_url"]
-            bucket_name = cloud_url.split('/')[2].split('.')[0]
-            object_key = recording["object_key"]
-            
-            # Download to temp file
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
-                temp_path = temp_file.name
-                
-                logger.info(f"📥 Downloading from S3: {bucket_name}/{object_key}")
-                s3_client.download_file(bucket_name, object_key, temp_path)
-                
-                # Optimize the video
-                logger.info(f"🎬 Optimizing video: {temp_path}")
-                success, optimized_path = video_optimizer.optimize_webm_for_streaming(temp_path)
-                
-                if success:
-                    # Upload optimized version back to S3
-                    optimized_key = object_key.replace('.webm', '_optimized.webm')
-                    
-                    logger.info(f"📤 Uploading optimized video: {optimized_key}")
-                    s3_client.upload_file(
-                        optimized_path,
-                        bucket_name,
-                        optimized_key,
-                        ExtraArgs={
-                            'ContentType': 'video/webm',
-                            'ServerSideEncryption': 'AES256'
-                        }
-                    )
-                    
-                    # Generate new cloud URL
-                    optimized_cloud_url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{optimized_key}"
-                    
-                    # Update database with optimized version
-                    optimized_filename = recording["filename"].replace('.webm', '_optimized.webm')
-                    
-                    update_data = {
-                        "filename": optimized_filename,
-                        "object_key": optimized_key,
-                        "cloud_url": optimized_cloud_url,
-                        "updated_at": datetime.utcnow().isoformat()
-                    }
-                    
-                    # Add metadata about optimization
-                    if recording.get("metadata"):
-                        metadata = recording["metadata"]
-                    else:
-                        metadata = {}
-                    
-                    metadata["optimized"] = True
-                    metadata["optimization_date"] = datetime.utcnow().isoformat()
-                    metadata["original_object_key"] = object_key
-                    metadata["original_cloud_url"] = cloud_url
-                    
-                    # Convert to proper JSON string
-                    import json
-                    metadata_json = json.dumps(metadata)
-                    update_data["metadata"] = metadata_json
-                    
-                    db.update("interview_recordings", {"id": recording_id}, update_data)
-                    
-                    # Cleanup temp files
-                    os.unlink(temp_path)
-                    os.unlink(optimized_path)
-                    
-                    logger.info(f"✅ Video optimization completed successfully")
-                    logger.info(f"🔗 New optimized URL: {optimized_cloud_url}")
-                    
-                    return JSONResponse(status_code=200, content={
-                        "success": True,
-                        "message": "Video optimized successfully",
-                        "recording_id": recording_id,
-                        "original_url": cloud_url,
-                        "optimized_url": optimized_cloud_url,
-                        "original_key": object_key,
-                        "optimized_key": optimized_key
-                    })
-                    
-                else:
-                    # Cleanup temp file
-                    os.unlink(temp_path)
-                    raise HTTPException(status_code=500, detail="Video optimization failed")
-                    
-        except ClientError as e:
-            logger.error(f"❌ S3 error during optimization: {e}")
-            raise HTTPException(status_code=500, detail=f"S3 error: {str(e)}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Error optimizing video: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to optimize video: {str(e)}")
-
-
-@router.post("/create-mp4-fallback/{recording_id}")
-async def create_mp4_fallback(request: Request, recording_id: str):
-    """
-    Create an MP4 fallback version of a WebM recording for better browser compatibility.
-    """
-    try:
-        db = DatabaseManager()
-        recording = db.fetch_one("interview_recordings", {"id": recording_id})
-        
-        if not recording:
-            raise HTTPException(status_code=404, detail="Recording not found")
-        
-        if recording.get("storage_type") != "s3":
-            raise HTTPException(status_code=400, detail="Only S3 recordings can be converted")
-        
-        if not recording.get("cloud_url"):
-            raise HTTPException(status_code=400, detail="Recording has no cloud URL")
-        
-        logger.info(f"🎬 Creating MP4 fallback for recording {recording_id}")
-        
-        # Download from S3
-        try:
-            import boto3
-            from botocore.exceptions import ClientError
-            
-            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-            aws_region = os.getenv("AWS_REGION", "us-east-1")
-            
-            if not aws_access_key or not aws_secret_key:
-                raise HTTPException(status_code=500, detail="AWS credentials not configured")
-            
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=aws_access_key,
-                aws_secret_access_key=aws_secret_key,
-                region_name=aws_region
-            )
-            
-            cloud_url = recording["cloud_url"]
-            bucket_name = cloud_url.split('/')[2].split('.')[0]
-            object_key = recording["object_key"]
-            
-            # Download to temp file
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
-                temp_path = temp_file.name
-                
-                logger.info(f"📥 Downloading from S3: {bucket_name}/{object_key}")
-                s3_client.download_file(bucket_name, object_key, temp_path)
-                
-                # Create MP4 fallback
-                success, mp4_path = video_optimizer.create_mp4_fallback(temp_path)
-                
-                if success:
-                    # Upload MP4 version to S3
-                    mp4_key = object_key.replace('.webm', '.mp4')
-                    
-                    logger.info(f"📤 Uploading MP4 fallback: {mp4_key}")
-                    s3_client.upload_file(
-                        mp4_path,
-                        bucket_name,
-                        mp4_key,
-                        ExtraArgs={
-                            'ContentType': 'video/mp4',
-                            'ServerSideEncryption': 'AES256'
-                        }
-                    )
-                    
-                    # Generate MP4 cloud URL
-                    mp4_cloud_url = f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{mp4_key}"
-                    
-                    # Update database with MP4 fallback info
-                    mp4_filename = recording["filename"].replace('.webm', '.mp4')
-                    
-                    update_data = {
-                        "mp4_fallback_url": mp4_cloud_url,
-                        "mp4_object_key": mp4_key,
-                        "mp4_filename": mp4_filename,
-                        "updated_at": datetime.utcnow().isoformat()
-                    }
-                    
-                    # Add metadata about MP4 fallback
-                    if recording.get("metadata"):
-                        metadata = recording["metadata"]
-                    else:
-                        metadata = {}
-                    
-                    metadata["mp4_fallback_created"] = True
-                    metadata["mp4_fallback_date"] = datetime.utcnow().isoformat()
-                    metadata["mp4_fallback_url"] = mp4_cloud_url
-                    
-                    # Convert to proper JSON string
-                    import json
-                    metadata_json = json.dumps(metadata)
-                    update_data["metadata"] = metadata_json
-                    
-                    db.update("interview_recordings", {"id": recording_id}, update_data)
-                    
-                    # Cleanup temp files
-                    os.unlink(temp_path)
-                    os.unlink(mp4_path)
-                    
-                    logger.info(f"✅ MP4 fallback created successfully")
-                    logger.info(f"🔗 MP4 URL: {mp4_cloud_url}")
-                    
-                    return JSONResponse(status_code=200, content={
-                        "success": True,
-                        "message": "MP4 fallback created successfully",
-                        "recording_id": recording_id,
-                        "webm_url": cloud_url,
-                        "mp4_url": mp4_cloud_url,
-                        "webm_key": object_key,
-                        "mp4_key": mp4_key
-                    })
-                    
-                else:
-                    # Cleanup temp file
-                    os.unlink(temp_path)
-                    raise HTTPException(status_code=500, detail="MP4 conversion failed")
-                    
-        except ClientError as e:
-            logger.error(f"❌ S3 error during MP4 conversion: {e}")
-            raise HTTPException(status_code=500, detail=f"S3 error: {str(e)}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Error creating MP4 fallback: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create MP4 fallback: {str(e)}")

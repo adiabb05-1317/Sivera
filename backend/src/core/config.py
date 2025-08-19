@@ -110,6 +110,12 @@ class Config:
 
     # Audio Processing Configuration
     SUPPRESS_NANOBIND_WARNINGS = os.getenv("SUPPRESS_NANOBIND_WARNINGS", "false").lower() == "true"
+    
+    # Video Optimization Configuration
+    VIDEO_OPTIMIZATION_MAX_SIZE_MB = int(os.getenv("VIDEO_OPTIMIZATION_MAX_SIZE_MB", "500"))  # 500MB default
+    FFMPEG_TIMEOUT = int(os.getenv("FFMPEG_TIMEOUT", "300"))  # 5 minutes default timeout
+    VIDEO_OPTIMIZATION_ENABLED = os.getenv("VIDEO_OPTIMIZATION_ENABLED", "true").lower() == "true"
+    AUTO_OPTIMIZE_VIDEOS = os.getenv("AUTO_OPTIMIZE_VIDEOS", "true").lower() == "true"
 
     # TTS Configuration
     # TODO: add instructions for other TTS providers
@@ -129,7 +135,7 @@ class Config:
             "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
             "region": os.getenv("AWS_REGION", "us-east-1"),
             "voice_id": os.getenv("AWS_POLLY_VOICE_ID", "Ruth"),
-            "engine": os.getenv("AWS_POLLY_ENGINE", "generative"),
+            "engine": os.getenv("AWS_POLLY_ENGINE", "neural"),
             "language": os.getenv("AWS_POLLY_LANGUAGE", "en"),
             "rate": os.getenv("AWS_POLLY_RATE", "+10%"),
             "volume": os.getenv("AWS_POLLY_VOLUME", "loud"),

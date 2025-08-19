@@ -30,6 +30,163 @@ interface UseDirectS3UploadReturn {
   uploadError: string | null;
 }
 
+// Helper function for single request upload (smaller files)
+async function uploadSingleRequest(
+  blob: Blob,
+  preSignedData: PreSignedUrlResponse,
+  isDevelopment: boolean,
+  setUploadProgress: (progress: UploadProgress) => void
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        const percentage = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress({
+          loaded: event.loaded,
+          total: event.total,
+          percentage
+        });
+        
+        if (isDevelopment && percentage % 20 === 0) {
+          console.log(`📤 Upload progress: ${percentage}%`);
+        }
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (isDevelopment) {
+          console.log('✅ S3 upload completed successfully');
+        }
+        resolve();
+      } else {
+        reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('S3 upload failed due to network error'));
+    });
+
+    xhr.addEventListener('timeout', () => {
+      reject(new Error('S3 upload timed out'));
+    });
+
+    xhr.open('PUT', preSignedData.presigned_url);
+    xhr.setRequestHeader('Content-Type', preSignedData.content_type);
+    xhr.setRequestHeader('Content-Encoding', 'identity');
+    xhr.timeout = 600000; // 10 minutes
+    xhr.send(blob);
+  });
+}
+
+// Optimized upload function for large WebM files with retry logic
+async function uploadOptimizedWebM(
+  blob: Blob,
+  preSignedData: PreSignedUrlResponse,
+  isDevelopment: boolean,
+  setUploadProgress: (progress: UploadProgress) => void
+): Promise<void> {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000; // Start with 1 second delay
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (isDevelopment && attempt > 1) {
+        console.log(`📤 Upload attempt ${attempt}/${MAX_RETRIES}...`);
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Enhanced progress tracking with speed calculation
+        let lastLoaded = 0;
+        let lastTime = Date.now();
+        
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const now = Date.now();
+            const timeDiff = now - lastTime;
+            const loadedDiff = event.loaded - lastLoaded;
+            
+            if (timeDiff > 500) { // Update every 500ms
+              const speed = loadedDiff / (timeDiff / 1000); // bytes per second
+              const speedMBps = speed / (1024 * 1024);
+              const percentage = Math.round((event.loaded / event.total) * 100);
+              
+              setUploadProgress({
+                loaded: event.loaded,
+                total: event.total,
+                percentage
+              });
+              
+              if (isDevelopment && percentage % 5 === 0) {
+                const eta = speed > 0 ? (event.total - event.loaded) / speed : 0;
+                console.log(`📤 Upload: ${percentage}% (${(event.loaded / 1024 / 1024).toFixed(1)}/${(event.total / 1024 / 1024).toFixed(1)}MB) Speed: ${speedMBps.toFixed(1)}MB/s ETA: ${Math.round(eta)}s`);
+              }
+              
+              lastLoaded = event.loaded;
+              lastTime = now;
+            }
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            if (isDevelopment) {
+              console.log('✅ WebM upload completed successfully');
+            }
+            resolve();
+          } else {
+            reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('S3 upload failed due to network error'));
+        });
+
+        xhr.addEventListener('timeout', () => {
+          reject(new Error('S3 upload timed out'));
+        });
+
+        xhr.open('PUT', preSignedData.presigned_url);
+        
+        // Use the exact content-type from presigned URL to avoid 403 errors
+        xhr.setRequestHeader('Content-Type', preSignedData.content_type);
+        xhr.setRequestHeader('Content-Encoding', 'identity');
+        
+        // Optimized timeout based on file size (minimum 5 minutes, +1min per 50MB)
+        const timeoutMinutes = Math.max(5, Math.ceil(blob.size / (50 * 1024 * 1024)));
+        xhr.timeout = timeoutMinutes * 60 * 1000;
+        
+        if (isDevelopment) {
+          console.log(`📤 Uploading WebM with ${timeoutMinutes}min timeout...`);
+        }
+        
+        xhr.send(blob);
+      });
+      
+      // Success - break retry loop
+      break;
+      
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        throw error; // Final attempt failed
+      }
+      
+      const delay = RETRY_DELAY * Math.pow(2, attempt - 1); // Exponential backoff
+      if (isDevelopment) {
+        console.warn(`⚠️ Upload attempt ${attempt} failed, retrying in ${delay}ms:`, error);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 export function useDirectS3Upload(): UseDirectS3UploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
@@ -38,8 +195,7 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
   const { 
     jobId, 
     candidateId,
-    roundNumber,
-    currentAssessment 
+    roundNumber
   } = usePathStore();
 
   const uploadRecording = useCallback(async (recordingBlob: Blob) => {
@@ -100,7 +256,9 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       formData.append('candidate_id', candidateId);
       formData.append('timestamp', timestamp);
       formData.append('file_size', recordingBlob.size.toString());
-      formData.append('content_type', recordingBlob.type || 'video/webm');
+      // Preserve full content type including codec parameters for proper playback
+      const normalizedContentType = recordingBlob.type || 'video/webm';
+      formData.append('content_type', normalizedContentType);
       
       // Add interview context
       const interviewType = roundNumber ? 'human_interview' : 'ai_interview';
@@ -123,7 +281,7 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
           candidate_id: candidateId,
           timestamp,
           file_size: recordingBlob.size,
-          content_type: recordingBlob.type || 'video/webm',
+          content_type: normalizedContentType,
           interview_type: interviewType,
           round_number: roundNumber,
           round_token: roundToken
@@ -157,62 +315,33 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         });
       }
 
-      // Step 2: Upload directly to S3 using pre-signed URL
+      // Step 2: Upload directly to S3 using optimized method
       if (isDevelopment) {
         console.log('📋 Step 2: Uploading directly to S3...');
       }
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percentage = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress({
-              loaded: event.loaded,
-              total: event.total,
-              percentage
-            });
-            
-            if (isDevelopment && percentage % 20 === 0) { // Log every 20%
-              console.log(`📤 Upload progress: ${percentage}%`);
-            }
-          }
-        });
+      // Optimized upload logic for WebM files
+      const isWebM = recordingBlob.type.includes('webm') || preSignedData.content_type.includes('webm');
+      const LARGE_FILE_THRESHOLD = 25 * 1024 * 1024; // 25MB - lower threshold for WebM optimization
+      const useOptimizedUpload = recordingBlob.size > LARGE_FILE_THRESHOLD || isWebM;
 
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            if (isDevelopment) {
-              console.log('✅ S3 upload completed successfully');
-            }
-            resolve();
-          } else {
-            if (isDevelopment) {
-              console.error('❌ S3 upload failed:', {
-                status: xhr.status,
-                statusText: xhr.statusText,
-                responseText: xhr.responseText
-              });
-            }
-            reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
-          }
+      if (isDevelopment) {
+        console.log(`📋 File details:`, {
+          size: `${(recordingBlob.size / 1024 / 1024).toFixed(1)}MB`,
+          type: recordingBlob.type,
+          contentType: preSignedData.content_type,
+          isWebM,
+          useOptimizedUpload
         });
+      }
 
-        xhr.addEventListener('error', () => {
-          reject(new Error('S3 upload failed due to network error'));
-        });
-
-        xhr.addEventListener('timeout', () => {
-          reject(new Error('S3 upload timed out'));
-        });
-
-        // Configure S3 upload
-        xhr.open('PUT', preSignedData.presigned_url);
-        xhr.setRequestHeader('Content-Type', preSignedData.content_type);
-        xhr.setRequestHeader('Content-Encoding', 'identity'); // Disable additional compression
-        xhr.timeout = 600000; // 10 minutes timeout for large files
-        xhr.send(recordingBlob);
-      });
+      if (useOptimizedUpload) {
+        // Use optimized WebM upload with retry logic and proper headers
+        await uploadOptimizedWebM(recordingBlob, preSignedData, isDevelopment, setUploadProgress);
+      } else {
+        // For smaller files, use standard single request
+        await uploadSingleRequest(recordingBlob, preSignedData, isDevelopment, setUploadProgress);
+      }
 
       // Step 3: Confirm upload with backend and store metadata
       if (isDevelopment) {
@@ -226,7 +355,7 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       confirmFormData.append('candidate_id', candidateId);
       confirmFormData.append('timestamp', timestamp);
       confirmFormData.append('file_size', recordingBlob.size.toString());
-      confirmFormData.append('content_type', recordingBlob.type || 'video/webm');
+      confirmFormData.append('content_type', normalizedContentType);
       confirmFormData.append('interview_type', interviewType);
       
       if (roundNumber) {
@@ -257,11 +386,10 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         });
       }
 
-      // Show optimization status to user
-      if (confirmData.optimization_status === 'completed') {
-        console.log('🎬 Video automatically optimized for web streaming!');
-      } else if (confirmData.optimization_status === 'failed') {
-        console.warn('⚠️ Video optimization failed - manual optimization may be needed');
+      // Log upload success - optimization handled by proper S3 headers
+      if (isDevelopment) {
+        console.log('✅ WebM recording uploaded with streaming-optimized headers');
+        console.log('📹 File ready for immediate playback with proper MIME type');
       }
 
       setUploadProgress({ loaded: recordingBlob.size, total: recordingBlob.size, percentage: 100 });

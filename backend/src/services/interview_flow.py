@@ -613,6 +613,7 @@ class InterviewFlow:
                                         analytics = await analytics_service.analyze_interview(
                                             getattr(self, 'job_title', 'Unknown Position'),
                                             getattr(self, 'job_description', 'No description available'),
+                                            getattr(self, 'candidate_name', 'Unknown Candidate'),
                                             getattr(self, 'resume', 'No resume available'),
                                             getattr(self, 'additional_links_info', 'No additional links'),
                                             filtered_messages
