@@ -36,7 +36,7 @@ const UserTile = ({
   }, [localVideoStream, isCameraOn, videoRef]);
 
   return (
-    <div className="h-full w-full bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
+    <div className="h-full w-full bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-xl relative overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
       <div className="absolute inset-0 flex items-center justify-center">
         {isCameraOn && localVideoStream && videoRef ? (
           <video
@@ -111,9 +111,9 @@ const TranscriptionsBox = memo(() => {
   ]);
 
   return (
-    <div className="h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-3xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
+    <div className="h-full flex flex-col bg-app-blue-50 dark:bg-[--meet-surface] border border-app-blue-300/50 dark:border-app-blue-700/70 shadow-xl rounded-xl overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
       {/* Header */}
-      <div className="flex justify-between items-center py-3 px-4 bg-app-blue-50 dark:bg-[--meet-surface] border-b border-app-blue-200/60 dark:border-app-blue-700/60">
+      <div className="flex justify-between items-center py-3 px-4 border-b bg-app-blue-50 dark:bg-[--meet-surface] border-app-blue-200/60 dark:border-app-blue-700/60">
         <h3 className="text-app-blue-800 dark:text-app-blue-200 font-semibold text-sm flex items-center gap-2 tracking-tight">
           <Icons.Chat className="w-4 h-4 text-app-blue-500 dark:text-app-blue-300" />
           <span>Conversation</span>
