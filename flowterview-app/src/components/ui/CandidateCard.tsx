@@ -174,7 +174,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                       window.open(candidate.room_url, "_blank");
                     }}
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <Eye className="h-4 w-4" />
                     Join Interview
                   </DropdownMenuItem>
                 )}

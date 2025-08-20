@@ -42,6 +42,7 @@ import {
   fetchInterviewById,
   fetchInterviewIdFromJobId,
 } from "@/lib/supabase-candidates";
+import { toast } from "sonner";
 
 export default function InviteCandidatesPage() {
   const router = useRouter();
@@ -528,7 +529,7 @@ export default function InviteCandidatesPage() {
       });
 
       setIsSent(true);
-      
+
       // Refresh hooks and invalidate all related caches
       refreshCandidates();
       refreshInterviews();
@@ -543,17 +544,18 @@ export default function InviteCandidatesPage() {
         }),
         queryClient.invalidateQueries({
           queryKey: ["candidates"],
-        })
+        }),
       ]);
 
-      console.log("Successfully refreshed candidates, interviews, and analytics caches");
+      console.log(
+        "Successfully refreshed candidates, interviews, and analytics caches"
+      );
     } catch (err) {
       console.error("Error in handleSubmit:", err);
-      setFormError(
-        err instanceof Error
-          ? err.message
-          : "Failed to submit candidates. Please try again."
-      );
+      toast.error("Failed to submit candidates. Please try again.", {
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
     } finally {
       setIsSubmitting(false);
     }

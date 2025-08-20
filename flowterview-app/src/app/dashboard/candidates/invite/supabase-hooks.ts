@@ -127,7 +127,7 @@ export function useBulkAddCandidates() {
 
       if (existingEmails.length > 0) {
         throw new Error(
-          `Email(s) already exist for this job: ${existingEmails.join(", ")}`
+          `Email already exist for this job: ${existingEmails.join(", ")}`
         );
       }
 

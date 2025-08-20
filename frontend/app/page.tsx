@@ -42,7 +42,7 @@ export default function Home() {
     router,
   ]);
 
-  if (jobId) {
+  if (!jobId) {
     return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a]">
         <div className="flex flex-col items-center justify-center">
