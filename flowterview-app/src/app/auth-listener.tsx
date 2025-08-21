@@ -20,11 +20,8 @@ export default function AuthListener({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`🔐 Auth event: ${event}`);
-      
       if (event === "SIGNED_IN") {
         // User signed in - invalidate auth queries to fetch fresh data
-        console.log("👤 User signed in, invalidating auth queries");
         await queryClient.invalidateQueries({ queryKey: queryKeys.auth.user() });
         
         // Pre-fetch critical dashboard data in background
@@ -39,11 +36,9 @@ export default function AuthListener({
         
       } else if (event === "TOKEN_REFRESHED") {
         // Token refreshed - no action needed, TanStack Query handles this gracefully
-        console.log("🔄 Token refreshed, TanStack Query will handle refresh as needed");
         
       } else if (event === "SIGNED_OUT") {
         // User signed out - clear all cached data
-        console.log("👋 User signed out, clearing all cached data");
         queryClient.clear();
         
         // Redirect to login

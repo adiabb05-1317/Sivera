@@ -17,7 +17,7 @@ export const filteredSources = (sources: TSource[]): TSource[] => {
     (source) => source.score === highestScore
   );
 
-  console.log("Filtered sources:", highestScoreSources);
+
 
   return highestScoreSources.length > 0 &&
     (highestScoreSources[0].score || 0) > 0.26

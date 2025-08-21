@@ -129,11 +129,6 @@ const VisualLayer = ({ className }: { className?: string }) => {
               fill
               onLoad={handleImageLoad}
               onError={(e) => {
-                console.error(
-                  "Image failed to load:",
-                  displayedSource.metadata.link,
-                  e
-                );
                 // Force display even on error
                 setImageLoaded(true);
                 setIsLoading(false);

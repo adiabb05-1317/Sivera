@@ -81,9 +81,7 @@ function RoundContent() {
       try {
         const decoded = decodeURIComponent(idnt);
         setDecodedEmail(decoded);
-        console.log("Decoded email:", decoded);
       } catch (error) {
-        console.error("Failed to decode email:", error);
         setError("Invalid email parameter");
         setCurrentStep("error");
         return;
@@ -250,7 +248,7 @@ function RoundContent() {
         }
       }
     } catch (err) {
-      console.error("Error checking round status:", err);
+      // Error checking round status
     }
   };
 
@@ -278,12 +276,11 @@ function RoundContent() {
         if (roomUrl) {
           window.location.href = roomUrl;
         } else {
-          console.error("No room URL available");
           setError("No interview room available. Please contact support.");
         }
       }
     } catch (err) {
-      console.error("Error starting interview:", err);
+      // Error starting interview
     }
   };
 
@@ -300,11 +297,7 @@ function RoundContent() {
       if (participant) {
         setUserRole(participant.role as "candidate" | "recruiter");
         setUserEmail(decodedEmail);
-        console.log(
-          `Identified user as ${participant.role} with email: ${decodedEmail}`
-        );
       } else {
-        console.warn(`No participant found with email: ${decodedEmail}`);
         // Fallback: assume candidate if no match found
         const candidateParticipant = allParticipants.find(
           (p) => p.role === "candidate"

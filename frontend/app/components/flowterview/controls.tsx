@@ -92,7 +92,6 @@ const Controls = ({
       setCallStatus("joining");
       await joinAndLeaveCallHandler("join");
     } catch (error) {
-      console.error("Error connecting to voice chat:", error);
       setTtsConnecting(false);
     }
   };
@@ -105,7 +104,6 @@ const Controls = ({
       setCallStatus("leaving");
       await joinAndLeaveCallHandler("leave");
     } catch (error) {
-      console.error("Error ending call:", error);
       showToast("Error ending call", "error");
     }
   };

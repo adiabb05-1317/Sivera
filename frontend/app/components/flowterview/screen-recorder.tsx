@@ -20,6 +20,7 @@ export function ScreenRecorder({
   const [isRecording, setIsRecording] = useState(false);
   const [hasStarted, setHasStarted] = useState(false); // Track if recording has been initiated
   const [isRecovering, setIsRecovering] = useState(false); // Track recovery attempts
+  const [hasUploadedRef] = useState({ current: false }); // Prevent multiple uploads
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -34,27 +35,13 @@ export function ScreenRecorder({
   const startRecordingWithStream = useCallback(
     async (screenStream: MediaStream) => {
       if (isRecording || hasStarted) {
-        if (isDevelopment) {
-          console.log("Recording already in progress or already started");
-        }
         return;
       }
 
       try {
-        if (isDevelopment) {
-          console.log("🎥 Starting recording with existing screen stream...");
-        }
-
         // Validate stream is still active
         const videoTracks = screenStream.getVideoTracks();
         const audioTracks = screenStream.getAudioTracks();
-
-        console.log("📺 Stream validation:", {
-          videoTracks: videoTracks.length,
-          audioTracks: audioTracks.length,
-          videoEnabled: videoTracks[0]?.enabled,
-          videoReadyState: videoTracks[0]?.readyState,
-        });
 
         if (videoTracks.length === 0 || videoTracks[0].readyState === "ended") {
           throw new Error("Screen stream is no longer active");
@@ -75,11 +62,8 @@ export function ScreenRecorder({
               channelCount: 1, // Mono to prevent sync issues and reduce file size
             },
           });
-          console.log(
-            "✅ Microphone access granted with sync-optimized settings"
-          );
         } catch {
-          console.log("No microphone access, will try screen audio");
+          // No microphone access, will try screen audio
         }
 
         // Prioritize microphone audio over screen audio and prevent duplication
@@ -89,14 +73,11 @@ export function ScreenRecorder({
         // Stop all screen audio tracks to prevent duplication
         screenAudioTracks.forEach((track) => {
           track.stop();
-          console.log("🔇 Stopped screen audio track to prevent duplication");
         });
 
         if (micAudioTracks.length > 0) {
           finalAudioTrack = micAudioTracks[0];
-          console.log("✅ Using microphone audio only (no duplication)");
         } else {
-          console.warn("⚠️ No microphone audio - video only recording");
           finalAudioTrack = null;
         }
 
@@ -123,9 +104,6 @@ export function ScreenRecorder({
         for (const mimeType of mimeTypes) {
           if (MediaRecorder.isTypeSupported(mimeType)) {
             options.mimeType = mimeType;
-            if (isDevelopment) {
-              console.log("✅ Using mimeType:", mimeType);
-            }
             break;
           }
         }
@@ -168,77 +146,35 @@ export function ScreenRecorder({
           (options as any).videoKeyFrameIntervalDuration = 500; // More frequent keyframes for crisp quality
         }
 
-        console.log("📹 MediaRecorder options:", options);
-
         const mediaRecorder = new MediaRecorder(combinedStream, options);
         mediaRecorderRef.current = mediaRecorder;
         recordedChunksRef.current = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          if (isDevelopment) {
-            console.log(
-              "📹 Data available event:",
-              event.data.size,
-              "bytes",
-              "total chunks:",
-              recordedChunksRef.current.length
-            );
-          }
-
           if (event.data && event.data.size > 0) {
             // Create a new Blob from the data to ensure it's properly stored
             const chunkBlob = new Blob([event.data], { type: event.data.type });
             recordedChunksRef.current.push(chunkBlob);
-
-            if (isDevelopment) {
-              const totalSize = recordedChunksRef.current.reduce(
-                (sum, chunk) => sum + chunk.size,
-                0
-              );
-              console.log(
-                "✅ Added chunk, total size:",
-                (totalSize / 1024 / 1024).toFixed(2),
-                "MB"
-              );
-
-              // Memory management warning
-              if (totalSize > 500 * 1024 * 1024) {
-                // 500MB warning
-                console.warn(
-                  "⚠️ Large recording detected:",
-                  (totalSize / 1024 / 1024).toFixed(2),
-                  "MB"
-                );
-              }
-            }
-          } else {
-            if (isDevelopment) {
-              console.warn("⚠️ Received empty or invalid data chunk");
-            }
           }
 
           // Validate stream is still active
           const videoTracks = screenStream.getVideoTracks();
           if (videoTracks.length > 0 && videoTracks[0].readyState === "ended") {
-            console.warn(
-              "⚠️ Video track ended during recording - this may cause corruption"
-            );
+            // Video track ended during recording - this may cause corruption
           }
         };
 
         mediaRecorder.onstop = () => {
+          // Prevent multiple uploads
+          if (hasUploadedRef.current) {
+            console.log("Upload already triggered, skipping duplicate");
+            return;
+          }
+
           const endTime = Date.now();
           const duration = recordingStartTimeRef.current
             ? (endTime - recordingStartTimeRef.current) / 1000
             : 0;
-
-          console.log("🛑 CRITICAL: MediaRecorder.onstop fired!", {
-            duration: `${duration.toFixed(1)}s`,
-            callStatus,
-            chunksCollected: recordedChunksRef.current.length,
-            stackTrace: new Error().stack?.split("\n").slice(0, 5),
-            timestamp: new Date().toISOString(),
-          });
 
           // Validate chunks before creating blob
           const validChunks = recordedChunksRef.current.filter(
@@ -246,9 +182,6 @@ export function ScreenRecorder({
           );
 
           if (validChunks.length === 0) {
-            console.error(
-              "❌ Recording completed but no valid data chunks collected"
-            );
             onRecordingError?.("Recording failed - no data collected");
             return;
           }
@@ -261,32 +194,17 @@ export function ScreenRecorder({
             type: mimeType,
           });
 
-          console.log("✅ Screen recording completed:", {
-            size: recordingBlob.size,
-            sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2),
-            duration: `${duration.toFixed(1)}s`,
-            chunks: validChunks.length,
-            mimeType: mimeType,
-            endTime: new Date().toISOString(),
-            wasShortRecording: duration < 10,
-          });
-
           // Enhanced blob validation for upload reliability
           if (recordingBlob.size > 0) {
             // Additional validation for minimum expected size (prevent tiny corrupted files)
             const minExpectedSize = duration * 50000; // ~50KB per second minimum (more lenient)
             if (recordingBlob.size < minExpectedSize && duration > 10) {
-              console.warn(
-                `⚠️ Recording size (${recordingBlob.size}) seems small for duration (${duration}s)`
-              );
+              // Recording size seems small for duration
             }
 
             // Validate blob type matches expected format
             if (!recordingBlob.type || !recordingBlob.type.includes("video")) {
-              console.warn(
-                "⚠️ Blob type validation failed:",
-                recordingBlob.type
-              );
+              // Blob type validation failed
             }
 
             // Test blob readability before upload
@@ -295,34 +213,27 @@ export function ScreenRecorder({
               if (testSlice.size === 0) {
                 throw new Error("Blob slice test failed");
               }
-              console.log("✅ Blob validation passed - ready for upload");
+              
+              // Mark as uploaded before triggering callback
+              hasUploadedRef.current = true;
               onRecordingStop?.(recordingBlob);
             } catch (blobError) {
-              console.error("❌ Blob validation failed:", blobError);
               onRecordingError?.(
                 "Recording validation failed - corrupted file detected"
               );
             }
           } else {
-            console.error("❌ Recording blob is empty after creation");
             onRecordingError?.("Recording failed - empty file created");
           }
         };
 
         mediaRecorder.onerror = (event) => {
-          console.error("❌ MediaRecorder error:", event);
           onRecordingError?.("Recording failed");
           stopRecording(); // Error handler - fire and forget
         };
 
         mediaRecorder.onstart = () => {
           recordingStartTimeRef.current = Date.now();
-          if (isDevelopment) {
-            console.log(
-              "🎬 MediaRecorder started successfully at",
-              new Date().toISOString()
-            );
-          }
 
           // Gentle health monitoring (non-intrusive)
           healthCheckIntervalRef.current = setInterval(() => {
@@ -333,74 +244,31 @@ export function ScreenRecorder({
                 ? (Date.now() - recordingStartTimeRef.current) / 1000
                 : 0;
 
-              // Only log status, never interfere with recording
-              if (
-                isDevelopment &&
-                Math.floor(duration) % 30 === 0 &&
-                duration > 0
-              ) {
-                console.log(
-                  `📹 Recording status: ${duration.toFixed(1)}s recorded`,
-                  {
-                    trackState: track.readyState,
-                    mediaRecorderState: mediaRecorderRef.current?.state,
-                    chunksCollected: recordedChunksRef.current.length,
-                    callStatus,
-                  }
-                );
-              }
-
               // Log track state changes but don't react to them
               if (track.readyState === "ended") {
-                console.log(
-                  "📊 Health check detected ended track - event listener will handle"
-                );
+                // Health check detected ended track - event listener will handle
               }
             }
           }, 10000); // Check every 10 seconds - less frequent to avoid interference
         };
 
         mediaRecorder.onpause = () => {
-          console.log("⏸️ MediaRecorder paused");
+          // MediaRecorder paused
         };
 
         mediaRecorder.onresume = () => {
-          console.log("▶️ MediaRecorder resumed");
+          // MediaRecorder resumed
         };
 
         // Simplified and robust video track monitoring (NO PREMATURE STOPPING)
         const videoTrack = screenStream.getVideoTracks()[0];
         if (videoTrack) {
-          console.log("🎯 Setting up video track monitoring:", {
-            initialState: videoTrack.readyState,
-            trackId: videoTrack.id,
-            trackKind: videoTrack.kind,
-          });
-
           videoTrack.addEventListener("ended", async () => {
             const duration = recordingStartTimeRef.current
               ? (Date.now() - recordingStartTimeRef.current) / 1000
               : 0;
 
-            console.log("🚨 CRITICAL: Video track ended event fired!", {
-              duration: `${duration.toFixed(1)}s`,
-              callStatus,
-              isRecovering,
-              mediaRecorderState: mediaRecorderRef.current?.state,
-              timestamp: new Date().toISOString(),
-            });
-
             // If screen sharing ends for any reason, end the interview immediately
-            console.log(
-              "🛑 Screen sharing ended - ending interview immediately"
-            );
-            console.log("📊 Final recording state:", {
-              duration,
-              callStatus,
-              recordingState: mediaRecorderRef.current?.state,
-              chunksCollected: recordedChunksRef.current.length,
-            });
-
             // Stop recording and end interview
             await stopRecording();
 
@@ -416,22 +284,20 @@ export function ScreenRecorder({
 
           // Enhanced track event monitoring
           videoTrack.addEventListener("mute", () => {
-            console.warn(
-              "⚠️ Video track muted - screen sharing may be restricted"
-            );
+            // Video track muted - screen sharing may be restricted
             // Don't stop recording on mute - just log it
           });
 
           videoTrack.addEventListener("unmute", () => {
-            console.log("✅ Video track unmuted - screen sharing restored");
+            // Video track unmuted - screen sharing restored
           });
 
           // Prevent track ending due to tab visibility changes
           const handleVisibilityChange = () => {
             if (document.hidden) {
-              console.log("🕵️ Tab became hidden - maintaining recording");
+              // Tab became hidden - maintaining recording
             } else {
-              console.log("✅ Tab became visible - recording continues");
+              // Tab became visible - recording continues
             }
           };
 
@@ -440,17 +306,11 @@ export function ScreenRecorder({
           // Monitor for browser-level interruptions
           window.addEventListener("beforeunload", (_e) => {
             if (mediaRecorderRef.current?.state === "recording") {
-              console.warn(
-                "⚠️ Page unloading during recording - attempting to save"
-              );
               // Try to stop recording gracefully
               try {
                 mediaRecorderRef.current.stop();
               } catch (error) {
-                console.error(
-                  "Error stopping recording on page unload:",
-                  error
-                );
+                // Error stopping recording on page unload
               }
             }
           });
@@ -461,33 +321,18 @@ export function ScreenRecorder({
         setHasStarted(true);
 
         // Start recording with optimized settings for screen content
-        console.log(
-          "🚀 About to start MediaRecorder with optimized settings for screen recording..."
-        );
-
         // Use 500ms chunks for optimal audio-video sync and data integrity
         mediaRecorder.start(500); // 500ms chunks - prevents sync drift and ensures complete data collection
 
-        console.log(
-          "✅ MediaRecorder.start() called, state:",
-          mediaRecorder.state
-        );
         onRecordingStart?.();
-
-        console.log("🎥 Screen recording started successfully with audio");
 
         // Add a timeout to detect if recording fails to start
         setTimeout(() => {
           if (mediaRecorder.state !== "recording") {
-            console.error(
-              "❌ MediaRecorder failed to start recording after 1 second, state:",
-              mediaRecorder.state
-            );
             onRecordingError?.("Recording failed to start");
           }
         }, 1000);
       } catch (error) {
-        console.error("❌ Error starting screen recording:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Failed to start recording";
         onRecordingError?.(errorMessage);
@@ -497,16 +342,19 @@ export function ScreenRecorder({
   );
 
   const stopRecording = useCallback(async () => {
-    if (mediaRecorderRef.current && isRecording) {
-      const duration = recordingStartTimeRef.current
-        ? (Date.now() - recordingStartTimeRef.current) / 1000
-        : 0;
-
-      if (isDevelopment) {
-        console.log(
-          `Screen recording stopping after ${duration.toFixed(1)} seconds`
-        );
-      }
+    // Prevent multiple stop calls
+    if (!mediaRecorderRef.current || !isRecording) {
+      console.log("Recording already stopped or not started");
+      return;
+    }
+    
+    // Immediately set to false to prevent multiple calls
+    setIsRecording(false);
+    setHasStarted(false);
+    
+    const duration = recordingStartTimeRef.current
+      ? (Date.now() - recordingStartTimeRef.current) / 1000
+      : 0;
 
       // Clear health check interval
       if (healthCheckIntervalRef.current) {
@@ -517,21 +365,18 @@ export function ScreenRecorder({
       // Ensure MediaRecorder is properly stopped and finalized
       try {
         if (mediaRecorderRef.current.state === "recording") {
-          console.log("🔄 Stopping MediaRecorder and finalizing...");
-
           // Request final data collection BEFORE stopping to ensure complete recording
           try {
             mediaRecorderRef.current.requestData();
             // Longer delay to ensure all data is properly collected and processed
             await new Promise((resolve) => setTimeout(resolve, 500));
           } catch (requestError) {
-            console.warn("Could not request final data:", requestError);
+            // Could not request final data
           }
 
           // Now stop the recorder
           mediaRecorderRef.current.stop();
         } else if (mediaRecorderRef.current.state === "paused") {
-          console.log("🔄 Resuming and stopping paused MediaRecorder...");
           mediaRecorderRef.current.resume();
           // Wait a bit longer to ensure resume happens
           setTimeout(() => {
@@ -539,7 +384,7 @@ export function ScreenRecorder({
               try {
                 mediaRecorderRef.current.requestData();
               } catch (e) {
-                console.warn("Could not request final data after resume:", e);
+                // Could not request final data after resume
               }
               setTimeout(() => {
                 if (mediaRecorderRef.current?.state === "recording") {
@@ -549,17 +394,12 @@ export function ScreenRecorder({
             }
           }, 200);
         } else {
-          console.log(
-            "🔄 MediaRecorder already in state:",
-            mediaRecorderRef.current.state
-          );
+          // MediaRecorder already in state
         }
       } catch (error) {
-        console.error("Error stopping MediaRecorder:", error);
+        // Error stopping MediaRecorder
       }
 
-      setIsRecording(false);
-      setHasStarted(false); // Reset state
       setIsRecovering(false); // Reset recovery state
 
       // Stop all tracks after a brief delay to allow MediaRecorder to finalize
@@ -569,10 +409,6 @@ export function ScreenRecorder({
           streamRef.current = null;
         }
       }, 100);
-
-      if (isDevelopment) {
-        console.log("Screen recording stopped and finalized");
-      }
     }
   }, [isRecording, isDevelopment]);
 
@@ -582,7 +418,6 @@ export function ScreenRecorder({
       isDevelopment && process.env.NEXT_PUBLIC_SKIP_RECORDING === "true";
 
     if (existingStream && !isRecording && !hasStarted && !shouldSkipRecording) {
-      console.log("🎥 Starting recording with provided stream...");
       startRecordingWithStream(existingStream);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -590,65 +425,25 @@ export function ScreenRecorder({
 
   // Auto-stop recording ONLY when call definitively ends
   useEffect(() => {
-    const currentDuration = recordingStartTimeRef.current
-      ? (Date.now() - recordingStartTimeRef.current) / 1000
-      : 0;
-
-    if (isDevelopment) {
-      console.log("🔍 Call status effect triggered:", {
-        callStatus,
-        isRecording,
-        duration: `${currentDuration.toFixed(1)}s`,
-        chunksCollected: recordedChunksRef.current.length,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
     // Handle both 'leaving' and 'left' statuses to ensure recording stops and uploads
     if (
       (callStatus === "leaving" || callStatus === "left") &&
       isRecording &&
       hasStarted
     ) {
-      console.log(
-        `✅ Call end detected (${callStatus}) - stopping recording to ensure upload`
-      );
-      console.log("📊 Final recording stats:", {
-        duration: `${currentDuration.toFixed(1)}s`,
-        chunks: recordedChunksRef.current.length,
-        totalSize: recordedChunksRef.current.reduce(
-          (sum, chunk) => sum + chunk.size,
-          0
-        ),
-      });
-
-      // Set hasStarted to false to prevent multiple stop attempts
-      setHasStarted(false);
-
+      console.log(`Call ending (${callStatus}) - stopping recording once`);
+      
       // Immediate stop for 'leaving' status, short delay for 'left'
       const delay = callStatus === "leaving" ? 500 : 1000;
       setTimeout(() => {
-        console.log(`🔚 Executing recording stop (${callStatus})...`);
         stopRecording(); // This triggers upload via onRecordingStop callback
       }, delay);
-    } else if (
-      isRecording &&
-      !["leaving", "left"].includes(callStatus) &&
-      isDevelopment
-    ) {
-      console.log(
-        `📝 Recording continues - call status "${callStatus}" is not a stop condition`
-      );
     }
-  }, [callStatus, isRecording, stopRecording, hasStarted, isDevelopment]);
+  }, [callStatus, isRecording, stopRecording, hasStarted]);
 
   // Cleanup on unmount only
   useEffect(() => {
     return () => {
-      if (isDevelopment) {
-        console.log("🧹 ScreenRecorder component unmounting - cleaning up...");
-      }
-
       // Clear health check interval
       if (healthCheckIntervalRef.current) {
         clearInterval(healthCheckIntervalRef.current);

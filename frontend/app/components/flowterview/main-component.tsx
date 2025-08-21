@@ -2,21 +2,34 @@
 
 import AudioClient from "./audio-client";
 import Presentation from "./presentation-layer";
-import ScreenRecorder from "./screen-recorder";
+import ScreenRecorderOptimized from "./screen-recorder-optimized";
 import RecordingPermission from "./recording-permission";
 import usePathStore from "@/app/store/PathStore";
-import useDirectS3Upload from "@/app/hooks/useDirectS3Upload";
-import { useState, useRef } from "react";
+import useEnhancedS3Upload from "@/app/hooks/useEnhancedS3Upload";
+import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 export default function FlowterviewComponent() {
   const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } =
     usePathStore();
-  const { uploadRecording } = useDirectS3Upload();
+  const { 
+    uploadRecording, 
+    isUploading, 
+    uploadProgress, 
+    uploadError,
+    retryUpload,
+    cancelUpload 
+  } = useEnhancedS3Upload();
+  
   const [recordingPermissionGranted, setRecordingPermissionGranted] =
     useState(false);
   const [activeScreenStream, setActiveScreenStream] =
     useState<MediaStream | null>(null);
+  const [isProcessingLargeFile, setIsProcessingLargeFile] = useState(false);
+  
+  // Track upload retry attempts
+  const uploadRetryCountRef = useRef(0);
+  const MAX_UPLOAD_RETRIES = 3;
 
   // Skip permission screen in development
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -26,94 +39,60 @@ export default function FlowterviewComponent() {
   };
 
   const handleRecordingStart = (): void => {
-    if (isDevelopment) {
-      console.log("Recording started");
-    }
+    // Silent recording - no UI notification
   };
 
-  const handleRecordingStop = async (recordingBlob: Blob) => {
-    if (isDevelopment) {
-      console.log(
-        "🎥 Recording stopped, starting upload...",
-        recordingBlob.size,
-        "bytes"
-      );
-      console.log("🔍 Current store values at upload time:", {
-        jobId,
-        candidateId,
-      });
-      console.log("📋 Blob details:", {
-        size: recordingBlob.size,
-        type: recordingBlob.type,
-        sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2),
-      });
-    }
+  const handleRecordingStop = useCallback(async (recordingBlob: Blob, isRetry: boolean = false) => {
+    const sizeMB = recordingBlob.size / (1024 * 1024);
 
+    // Validation
     if (recordingBlob.size === 0) {
-      if (isDevelopment) {
-        console.error("Recording blob is empty, skipping upload");
-      }
       return;
     }
 
-    // Validate blob is reasonable size (at least 500KB for any meaningful recording with new optimized settings)
-    if (recordingBlob.size < 512 * 1024) {
-      console.warn(
-        `⚠️ Recording seems too small: ${recordingBlob.size} bytes. This might be corrupted.`
-      );
-      // Don't return - still try to upload
+    // Handle large files with special care
+    const LARGE_FILE_THRESHOLD = 100; // 100MB
+    if (sizeMB > LARGE_FILE_THRESHOLD) {
+      setIsProcessingLargeFile(true);
+    }
+
+    // Reset retry counter only for new uploads, not retries
+    if (!isRetry) {
+      uploadRetryCountRef.current = 0;
     }
 
     try {
-      if (isDevelopment) {
-        console.log("📤 Starting direct S3 upload...");
-      }
       await uploadRecording(recordingBlob);
-      if (isDevelopment) {
-        console.log("✅ Direct S3 upload completed successfully!");
-      }
+      
+      // Silent upload - no UI notification
+      
     } catch (error) {
-      // Always log critical upload failures
-      console.error("❌ Failed to upload recording to S3:", error);
+      // Disable auto-retry to prevent multiple uploads
+      console.error("Upload failed:", error);
+      // Don't retry automatically - this was causing multiple uploads
+    } finally {
+      setIsProcessingLargeFile(false);
     }
-  };
+  }, [uploadRecording, retryUpload, cancelUpload, jobId, candidateId, isDevelopment]);
 
-  const handleRecordingError = (error: string) => {
-    // Always log recording errors as they're critical
-    console.error("Recording error:", error);
-  };
+  const handleRecordingError = useCallback((error: string) => {
+    // Log error but don't show UI
+  }, []);
 
-  const handlePermissionGranted = (screenStream: MediaStream) => {
-    console.log("🎥 Permission granted with stream:", {
-      videoTracks: screenStream.getVideoTracks().length,
-      audioTracks: screenStream.getAudioTracks().length,
-      streamId: screenStream.id,
-    });
-
+  const handlePermissionGranted = useCallback((screenStream: MediaStream) => {
+    // Prevent setting stream multiple times
+    if (activeScreenStream) {
+      console.log("Screen stream already set, ignoring duplicate");
+      return;
+    }
+    console.log("Setting screen stream and permission granted");
     setRecordingPermissionGranted(true);
     setActiveScreenStream(screenStream);
-    console.log("🎥 Screen recording will start with provided stream");
-  };
+  }, [activeScreenStream]);
 
-  const handlePermissionDenied = () => {
-    toast.error("Permission denied", {
-      description: "Please try again and click 'Share' to continue.",
-    });
-  };
-
-  // Debug logging - only log once per minute to reduce noise
-  const currentTime = Date.now();
-  const lastLogTime = useRef(0);
-
-  if (isDevelopment && currentTime - lastLogTime.current > 60000) {
-    // Log only every 60 seconds
-    console.log("FlowterviewComponent state:", {
-      recordingPermissionGranted,
-      isDevelopment,
-      nodeEnv: process.env.NODE_ENV,
-    });
-    lastLogTime.current = currentTime;
-  }
+  const handlePermissionDenied = useCallback(() => {
+    // Log but don't show UI
+  }, []);
 
   // Only skip recording entirely if explicitly set
   const shouldSkipRecording =
@@ -131,13 +110,16 @@ export default function FlowterviewComponent() {
 
   return (
     <main className="h-full w-full bg-[--meet-background] dark:bg-[--meet-background] relative overflow-hidden">
-      {/* Hidden Recording Component */}
-      <ScreenRecorder
+      {/* Hidden Recording Component - Optimized Version */}
+      <ScreenRecorderOptimized
         onRecordingStart={handleRecordingStart}
         onRecordingStop={handleRecordingStop}
         onRecordingError={handleRecordingError}
         existingStream={activeScreenStream}
       />
+      
+      {/* Hidden upload progress tracking in console only */}
+      
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-app-blue-800/40 via-app-blue-700/30 to-[#232336]/80 dark:from-app-blue-900/60 dark:via-[#292a3a]/60 dark:to-[#232336]/90 backdrop-blur-2xl" />
       <div className="h-full">
         <AudioClient onClearTranscripts={handleClearTranscripts} />

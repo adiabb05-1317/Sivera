@@ -190,7 +190,7 @@ export const invalidateRelatedQueries = async (
         await queryClient.invalidateQueries();
     }
   } catch (error) {
-    console.error("Error invalidating queries:", error);
+    // Error invalidating queries
     // Fallback to invalidating everything if specific invalidation fails
     await queryClient.invalidateQueries();
   }

@@ -20,12 +20,10 @@ export default function StoreInitializer({ children }: StoreInitializerProps) {
       initialized.current = true;
 
       const doInitialize = async () => {
-        console.log("🚀 StoreInitializer: Starting initialization...");
         try {
           await initializeStores();
-          console.log("✅ StoreInitializer: Initialization completed");
         } catch (error) {
-          console.error("❌ StoreInitializer: Initialization failed:", error);
+          // StoreInitializer: Initialization failed
         } finally {
           setIsInitializing(false);
         }

@@ -18,7 +18,6 @@ export default function Home() {
     const roomUrl = searchParams.get("room_url");
 
     if (urlJobId && urlCandidateId) {
-      console.log("✅ Setting jobId and candidateId from URL parameters");
       setJobId(urlJobId);
       setCandidateId(urlCandidateId);
 
@@ -29,7 +28,6 @@ export default function Home() {
         setRoomUrl(decodeURIComponent(roomUrl));
       }
 
-      console.log("🧹 Cleaning URL query parameters...");
       router.replace("/", undefined);
     }
   }, [

@@ -10,11 +10,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Debug logging in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🔍 Middleware: ${req.nextUrl.pathname}`);
-  }
-
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
@@ -33,7 +28,7 @@ export async function middleware(req: NextRequest) {
 
     // If there's an error getting session, treat as unauthenticated
     if (error) {
-      console.warn("Session error in middleware:", error);
+      // Session error in middleware
     }
 
     // Check for custom authentication as fallback
@@ -46,23 +41,13 @@ export async function middleware(req: NextRequest) {
     // User is authenticated if they have either Supabase session OR custom auth cookies
     const isAuthenticated = (session && !error) || hasCustomAuth;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔍 Auth status: ${isAuthenticated}, Route: ${req.nextUrl.pathname}`);
-    }
-
     // Handle home page first
     if (isHomePage) {
       if (isAuthenticated) {
         const redirectUrl = new URL("/dashboard", req.url);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🏠 Redirecting authenticated user from / to /dashboard`);
-        }
         return NextResponse.redirect(redirectUrl);
       } else {
         const redirectUrl = new URL("/auth/login", req.url);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🏠 Redirecting unauthenticated user from / to /auth/login`);
-        }
         return NextResponse.redirect(redirectUrl);
       }
     }
@@ -71,15 +56,9 @@ export async function middleware(req: NextRequest) {
     if (isAuthRoute) {
       if (isAuthenticated && req.nextUrl.pathname !== "/auth/callback") {
         const redirectUrl = new URL("/dashboard", req.url);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔐 Redirecting authenticated user from ${req.nextUrl.pathname} to /dashboard`);
-        }
         return NextResponse.redirect(redirectUrl);
       }
       // Allow unauthenticated users to access auth routes
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔐 Allowing access to auth route: ${req.nextUrl.pathname}`);
-      }
       return res;
     }
 
@@ -87,35 +66,21 @@ export async function middleware(req: NextRequest) {
     if (isProtectedRoute) {
       if (!isAuthenticated) {
         const redirectUrl = new URL("/auth/login", req.url);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔒 Redirecting unauthenticated user from ${req.nextUrl.pathname} to /auth/login`);
-        }
         return NextResponse.redirect(redirectUrl);
       }
       // Allow authenticated users to access dashboard routes
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔓 Allowing authenticated access to: ${req.nextUrl.pathname}`);
-      }
       return res;
     }
 
     // Handle public routes
     if (isPublicRoute) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🌐 Allowing access to public route: ${req.nextUrl.pathname}`);
-      }
       return res;
     }
 
     // For any other route, allow it to proceed
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Allowing access to other route: ${req.nextUrl.pathname}`);
-    }
     return res;
 
   } catch (middlewareError) {
-    console.error("Middleware error:", middlewareError);
-    
     // On middleware error, allow the request to proceed
     // This prevents the app from breaking if Supabase is down
     return res;

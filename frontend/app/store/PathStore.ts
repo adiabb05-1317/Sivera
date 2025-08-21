@@ -391,7 +391,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
         ],
       });
     } catch (error) {
-      console.error("Error sending code message:", error);
+      // Error sending code message
     }
   },
 
@@ -415,7 +415,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
         ],
       });
     } catch (error) {
-      console.error("Error sending submitted code message:", error);
+      // Error sending submitted code message
     }
   },
 }));

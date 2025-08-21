@@ -105,7 +105,28 @@ export default function CandidateAnalyticsPage({
             const candidateRecording = recordingData.recordings?.find(
               (recording: any) => recording.candidate_id === candidateId
             );
-            recordingUrl = candidateRecording?.cloud_url;
+         
+            if (candidateRecording?.s3_key) {
+              recordingUrl = candidateRecording.s3_key;
+            } else if (candidateRecording?.cloud_url) {
+              // Extract S3 key from full URL if only URL is stored
+              try {
+                const url = new URL(candidateRecording.cloud_url);
+                const pathname = url.pathname;
+                // Remove leading slash and bucket name if present
+                const pathParts = pathname.split('/').filter(Boolean);
+                // If it's a virtual-hosted style URL
+                if (url.hostname.includes('.s3.') || url.hostname.includes('.s3-')) {
+                  recordingUrl = pathParts.join('/');
+                } else {
+                  // Path-style URL - skip bucket name
+                  recordingUrl = pathParts.slice(1).join('/');
+                }
+              } catch (e) {
+                console.error("Error parsing S3 URL:", e);
+                recordingUrl = candidateRecording.cloud_url;
+              }
+            }
           } else {
             console.log("Recording response failed:", recordingResponse.status);
           }
@@ -161,7 +182,11 @@ export default function CandidateAnalyticsPage({
 
   // Extract analytics data from the API response
   const analyticsData = candidateAnalyticsQuery.data?.analytics?.data || {};
-  const recordingUrl = candidateAnalyticsQuery.data?.recordingUrl;
+  const recordingKey = candidateAnalyticsQuery.data?.recordingUrl;
+  
+  // Always use CDN for video playback
+  const AWS_CDN = process.env.NEXT_PUBLIC_AWS_CDN || "https://d3m7q9diz9wdge.cloudfront.net";
+  const recordingUrl = recordingKey ? `${AWS_CDN}/${recordingKey}` : null;
 
   // Use real data from API
   const candidateData = {

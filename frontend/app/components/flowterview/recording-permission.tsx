@@ -51,7 +51,6 @@ export function RecordingPermission({
       toast.info("Requesting screen recording permission...", {
         description: "Please click 'Share' when prompted.",
       });
-      console.log("🎥 Starting screen recording immediately...");
 
       // Start screen recording with high-quality settings for crisp output
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -86,13 +85,9 @@ export function RecordingPermission({
         return;
       }
 
-      console.log("✅ Entire screen selected - recording started immediately");
-
       // Pass the active stream to parent component
       onPermissionGranted(screenStream);
     } catch (error) {
-      console.error("❌ Screen recording permission error:", error);
-
       // Handle different error types
       if (error instanceof Error) {
         if (

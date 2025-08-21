@@ -218,16 +218,15 @@ class CloudStorageManager:
                 logger.error(f"❌ Upload verification failed: {verify_error}")
                 # Don't raise here - upload might still be valid
             
-            # Generate object URL
-            object_url = f"https://{self.bucket_name}.s3.{aws_region}.amazonaws.com/{object_key}"
-            logger.info(f"✅ Successfully uploaded to S3: {object_url}")
+            # Store only the S3 key for CDN usage (not the full URL)
+            logger.info(f"✅ Successfully uploaded to S3: {object_key}")
             
             return {
                 "success": True,
                 "storage_type": "s3",
                 "bucket": self.bucket_name,
                 "object_key": object_key,
-                "url": object_url,
+                "url": object_key,  # Store S3 key instead of full URL for CDN
                 "local_path": file_path,
                 "region": aws_region,
                 "content_type": content_type,
@@ -430,9 +429,7 @@ async def get_presigned_upload_url(
                 ExpiresIn=900  # 15 minutes
             )
             
-            # Generate the final object URL
-            object_url = f"https://{storage_manager.bucket_name}.s3.{aws_region}.amazonaws.com/{object_key}"
-            
+            # Store only the S3 key (not full URL) for CDN usage
             logger.info(f"📋 Generated presigned URL for: {object_key}")
             logger.info(f"🗂️ Expected file size: {file_size} bytes")
             
@@ -440,7 +437,7 @@ async def get_presigned_upload_url(
                 "success": True,
                 "presigned_url": presigned_url,
                 "object_key": object_key,
-                "object_url": object_url,
+                "object_url": object_key,  # Return S3 key for CDN usage
                 "bucket": storage_manager.bucket_name,
                 "region": aws_region,
                 "content_type": content_type,
@@ -473,19 +470,24 @@ async def get_presigned_upload_url(
 async def confirm_upload(
     request: Request,
     object_key: str = Form(...),
-    object_url: str = Form(...),
+    object_url: str = Form(...),  # This now contains the S3 key, not a full URL
     job_id: str = Form(...),
     candidate_id: str = Form(...),
     timestamp: str = Form(...),
-    file_size: int = Form(...),
+    file_size: str = Form(...),  # Changed to str to handle form data
     interview_type: str = Form("ai_interview"),
-    round_number: int = Form(None),
+    round_number: str = Form(None),  # Changed to str to handle form data
     interview_id: str = Form(None),
     round_token: str = Form(None),
     content_type: str = Form("video/mp4")
     ):
        
     try:
+        # Convert string values to appropriate types
+        file_size_int = int(file_size) if file_size else 0
+        round_number_int = int(round_number) if round_number else None
+        
+    
         # Verify the file exists in S3 and get actual size
         try:
             import boto3
@@ -512,7 +514,7 @@ async def confirm_upload(
                     logger.info(f"📊 File size: {actual_file_size} bytes")
                     
                     # Update file_size with actual size from S3
-                    file_size = actual_file_size
+                    file_size_int = actual_file_size
                     
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchKey':
@@ -536,11 +538,11 @@ async def confirm_upload(
             "candidate_id": candidate_id,
             "interview_id": interview_id,
             "interview_type": interview_type,
-            "round_number": round_number,
+            "round_number": round_number_int,
             "round_token": round_token,
             "timestamp": timestamp,
             "upload_time": datetime.utcnow().isoformat(),
-            "file_size": str(file_size),
+            "file_size": str(file_size_int),
             "content_type": content_type,
             "upload_method": "presigned_url"
         }
@@ -554,12 +556,12 @@ async def confirm_upload(
                 "candidate_id": candidate_id,
                 "interview_id": interview_id,
                 "interview_type": interview_type,
-                "round_number": round_number,
+                "round_number": round_number_int,
                 "round_token": round_token,
                 "filename": safe_filename,
-                "file_size": file_size,
+                "file_size": file_size_int,
                 "storage_type": "s3",
-                "cloud_url": object_url,
+                "cloud_url": object_key,  # Store S3 key for CDN usage
                 "object_key": object_key,
                 "local_path": None,  # No local path for direct S3 uploads
                 "metadata": metadata,
@@ -569,9 +571,9 @@ async def confirm_upload(
             
             logger.info(f"💾 Storing S3 upload metadata to database:")
             logger.info(f"  📊 Storage type: s3 (direct upload)")
-            logger.info(f"  🔗 Cloud URL: {object_url}")
+            logger.info(f"  🔗 S3 Key: {object_key}")  # Store S3 key for CDN
             logger.info(f"  🔑 Object key: {object_key}")
-            logger.info(f"  📏 File size: {file_size} bytes")
+            logger.info(f"  📏 File size: {file_size_int} bytes")
             
             # Insert into database
             db_result = db.execute_query("interview_recordings", recording_data)
@@ -584,7 +586,7 @@ async def confirm_upload(
                 "database_id": recording_id,
                 "object_key": object_key,
                 "object_url": object_url,
-                "file_size": file_size,
+                "file_size": file_size_int,
                 "storage_type": "s3"
             }
             
@@ -704,7 +706,7 @@ async def upload_recording(
                 "filename": safe_filename,
                 "file_size": file_size,
                 "storage_type": upload_result.get("storage_type", "local"),
-                "cloud_url": upload_result.get("url"),  # S3 URL stored here
+                "cloud_url": object_key if upload_result.get("success") else None,  # Store S3 key for CDN
                 "object_key": object_key if upload_result.get("success") else None,
                 "local_path": local_file_path,
                 "metadata": metadata,
@@ -785,6 +787,12 @@ async def list_recordings(request: Request, job_id: str):
         recordings = db.fetch_all("interview_recordings", {"job_id": job_id})
         
         logger.info(f"📋 Found {len(recordings)} recordings for job {job_id}")
+        
+        # cloud_url already contains the S3 key for CDN access
+        # Add s3_key field for clarity
+        for recording in recordings:
+            if recording.get("cloud_url"):
+                recording["s3_key"] = recording["cloud_url"]  # cloud_url now contains S3 key
         
         return JSONResponse(status_code=200, content={
             "success": True,

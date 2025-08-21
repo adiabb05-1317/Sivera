@@ -238,7 +238,6 @@ function InterviewContent() {
       // Stop the stream since we only needed permission
       stream.getTracks().forEach((track) => track.stop());
     } catch (err) {
-      console.error("Failed to get media permissions:", err);
       // Try to get permissions separately
       try {
         const videoStream = await navigator.mediaDevices.getUserMedia({

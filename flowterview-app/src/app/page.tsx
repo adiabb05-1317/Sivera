@@ -17,12 +17,8 @@ export default function Home() {
     
     // If we're already on a dashboard route, don't redirect!
     if (currentPath.startsWith('/dashboard')) {
-      console.warn(`🚨 Home component rendered on dashboard route: ${currentPath}`);
-      console.warn('This indicates a routing/middleware issue - preventing redirect');
       return;
     }
-    
-    console.log(`🏠 Home component rendering for path: ${currentPath}`);
     
     const checkSession = async () => {
       const {

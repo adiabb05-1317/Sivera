@@ -88,7 +88,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           })
           .catch((err) => {
             if (err.name !== "NotAllowedError") {
-              console.error("Play failed:", err);
               showToast("Audio playback error occurred", "error");
             }
           });
@@ -109,14 +108,11 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
   // Handle interview end ensuring recording is saved
   const handleInterviewEnd = () => {
-    console.log("🚨 Interview ending - ensuring recording upload...");
-    
     // First set to leaving to trigger recording stop and upload
     setCallStatus("leaving");
 
     // Give more time for recording to stop and upload (increased from 1200ms to 3000ms)
     setTimeout(() => {
-      console.log("🔚 Interview cleanup - setting final status to 'left'");
       setCallStatus("left");
       
       // Additional delay before reset to ensure upload completes
@@ -139,7 +135,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
   const setupAudioTrack = (track: MediaStreamTrack) => {
     if (!track || typeof window === "undefined") {
-      console.error("No audio track provided or not in browser environment");
       showToast("Audio setup failed", "error");
       return;
     }
@@ -149,7 +144,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       const audioEl = audioRef.current;
 
       if (!audioEl) {
-        console.error("Audio element missing");
         showToast("Audio element missing", "error");
         return;
       }
@@ -175,12 +169,10 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
 
       audioEl.play().catch((err) => {
         if (err.name !== "NotAllowedError") {
-          console.error("Play failed:", err);
           showToast("Audio playback error occurred", "error");
         }
       });
     } catch (error) {
-      console.error("Error in setupAudioTrack:", error);
       showToast(
         `Error setting up audio: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -315,7 +307,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       setLocalVideoStream(stream);
 
       if (!micStreamRef.current) {
-        console.error("No microphone stream available");
         showToast("Microphone not available", "error");
         setConnectionStatus("disconnected");
         return;
@@ -368,12 +359,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           },
           onBotReady: async () => {
             // Don't automatically enable screenshare here
-            console.log(
-              "Bot is ready, waiting for bot to start speaking to request screenshare"
-            );
           },
           onError: (err: any) => {
-            console.error("RTVIClient error:", err);
+            // RTVIClient error
           },
           // TODO: this is not working fully
           onServerMessage: (data: any) => {
@@ -454,7 +442,7 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
                 }
               }
             } catch (error) {
-              console.error("Error processing generic message:", error);
+              // Error processing generic message
             }
           },
           onTransportStateChanged: (state) => {
@@ -481,7 +469,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       // Initialize devices
       await rtviClient.initDevices();
     } catch (error) {
-      console.error("Error connecting:", error);
       setConnectionStatus("disconnected");
     }
   };
@@ -502,7 +489,6 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
         // Clean up the temporary stream
         stream.getTracks().forEach((track) => track.stop());
       } catch (err) {
-        // console.error('Microphone permission denied:', err);
         setPermissionGranted(false);
         showToast(
           "Please enable microphone access in your browser settings to use voice features",
@@ -547,7 +533,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
           .then(() => {
             setConnectionStatus("disconnected");
           })
-          .catch(console.error);
+          .catch(() => {
+            // Disconnect error
+          });
       } else {
         setConnectionStatus("disconnected");
       }
@@ -559,7 +547,9 @@ export function AudioClient({ onClearTranscripts }: AudioClientProps) {
       }
       setLocalVideoStream(null);
       if (rtviClientRef.current) {
-        rtviClientRef.current.disconnect().catch(console.error);
+        rtviClientRef.current.disconnect().catch(() => {
+          // Disconnect error
+        });
       }
       setConnectionStatus("disconnected");
       // Clear accumulated transcript on cleanup

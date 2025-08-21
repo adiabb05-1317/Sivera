@@ -10,7 +10,6 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // Log error to console for development
-    console.error("Global error:", error);
   }, [error]);
 
   return (

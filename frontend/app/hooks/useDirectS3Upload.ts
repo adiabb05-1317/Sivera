@@ -48,18 +48,11 @@ async function uploadSingleRequest(
           total: event.total,
           percentage
         });
-        
-        if (isDevelopment && percentage % 20 === 0) {
-          console.log(`📤 Upload progress: ${percentage}%`);
-        }
       }
     });
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        if (isDevelopment) {
-          console.log('✅ S3 upload completed successfully');
-        }
         resolve();
       } else {
         reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
@@ -94,10 +87,6 @@ async function uploadOptimizedWebM(
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      if (isDevelopment && attempt > 1) {
-        console.log(`📤 Upload attempt ${attempt}/${MAX_RETRIES}...`);
-      }
-
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
@@ -122,11 +111,6 @@ async function uploadOptimizedWebM(
                 percentage
               });
               
-              if (isDevelopment && percentage % 5 === 0) {
-                const eta = speed > 0 ? (event.total - event.loaded) / speed : 0;
-                console.log(`📤 Upload: ${percentage}% (${(event.loaded / 1024 / 1024).toFixed(1)}/${(event.total / 1024 / 1024).toFixed(1)}MB) Speed: ${speedMBps.toFixed(1)}MB/s ETA: ${Math.round(eta)}s`);
-              }
-              
               lastLoaded = event.loaded;
               lastTime = now;
             }
@@ -135,9 +119,6 @@ async function uploadOptimizedWebM(
 
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            if (isDevelopment) {
-              console.log('✅ WebM upload completed successfully');
-            }
             resolve();
           } else {
             reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
@@ -162,10 +143,6 @@ async function uploadOptimizedWebM(
         const timeoutMinutes = Math.max(5, Math.ceil(blob.size / (50 * 1024 * 1024)));
         xhr.timeout = timeoutMinutes * 60 * 1000;
         
-        if (isDevelopment) {
-          console.log(`📤 Uploading WebM with ${timeoutMinutes}min timeout...`);
-        }
-        
         xhr.send(blob);
       });
       
@@ -178,10 +155,6 @@ async function uploadOptimizedWebM(
       }
       
       const delay = RETRY_DELAY * Math.pow(2, attempt - 1); // Exponential backoff
-      if (isDevelopment) {
-        console.warn(`⚠️ Upload attempt ${attempt} failed, retrying in ${delay}ms:`, error);
-      }
-      
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -200,41 +173,22 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
 
   const uploadRecording = useCallback(async (recordingBlob: Blob) => {
     const isDevelopment = process.env.NODE_ENV === 'development';
-    
-    if (isDevelopment) {
-      console.log('🚀 Starting direct S3 upload:', {
-        blobSize: recordingBlob.size,
-        blobType: recordingBlob.type,
-        jobId,
-        candidateId,
-        roundNumber,
-        sizeMB: (recordingBlob.size / 1024 / 1024).toFixed(2)
-      });
-    }
 
     // Validate recording blob
     if (!recordingBlob || recordingBlob.size === 0) {
       const errorMsg = 'Recording blob is empty or invalid';
       setUploadError(errorMsg);
-      if (isDevelopment) {
-        console.error('❌ Upload failed:', errorMsg, { recordingBlob });
-      }
       return;
     }
 
     // Validate blob type
     if (!recordingBlob.type || !recordingBlob.type.startsWith('video/')) {
-      if (isDevelopment) {
-        console.warn('⚠️ Recording blob type is not video:', recordingBlob.type);
-      }
+      // Recording blob type is not video
     }
 
     if (!jobId || !candidateId) {
       const errorMsg = `Missing job ID or candidate ID. JobId: "${jobId}", CandidateId: "${candidateId}"`;
       setUploadError(errorMsg);
-      if (isDevelopment) {
-        console.error('❌ Upload failed:', errorMsg);
-      }
       return;
     }
 
@@ -247,10 +201,6 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       const baseUrl = process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || 'http://localhost:8010';
       
       // Step 1: Get pre-signed URL from backend
-      if (isDevelopment) {
-        console.log('📋 Step 1: Getting pre-signed URL...');
-      }
-      
       const formData = new FormData();
       formData.append('job_id', jobId);
       formData.append('candidate_id', candidateId);
@@ -274,20 +224,6 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         formData.append('round_token', roundToken);
       }
 
-      if (isDevelopment) {
-        console.log('🌐 Requesting pre-signed URL from:', `${baseUrl}/api/v1/recordings/presigned-url`);
-        console.log('📋 Form data being sent:', {
-          job_id: jobId,
-          candidate_id: candidateId,
-          timestamp,
-          file_size: recordingBlob.size,
-          content_type: normalizedContentType,
-          interview_type: interviewType,
-          round_number: roundNumber,
-          round_token: roundToken
-        });
-      }
-
       const preSignedResponse = await fetch(`${baseUrl}/api/v1/recordings/presigned-url`, {
         method: 'POST',
         body: formData
@@ -295,45 +231,16 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
 
       if (!preSignedResponse.ok) {
         const errorText = await preSignedResponse.text();
-        if (isDevelopment) {
-          console.error('❌ Pre-signed URL request failed:', {
-            status: preSignedResponse.status,
-            statusText: preSignedResponse.statusText,
-            responseText: errorText
-          });
-        }
         throw new Error(`Failed to get pre-signed URL: ${preSignedResponse.status} ${preSignedResponse.statusText} - ${errorText}`);
       }
 
       const preSignedData: PreSignedUrlResponse = await preSignedResponse.json();
-      
-      if (isDevelopment) {
-        console.log('✅ Pre-signed URL obtained:', {
-          objectKey: preSignedData.object_key,
-          bucket: preSignedData.bucket,
-          expiresIn: `${preSignedData.expires_in}s`
-        });
-      }
 
       // Step 2: Upload directly to S3 using optimized method
-      if (isDevelopment) {
-        console.log('📋 Step 2: Uploading directly to S3...');
-      }
-
       // Optimized upload logic for WebM files
       const isWebM = recordingBlob.type.includes('webm') || preSignedData.content_type.includes('webm');
       const LARGE_FILE_THRESHOLD = 25 * 1024 * 1024; // 25MB - lower threshold for WebM optimization
       const useOptimizedUpload = recordingBlob.size > LARGE_FILE_THRESHOLD || isWebM;
-
-      if (isDevelopment) {
-        console.log(`📋 File details:`, {
-          size: `${(recordingBlob.size / 1024 / 1024).toFixed(1)}MB`,
-          type: recordingBlob.type,
-          contentType: preSignedData.content_type,
-          isWebM,
-          useOptimizedUpload
-        });
-      }
 
       if (useOptimizedUpload) {
         // Use optimized WebM upload with retry logic and proper headers
@@ -344,10 +251,6 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       }
 
       // Step 3: Confirm upload with backend and store metadata
-      if (isDevelopment) {
-        console.log('📋 Step 3: Confirming upload with backend...');
-      }
-
       const confirmFormData = new FormData();
       confirmFormData.append('object_key', preSignedData.object_key);
       confirmFormData.append('object_url', preSignedData.object_url);
@@ -358,6 +261,10 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
       confirmFormData.append('content_type', normalizedContentType);
       confirmFormData.append('interview_type', interviewType);
       
+      // Add interview_id if available (can be null)
+      const interviewId = `${jobId}_${candidateId}_${timestamp}`;
+      confirmFormData.append('interview_id', interviewId);
+      
       if (roundNumber) {
         confirmFormData.append('round_number', roundNumber.toString());
       }
@@ -366,50 +273,27 @@ export function useDirectS3Upload(): UseDirectS3UploadReturn {
         confirmFormData.append('round_token', roundToken);
       }
 
+    
+
       const confirmResponse = await fetch(`${baseUrl}/api/v1/recordings/confirm-upload`, {
         method: 'POST',
         body: confirmFormData
       });
 
       if (!confirmResponse.ok) {
-        throw new Error(`Failed to confirm upload: ${confirmResponse.status} ${confirmResponse.statusText}`);
+        const errorText = await confirmResponse.text();
+      
+        throw new Error(`Failed to confirm upload: ${confirmResponse.status} ${confirmResponse.statusText} - ${errorText}`);
       }
 
-      const confirmData = await confirmResponse.json();
-
-      if (isDevelopment) {
-        console.log('✅ Upload confirmed and metadata stored:', {
-          databaseId: confirmData.database_id,
-          objectUrl: confirmData.object_url,
-          fileSize: confirmData.file_size,
-          optimizationStatus: confirmData.optimization_status
-        });
-      }
-
-      // Log upload success - optimization handled by proper S3 headers
-      if (isDevelopment) {
-        console.log('✅ WebM recording uploaded with streaming-optimized headers');
-        console.log('📹 File ready for immediate playback with proper MIME type');
-      }
+      await confirmResponse.json();
+    
 
       setUploadProgress({ loaded: recordingBlob.size, total: recordingBlob.size, percentage: 100 });
       
     } catch (error) {
-      console.error('❌ Direct S3 upload failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setUploadError(errorMessage);
-      
-      // In development, provide more detailed error information
-      if (isDevelopment) {
-        console.error('🔍 Upload failure details:', {
-          error: error,
-          errorMessage: errorMessage,
-          blobSize: recordingBlob.size,
-          blobType: recordingBlob.type,
-          jobId,
-          candidateId
-        });
-      }
     } finally {
       setIsUploading(false);
       // Clear progress after 3 seconds

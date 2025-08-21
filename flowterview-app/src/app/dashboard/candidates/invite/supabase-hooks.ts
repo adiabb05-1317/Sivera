@@ -207,7 +207,7 @@ export function useEmailValidation() {
       });
       return true;
     } catch (error) {
-      console.error("Email validation error:", error);
+      // Email validation error
       const errorMessage = "Failed to validate email";
       setEmailErrors((prev) => ({
         ...prev,

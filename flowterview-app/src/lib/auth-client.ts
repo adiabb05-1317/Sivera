@@ -63,7 +63,7 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
           const { useAnalyticsStore } = await import("../../store/analyticsStore");
           useAnalyticsStore.getState().invalidateCache();
         } catch (error) {
-          console.warn("Analytics store not available for invalidation");
+          // Analytics store not available for invalidation
         }
       }
     }
@@ -82,7 +82,7 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
         const { useAnalyticsStore } = await import("../../store/analyticsStore");
         useAnalyticsStore.getState().invalidateCache();
       } catch (error) {
-        console.warn("Analytics store not available for invalidation");
+        // Analytics store not available for invalidation
       }
     }
 
@@ -108,13 +108,12 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
         const { useAnalyticsStore } = await import("../../store/analyticsStore");
         useAnalyticsStore.getState().invalidateCache();
       } catch (error) {
-        console.warn("Analytics store not available for invalidation");
+        // Analytics store not available for invalidation
       }
     }
 
-    console.log("🔄 Cache invalidated for:", url, "method:", method);
   } catch (error) {
-    console.warn("⚠️ Failed to invalidate caches:", error);
+    // Failed to invalidate caches
   }
 };
 
@@ -218,12 +217,10 @@ export const setUserContext = async (
       const data = await response.json();
       organization_id = data.id;
     } else {
-      console.warn(
-        `Failed to fetch organization for ${email}: ${response.status} ${response.statusText}`
-      );
+      // Failed to fetch organization
     }
   } catch (error) {
-    console.warn("Failed to fetch organization_id:", error);
+    // Failed to fetch organization_id
   }
 
   const userContext: UserContext = {
@@ -262,7 +259,7 @@ export const getUserContext = (): UserContext | null => {
       return { user_id, email, organization_id };
     }
   } catch (error) {
-    console.warn("Failed to parse user context from cookies:", error);
+    // Failed to parse user context from cookies
   }
 
   return null;
@@ -270,10 +267,8 @@ export const getUserContext = (): UserContext | null => {
 
 // Clear user context from cookies
 export const clearUserContext = () => {
-  console.log("🧹 Clearing user context...");
-  
   if (typeof window === 'undefined') {
-    console.warn("Cannot clear cookies on server side");
+    // Cannot clear cookies on server side
     return;
   }
   
@@ -285,7 +280,6 @@ export const clearUserContext = () => {
   
   // Get all existing cookies and delete them
   const allCookies = document.cookie.split(';');
-  console.log("🍪 Found cookies to clear:", allCookies.length);
   
   allCookies.forEach(cookie => {
     const cookieName = cookie.split('=')[0].trim();
@@ -310,19 +304,15 @@ export const clearUserContext = () => {
   try {
     localStorage.clear();
     sessionStorage.clear();
-    console.log("✅ Storage cleared");
   } catch (error) {
-    console.warn("Storage clear error:", error);
+    // Storage clear error
   }
   
   // Verify cookies are cleared
   const remainingCookies = document.cookie.split(';').filter(c => c.trim()).length;
-  console.log("🔍 Remaining cookies after clear:", remainingCookies);
   
   if (remainingCookies > 0) {
-    console.warn("⚠️ Some cookies may not have been cleared:", document.cookie);
-  } else {
-    console.log("✅ All cookies successfully cleared");
+    // Some cookies may not have been cleared
   }
 };
 
@@ -336,10 +326,7 @@ export const authenticatedFetch = async (
 
   // Only log for critical auth issues to reduce noise
   if (!userContext) {
-    console.warn(
-      "⚠️ No user context found for authenticated request to:",
-      url.replace(process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "", "[BACKEND]")
-    );
+    // No user context found for authenticated request
   }
 
   const headers = new Headers(options.headers || {});
@@ -361,10 +348,10 @@ export const authenticatedFetch = async (
     if (session?.access_token) {
       headers.set("Authorization", `Bearer ${session.access_token}`);
     } else if (!userContext) {
-      console.warn("⚠️ No session token or user context available");
+      // No session token or user context available
     }
   } catch (error) {
-    console.warn("❌ Failed to get session from store:", error);
+    // Failed to get session from store
     // Continue without session token - user context headers should be sufficient
   }
 
@@ -376,14 +363,7 @@ export const authenticatedFetch = async (
 
   // Log errors or empty responses for debugging
   if (!response.ok) {
-    console.error("📡 API Error:", {
-      url: url.replace(
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "",
-        "[BACKEND]"
-      ),
-      status: response.status,
-      statusText: response.statusText,
-    });
+    // API Error
   }
 
   // Invalidate relevant caches after successful POST, PUT, or PATCH requests
@@ -395,7 +375,7 @@ export const authenticatedFetch = async (
   ) {
     // Run cache invalidation asynchronously to avoid blocking the response
     invalidateRelevantCaches(url, method).catch((error) => {
-      console.warn("Cache invalidation failed:", error);
+      // Cache invalidation failed
     });
   }
 
@@ -417,7 +397,7 @@ export const login = async (email: string, password: string) => {
       const { useAuthStore } = await import("../../store/authStore");
       useAuthStore.getState().setSession(data.session);
     } catch (storeError) {
-      console.warn("Failed to store session in Zustand:", storeError);
+      // Failed to store session in Zustand
     }
   }
 
@@ -467,7 +447,7 @@ export const signup = async (email: string, password: string) => {
       const { useAuthStore } = await import("../../store/authStore");
       useAuthStore.getState().setSession(data.session);
     } catch (storeError) {
-      console.warn("Failed to store session in Zustand:", storeError);
+      // Failed to store session in Zustand
     }
   }
 
@@ -475,13 +455,11 @@ export const signup = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
-  console.log("🚪 Starting logout process...");
-  
   try {
     // 1. Supabase logout (this should clear all sb-* localStorage)
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.warn("Supabase logout error:", error);
+      // Supabase logout error
     }
 
     // 2. Clear our custom cookies
@@ -525,15 +503,12 @@ export const logout = async () => {
       resetInitialization();
       
     } catch (storeError) {
-      console.warn("Failed to clear stores:", storeError);
+      // Failed to clear stores
     }
 
-    console.log("✅ Logout completed successfully");
     return { error: null };
 
   } catch (logoutError) {
-    console.error("❌ Logout process failed:", logoutError);
-    
     // Even if logout fails, clear what we can
     clearUserContext();
     if (typeof window !== 'undefined') {
@@ -574,7 +549,7 @@ export const setSessionFromTokens = async (
       const { useAuthStore } = await import("../../store/authStore");
       useAuthStore.getState().setSession(result.data.session);
     } catch (storeError) {
-      console.warn("Failed to store session in Zustand:", storeError);
+      // Failed to store session in Zustand
     }
   }
 
@@ -594,13 +569,13 @@ export const initializeUserContext = async () => {
         const { useAuthStore } = await import("../../store/authStore");
         useAuthStore.getState().setSession(session);
       } catch (storeError) {
-        console.warn("Failed to store session in Zustand:", storeError);
+        // Failed to store session in Zustand
       }
 
       return getUserContext();
     }
   } catch (error) {
-    console.warn("Failed to initialize user context:", error);
+    // Failed to initialize user context
   }
   return null;
 };
