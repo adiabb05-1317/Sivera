@@ -44,6 +44,10 @@ type TPathStore = {
   candidateId: string;
   setCandidateId: (candidateId: string) => void;
 
+  // Interview ID
+  interviewId: string;
+  setInterviewId: (interviewId: string) => void;
+
   // Round interview properties
   roundNumber: number;
   setRoundNumber: (roundNumber: number) => void;
@@ -187,6 +191,10 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Candidate ID
   candidateId: "",
   setCandidateId: (candidateId: string) => set({ candidateId }),
+
+  // Interview ID
+  interviewId: "",
+  setInterviewId: (interviewId: string) => set({ interviewId }),
 
   // Round interview properties
   roundNumber: -1,

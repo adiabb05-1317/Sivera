@@ -10,7 +10,7 @@ import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 export default function FlowterviewComponent() {
-  const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId } =
+  const { setCurrentBotTranscript, isHeaderVisible, jobId, candidateId, roundNumber, interviewId } =
     usePathStore();
   const { 
     uploadRecording, 
@@ -47,6 +47,7 @@ export default function FlowterviewComponent() {
 
     // Validation
     if (recordingBlob.size === 0) {
+      console.warn("Recording blob is empty, skipping upload");
       return;
     }
 
@@ -61,15 +62,27 @@ export default function FlowterviewComponent() {
       uploadRetryCountRef.current = 0;
     }
 
+    console.log(`📤 Starting upload for ${sizeMB.toFixed(2)}MB recording`);
+
     try {
       await uploadRecording(recordingBlob);
-      
-      // Silent upload - no UI notification
+      console.log("✅ Upload completed successfully");
       
     } catch (error) {
-      // Disable auto-retry to prevent multiple uploads
-      console.error("Upload failed:", error);
+      console.error("❌ Upload failed:", error);
+      
+      // Log additional debugging info
+      console.error("Upload failure details:", {
+        blobSize: recordingBlob.size,
+        blobType: recordingBlob.type,
+        jobId,
+        candidateId,
+        roundNumber,
+        isRetry
+      });
+      
       // Don't retry automatically - this was causing multiple uploads
+      // But we could implement manual retry logic here if needed
     } finally {
       setIsProcessingLargeFile(false);
     }

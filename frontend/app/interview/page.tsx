@@ -42,6 +42,7 @@ interface InterviewData {
   botToken: string;
   roomUrl: string;
   candidateId: string;
+  interviewId: string;
 }
 
 type Step =
@@ -67,6 +68,7 @@ function InterviewContent() {
     botToken: "",
     roomUrl: "",
     candidateId: "",
+    interviewId: "",
   });
   const [formData, setFormData] = useState({
     name: "",
@@ -121,6 +123,9 @@ function InterviewContent() {
           usePathStore.setState({
             candidateId: data.interview_data.candidate_id,
           });
+          usePathStore.setState({
+            interviewId: data.interview_data.interview_id,
+          });
           setInterviewData({
             title: data.interview_data.job_title,
             company: data.interview_data.company,
@@ -130,6 +135,7 @@ function InterviewContent() {
             botToken: data.interview_data.bot_token,
             roomUrl: data.interview_data.room_url,
             candidateId: data.interview_data.candidate_id,
+            interviewId: data.interview_data.interview_id,
           });
         }
 
@@ -267,7 +273,8 @@ function InterviewContent() {
       job_id: interviewData.jobId,
       candidate_id: interviewData.candidateId,
       bot_token: interviewData.botToken,
-      room_url: encodeURIComponent(interviewData.roomUrl)
+      room_url: encodeURIComponent(interviewData.roomUrl),
+      interview_id: interviewData.interviewId,
     });
     router.push(`/?${params.toString()}`);
   };

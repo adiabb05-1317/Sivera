@@ -10,6 +10,8 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
+import boto3
+from botocore.exceptions import ClientError
 
 from src.core.config import Config
 from storage.db_manager import DatabaseManager
@@ -19,7 +21,6 @@ router = APIRouter(
     tags=["recordings"],
     responses={404: {"description": "Not found"}},
 )
-
 
 class CloudStorageManager:
     """Manages uploads to cloud storage providers (S3, GCS)."""
@@ -487,15 +488,12 @@ async def confirm_upload(
         file_size_int = int(file_size) if file_size else 0
         round_number_int = int(round_number) if round_number else None
         
-    
-        # Verify the file exists in S3 and get actual size
         try:
-            import boto3
-            from botocore.exceptions import ClientError
             
-            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-            aws_region = os.getenv("AWS_REGION", "us-east-1")
+            
+            aws_access_key = Config.AWS_ACCESS_KEY_ID
+            aws_secret_key = Config.AWS_SECRET_ACCESS_KEY
+            aws_region = Config.AWS_REGION
             
             if aws_access_key and aws_secret_key:
                 s3_client = boto3.client(
@@ -518,7 +516,6 @@ async def confirm_upload(
                     
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchKey':
-                        logger.error(f"❌ File not found in S3: {object_key}")
                         raise HTTPException(status_code=404, detail="File not found in S3")
                     else:
                         logger.error(f"❌ S3 verification error: {e}")

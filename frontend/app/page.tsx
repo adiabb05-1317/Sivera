@@ -8,18 +8,23 @@ import { usePathStore } from "./store/PathStore";
 export default function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { jobId, setJobId, setCandidateId, setBotToken, setRoomUrl } =
+  const { jobId, setJobId, setCandidateId, setBotToken, setRoomUrl, setInterviewId } =
     usePathStore();
 
   useEffect(() => {
     const urlJobId = searchParams.get("job_id");
     const urlCandidateId = searchParams.get("candidate_id");
+    const urlInterviewId = searchParams.get("interview_id");
     const botToken = searchParams.get("bot_token");
     const roomUrl = searchParams.get("room_url");
 
     if (urlJobId && urlCandidateId) {
       setJobId(urlJobId);
       setCandidateId(urlCandidateId);
+
+      if (urlInterviewId) {
+        setInterviewId(urlInterviewId);
+      }
 
       if (botToken) {
         setBotToken(botToken);
@@ -34,6 +39,7 @@ export default function Home() {
     searchParams,
     setJobId,
     setCandidateId,
+    setInterviewId,
     setBotToken,
     setRoomUrl,
     jobId,

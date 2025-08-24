@@ -162,7 +162,7 @@ export function useEnhancedS3Upload(): UseEnhancedS3UploadReturn {
   const chunkedUploaderRef = useRef<ChunkedUploader | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   
-  const { jobId, candidateId, roundNumber } = usePathStore();
+  const { jobId, candidateId, roundNumber, interviewId } = usePathStore();
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Enhanced upload with multiple strategies
@@ -325,15 +325,15 @@ export function useEnhancedS3Upload(): UseEnhancedS3UploadReturn {
         roundNumber
       );
 
-      // Step 2: Upload with strategy selection
       await uploadWithStrategy(recordingBlob, preSignedData);
-
       // Step 3: Confirm upload
+      console.log("✅ Step 3: Confirming upload with backend...");
       await confirmUploadWithRetry(
         preSignedData,
         recordingBlob,
         jobId,
         candidateId,
+        interviewId,
         roundNumber
       );
 
@@ -451,6 +451,7 @@ async function confirmUploadWithRetry(
   blob: Blob,
   jobId: string,
   candidateId: string,
+  interviewId: string,
   roundNumber?: number,
   maxRetries: number = 3
 ): Promise<void> {
@@ -458,9 +459,9 @@ async function confirmUploadWithRetry(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      // Use the same timestamp from pre-signed URL request
+      const timestamp = preSignedData.timestamp;
       const interviewType = roundNumber ? 'human_interview' : 'ai_interview';
-      const interviewId = `${jobId}_${candidateId}_${timestamp}`;
       
       const formData = new FormData();
       formData.append('object_key', preSignedData.object_key);
@@ -490,7 +491,8 @@ async function confirmUploadWithRetry(
       });
 
       if (response.ok) {
-        console.log('✅ Upload confirmed successfully');
+        const responseData = await response.json();
+        console.log('✅ Upload confirmed successfully:', responseData);
         return;
       }
       

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import usePathStore from "@/app/store/PathStore";
 import { toast } from "sonner";
+import fixWebmDuration from "fix-webm-duration";
 
 // Global flag to prevent multiple recordings across component instances
 let globalRecordingStarted = false;
@@ -275,9 +276,26 @@ export function ScreenRecorderOptimized({
             console.warn(`Recording seems small: ${recordingBlob.size} bytes for ${duration}s`);
           }
 
-          // Mark as uploaded before triggering callback
-          hasUploadedRef.current = true;
-          onRecordingStop?.(recordingBlob);
+          try {
+            // Fix WebM duration metadata
+            console.log(`🔧 Fixing WebM duration metadata (${duration.toFixed(1)}s)`);
+            const durationMs = Math.round(duration * 1000);
+            
+            const fixedBlob = await fixWebmDuration(recordingBlob, durationMs, {
+              logger: isDevelopment ? console.log : false
+            });
+            
+            console.log("✅ WebM duration metadata fixed successfully");
+            
+            // Mark as uploaded before triggering callback
+            hasUploadedRef.current = true;
+            onRecordingStop?.(fixedBlob);
+          } catch (error) {
+            console.error("Failed to fix WebM duration, using original blob:", error);
+            // Fallback to original blob if fixing fails
+            hasUploadedRef.current = true;
+            onRecordingStop?.(recordingBlob);
+          }
         };
 
         // Enhanced error handler
