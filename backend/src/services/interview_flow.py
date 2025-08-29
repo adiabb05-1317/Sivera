@@ -68,9 +68,13 @@ interview__flow_instance = None
 
 
 async def end_interview_pipeline():
-    logger.info("Ending interview session")
+    logger.info("end_interview_pipeline called - terminating interview session")
     if interview__flow_instance:
+        logger.info("Calling stop() on interview flow instance")
         await interview__flow_instance.stop()
+        logger.info("Interview flow instance stopped successfully")
+    else:
+        logger.warning("No interview flow instance found to stop")
 
 
 class RTVISourcesMessage(BaseModel):

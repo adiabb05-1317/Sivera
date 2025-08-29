@@ -375,7 +375,17 @@ async def end_interview(
     """
     End the interview session.
     """
+    logger.info("end_interview handler called - initiating interview termination")
+    
+    # Call the pipeline stop function
     await end_interview_pipeline()
+    
+    # Return a proper response to indicate completion
+    return {
+        "status": "completed",
+        "message": "Interview session ended successfully",
+        "action": "terminate"
+    }
 
 
 async def evaluate_and_proceed(
