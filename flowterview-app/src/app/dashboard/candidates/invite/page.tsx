@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import {
   useAddCandidate,
   useBulkAddCandidates,
@@ -44,7 +44,7 @@ import {
 } from "@/lib/supabase-candidates";
 import { toast } from "sonner";
 
-export default function InviteCandidatesPage() {
+function InviteCandidatesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const interviewIdFromQuery = searchParams.get("interview");
@@ -955,5 +955,43 @@ Jane Smith,jane@example.com,+1987654321,https://example.com/jane-cv.pdf`}
         </form>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center">
+        <Button className="cursor-pointer text-xs" variant="link">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to Candidates
+        </Button>
+      </div>
+      <div className="p-2 max-w-full overflow-x-hidden min-w-0">
+        <div className="flex items-center gap-3 justify-between">
+          <h2 className="text-lg font-semibold opacity-70 tracking-tight dark:text-white">
+            Loading...
+          </h2>
+        </div>
+        <Card className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 mt-5">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-app-blue-600" />
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Loading candidates form...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function InviteCandidatesPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <InviteCandidatesContent />
+    </Suspense>
   );
 }

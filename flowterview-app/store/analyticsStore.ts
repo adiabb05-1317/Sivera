@@ -5,27 +5,29 @@ import { devtools } from "zustand/middleware";
 // Data fetching is now handled by TanStack Query (useAnalytics hook)
 interface AnalyticsUIState {
   // UI-only state - view settings, filters, selections
-  selectedTimeRange: 'day' | 'week' | 'month' | 'quarter' | 'year';
+  selectedTimeRange: "day" | "week" | "month" | "quarter" | "year";
   selectedMetric: string | null;
   showDetailedView: boolean;
   expandedSectionId: string | null;
-  
+
   // Chart and visualization settings
-  chartType: 'line' | 'bar' | 'pie' | 'area';
+  chartType: "line" | "bar" | "pie" | "area";
   showComparisons: boolean;
   selectedCandidateIds: string[];
   selectedInterviewIds: string[];
-  
+
   // Modal and overlay states
   showExportModal: boolean;
   showConfigModal: boolean;
-  
+
   // Actions for UI state only
-  setSelectedTimeRange: (range: 'day' | 'week' | 'month' | 'quarter' | 'year') => void;
+  setSelectedTimeRange: (
+    range: "day" | "week" | "month" | "quarter" | "year"
+  ) => void;
   setSelectedMetric: (metric: string | null) => void;
   setShowDetailedView: (show: boolean) => void;
   setExpandedSection: (id: string | null) => void;
-  setChartType: (type: 'line' | 'bar' | 'pie' | 'area') => void;
+  setChartType: (type: "line" | "bar" | "pie" | "area") => void;
   setShowComparisons: (show: boolean) => void;
   setSelectedCandidates: (ids: string[]) => void;
   setSelectedInterviews: (ids: string[]) => void;
@@ -38,11 +40,11 @@ export const useAnalyticsStore = create<AnalyticsUIState>()(
   devtools(
     (set) => ({
       // UI-only state
-      selectedTimeRange: 'month',
+      selectedTimeRange: "month",
       selectedMetric: null,
       showDetailedView: false,
       expandedSectionId: null,
-      chartType: 'line',
+      chartType: "line",
       showComparisons: false,
       selectedCandidateIds: [],
       selectedInterviewIds: [],
@@ -60,12 +62,13 @@ export const useAnalyticsStore = create<AnalyticsUIState>()(
       setSelectedInterviews: (ids) => set({ selectedInterviewIds: ids }),
       setShowExportModal: (show) => set({ showExportModal: show }),
       setShowConfigModal: (show) => set({ showConfigModal: show }),
-      clearSelections: () => set({ 
-        selectedCandidateIds: [],
-        selectedInterviewIds: [],
-        selectedMetric: null,
-        expandedSectionId: null
-      }),
+      clearSelections: () =>
+        set({
+          selectedCandidateIds: [],
+          selectedInterviewIds: [],
+          selectedMetric: null,
+          expandedSectionId: null,
+        }),
     }),
     {
       name: "analytics-ui-store",

@@ -14,7 +14,7 @@ export class AppErrorHandler {
     retryable = false
   ): AppError {
     const timestamp = new Date();
-    
+
     if (error instanceof Error) {
       return {
         message: error.message,
@@ -56,9 +56,9 @@ export class AppErrorHandler {
     return (
       error.retryable ||
       this.isNetworkError(error) ||
-      (error.statusCode !== undefined && 
-       error.statusCode >= 500 && 
-       error.statusCode < 600) ||
+      (error.statusCode !== undefined &&
+        error.statusCode >= 500 &&
+        error.statusCode < 600) ||
       error.statusCode === 429 // Rate limited
     );
   }
@@ -88,7 +88,7 @@ export class AppErrorHandler {
         }
 
         const delay = this.getRetryDelay(attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
@@ -99,18 +99,19 @@ export class AppErrorHandler {
 // Toast notification helper for errors
 export const handleErrorWithToast = (
   error: AppError | unknown,
-  toast: (options: { title: string; description: string; variant?: string }) => void,
+  toast: (options: {
+    title: string;
+    description: string;
+    variant?: string;
+  }) => void,
   context?: string
 ) => {
-  const appError = error instanceof Error || typeof error === 'object' && error !== null && 'message' in error
-    ? error as AppError
-    : AppErrorHandler.createError(error, context);
+  const appError =
+    error instanceof Error ||
+    (typeof error === "object" && error !== null && "message" in error)
+      ? (error as AppError)
+      : AppErrorHandler.createError(error, context);
 
   const isRetryable = AppErrorHandler.isRetryableError(appError);
-  
-  toast.error("Error", {
-    description: `${appError.message}${isRetryable ? " (This operation can be retried)" : ""}`,
-  });
-
   // Log error for debugging
 };
