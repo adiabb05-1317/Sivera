@@ -41,7 +41,7 @@ const MessageBubble = memo<{
       <div className={cn("mb-1", isSia ? "text-left" : "text-right")}>
         <h4
           className={cn(
-            "text-[0.8rem] -mb-0.5 font-semibold font-kyiv",
+            "text-[0.75rem] -mb-0.5 font-semibold font-kyiv",
             isSia
               ? "text-[--meet-primary] ml-1"
               : "text-[--meet-text-primary] mr-1"
@@ -54,7 +54,7 @@ const MessageBubble = memo<{
       {/* Message bubble */}
       <div
         className={cn(
-          "p-3 rounded-lg text-sm",
+          "p-3 rounded-xl text-sm",
           isSia
             ? "bg-gradient-to-r from-app-blue-50 to-app-blue-100 dark:from-app-blue-900/20 dark:to-app-blue-800/20 border border-app-blue-200 dark:border-app-blue-700/50"
             : "bg-[--meet-surface-light] border border-[--meet-border]"
@@ -229,7 +229,7 @@ const TranscriptionInterface: React.FC<TranscriptionInterfaceProps> = ({
     <div className={cn("flex flex-col h-full", className)}>
       <ScrollArea
         ref={scrollAreaRef}
-        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none hide-scrollbar"
+        className="flex-1 px-4 pb-3 dark:bg-black dark:border-none hide-scrollbar bg-gray-300/30 border-app-blue-300/50 dark:border-app-blue-700/70"
       >
         {messages.length === 0 && !liveTranscription ? (
           <div className="flex items-center justify-center h-full text-[--meet-text-secondary] m-3">

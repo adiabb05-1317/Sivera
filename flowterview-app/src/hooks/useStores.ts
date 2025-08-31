@@ -67,12 +67,14 @@ export const useAuth = () => {
 
     // UI state
     showCompanySetupModal: authStore.showCompanySetupModal,
+    showUserSetupModal: authStore.showUserSetupModal,
 
     // Actions
     setUser: authStore.setUser,
     setOrganization: authStore.setOrganization,
     setSession: authStore.setSession,
     setShowCompanySetupModal: authStore.setShowCompanySetupModal,
+    setShowUserSetupModal: authStore.setShowUserSetupModal,
     logout: authStore.logout,
     initialize: authStore.initialize,
 

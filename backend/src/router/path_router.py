@@ -141,12 +141,16 @@ async def handle_daily_dialout_webhook(request: Request):
         if not candidate_id or candidate_id == "":
             raise HTTPException(status_code=400, detail="Candidate ID is required")
 
-        candidate_record = db_manager.fetch_one("candidates", {"id": candidate_id})
+        # Try to get candidate data from payload first (for flowterview-backend calls)
+        candidate_record = data.get("candidate_data")
         if not candidate_record:
-            raise HTTPException(status_code=400, detail="Candidate not found")
+            # Fallback to local database lookup (for legacy calls)
+            candidate_record = db_manager.fetch_one("candidates", {"id": candidate_id})
+            if not candidate_record:
+                raise HTTPException(status_code=400, detail="Candidate not found")
 
         sip_uri = dialout_settings.get("sip_uri", "")
-        phone_number = candidate_record.get("phone", "")
+        phone_number = dialout_settings.get("phone_number") or candidate_record.get("phone", "")
         logger.info(f"Processing dialout to SIP URI: {sip_uri}")
 
         # If phone_number is not provided directly, try to extract from SIP URI

@@ -44,6 +44,10 @@ type TPathStore = {
   candidateId: string;
   setCandidateId: (candidateId: string) => void;
 
+  // Interview ID
+  interviewId: string;
+  setInterviewId: (interviewId: string) => void;
+
   // Round interview properties
   roundNumber: number;
   setRoundNumber: (roundNumber: number) => void;
@@ -169,6 +173,14 @@ type TPathStore = {
   setAdditionalLinks: (
     additional_links: { name: string; url: string }[]
   ) => void;
+
+  // Bot token
+  botToken: string;
+  setBotToken: (botToken: string) => void;
+
+  // Room URL
+  roomUrl: string;
+  setRoomUrl: (roomUrl: string) => void;
 };
 
 export const usePathStore = create<TPathStore>((set, get) => ({
@@ -179,6 +191,10 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   // Candidate ID
   candidateId: "",
   setCandidateId: (candidateId: string) => set({ candidateId }),
+
+  // Interview ID
+  interviewId: "",
+  setInterviewId: (interviewId: string) => set({ interviewId }),
 
   // Round interview properties
   roundNumber: -1,
@@ -307,6 +323,14 @@ export const usePathStore = create<TPathStore>((set, get) => ({
   setAdditionalLinks: (additional_links: { name: string; url: string }[]) =>
     set({ additional_links }),
 
+  // Bot token
+  botToken: "",
+  setBotToken: (botToken: string) => set({ botToken }),
+
+  // Room URL
+  roomUrl: "",
+  setRoomUrl: (roomUrl: string) => set({ roomUrl }),
+
   resetStore: () => {
     set({
       participants: [
@@ -350,6 +374,8 @@ export const usePathStore = create<TPathStore>((set, get) => ({
       editorFontSize: 18,
       linkedin_profile: "",
       additional_links: [],
+      botToken: "",
+      roomUrl: "",
     });
   },
 
@@ -373,7 +399,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
         ],
       });
     } catch (error) {
-      console.error("Error sending code message:", error);
+      // Error sending code message
     }
   },
 
@@ -397,7 +423,7 @@ export const usePathStore = create<TPathStore>((set, get) => ({
         ],
       });
     } catch (error) {
-      console.error("Error sending submitted code message:", error);
+      // Error sending submitted code message
     }
   },
 }));

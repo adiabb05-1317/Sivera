@@ -12,6 +12,35 @@ import { z } from "zod";
 
 const emailSchema = z.string().email();
 
+// Common personal email domains to exclude
+const personalEmailDomains = [
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "aol.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "live.com",
+  "msn.com",
+  "ymail.com",
+  "rocketmail.com",
+  "protonmail.com",
+  "tutanota.com",
+  "zoho.com",
+  "mail.com",
+  "gmx.com",
+  "fastmail.com",
+];
+
+const isBusinessEmail = (email: string): boolean => {
+  if (!emailSchema.safeParse(email).success) return false;
+
+  const domain = email.split("@")[1]?.toLowerCase();
+  return domain ? !personalEmailDomains.includes(domain) : false;
+};
+
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
   // e.g., user@something.com => something
@@ -28,12 +57,29 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [step, setStep] = useState<"email" | "password">("email");
+  const [emailError, setEmailError] = useState(false);
 
   const handleEmailStep = () => {
+    setEmailError(false);
+
     if (!email || !emailSchema.safeParse(email).success) {
+      setEmailError(true);
       setError("Please enter a valid email address");
+      toast.error("Invalid email", {
+        description: "Please enter a valid email address",
+      });
       return;
     }
+
+    if (!isBusinessEmail(email)) {
+      setEmailError(true);
+      setError("Please use your business email address");
+      toast.error("Business email required", {
+        description: "Please use your business email address to continue",
+      });
+      return;
+    }
+
     setError(null);
     setStep("password");
   };
@@ -66,7 +112,7 @@ export default function SignupPage() {
         });
         return;
       }
-      const name = email.split("@")[0];
+      const name = "";
       const orgName = extractOrgFromEmail(email);
       const resp = await authenticatedFetch(
         (process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL ||
@@ -147,11 +193,7 @@ export default function SignupPage() {
                 )}
               </p>
             </div>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full"
-            >
+            <Button asChild variant="outline" className="w-full">
               <Link href="/auth/login">Back to sign in</Link>
             </Button>
           </div>
@@ -193,16 +235,13 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300">
-                {error}
-              </div>
-            )}
-
             {step === "email" ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="email"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Email address
                   </label>
                   <Input
@@ -211,9 +250,17 @@ export default function SignupPage() {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError(false);
+                      setError(null);
+                    }}
                     placeholder="name@company.com"
-                    className="w-full py-3"
+                    className={`w-full py-3 ${
+                      emailError
+                        ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500 dark:border-red-600 dark:bg-red-950/20 dark:focus:border-red-500"
+                        : ""
+                    }`}
                     onKeyDown={(e) => e.key === "Enter" && handleEmailStep()}
                   />
                 </div>
@@ -229,7 +276,10 @@ export default function SignupPage() {
             ) : (
               <form className="space-y-4" onSubmit={handleSignup}>
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="email"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Email address
                   </label>
                   <div className="flex items-center gap-2">
@@ -252,7 +302,10 @@ export default function SignupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Password
                   </label>
                   <Input
@@ -268,7 +321,10 @@ export default function SignupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Confirm password
                   </label>
                   <Input

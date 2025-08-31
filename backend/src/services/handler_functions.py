@@ -1,5 +1,6 @@
 import uuid
 from typing import Any, Dict, Optional
+from datetime import datetime
 
 from pipecat_flows import FlowArgs, FlowManager
 
@@ -374,4 +375,135 @@ async def end_interview(
     """
     End the interview session.
     """
+    logger.info("end_interview handler called - initiating interview termination")
+    
+    # Call the pipeline stop function
     await end_interview_pipeline()
+    
+    # Return a proper response to indicate completion
+    return {
+        "status": "completed",
+        "message": "Interview session ended successfully",
+        "action": "terminate"
+    }
+
+
+async def evaluate_and_proceed(
+    args: FlowArgs, flow_manager: FlowManager, result: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Generic handler for skill evaluation and intelligent transitions.
+    Works for all skill assessment nodes in the interview flow with time intelligence.
+    """
+    
+    # Extract assessment parameters (all optional - AI provides what's relevant)
+    skill_assessed = args.get("skill_assessed", "unknown")
+    proficiency_level = args.get("proficiency_level", "intermediate")
+    confidence_score = args.get("confidence_score", 5)
+    key_insights = args.get("key_insights", "")
+    areas_explored = args.get("areas_explored", "")
+    ready_for_next = args.get("ready_for_next", True)
+    needs_deeper_assessment = args.get("needs_deeper_assessment", False)
+    
+    # NEW: Time intelligence parameters
+    time_remaining_minutes = args.get("time_remaining_minutes", 10)
+    should_conclude_early = args.get("should_conclude_early", False)
+    pacing_adjustment = args.get("pacing_adjustment", "normal")
+    
+    # Handle introduction node
+    if "candidate_name" in args:
+        candidate_name = args.get("candidate_name", "Candidate")
+        flow_manager.state["candidate_name"] = candidate_name
+        flow_manager.state["interview_start"] = datetime.now().isoformat()
+        
+        # Move to first skill assessment
+        first_skill_node = get_next_skill_node(flow_manager, None)
+        if first_skill_node:
+            await flow_manager.set_next_node(first_skill_node)
+            return {"message": f"Nice to meet you, {candidate_name}! Let's begin with our technical discussion."}
+        else:
+            await flow_manager.set_next_node("interview_conclusion")
+            return {"message": f"Nice to meet you, {candidate_name}! Let's conclude our interview."}
+    
+    # Store skill assessment
+    if "assessments" not in flow_manager.state:
+        flow_manager.state["assessments"] = []
+    
+    if skill_assessed != "unknown":
+        assessment = {
+            "skill": skill_assessed,
+            "proficiency_level": proficiency_level,
+            "confidence_score": confidence_score,
+            "key_insights": key_insights,
+            "areas_explored": areas_explored,
+            "timestamp": datetime.now().isoformat(),
+            "duration_minutes": calculate_skill_duration(flow_manager, skill_assessed)
+        }
+        flow_manager.state["assessments"].append(assessment)
+        logger.info(f"Recorded assessment for {skill_assessed}: {proficiency_level} level, confidence {confidence_score}")
+    
+    # Log pacing adjustment for monitoring
+    if pacing_adjustment != "normal":
+        logger.info(f"Interview pacing adjusted to {pacing_adjustment} for {skill_assessed}")
+    
+    # TIME INTELLIGENCE: Check if we should conclude early due to time constraints
+    if should_conclude_early or time_remaining_minutes <= 5:
+        logger.info(f"Triggering early conclusion due to time constraints (remaining: {time_remaining_minutes} min)")
+        await flow_manager.set_next_node("interview_conclusion")
+        return {"message": "Given our time constraints, let me wrap up our technical discussion."}
+    
+    # Determine next action based on assessment and time
+    if needs_deeper_assessment and not ready_for_next and time_remaining_minutes > 8:
+        # Continue with current skill - need more depth (only if sufficient time)
+        return {"message": f"Let's explore {skill_assessed} a bit more deeply."}
+    
+    elif ready_for_next or time_remaining_minutes <= 8:
+        # Move to next skill or conclude (time pressure forces transition)
+        next_node = get_next_skill_node(flow_manager, skill_assessed)
+        if next_node and time_remaining_minutes > 5:
+            next_skill = extract_skill_name_from_node(next_node)
+            await flow_manager.set_next_node(next_node)
+            return {"message": f"Great insights on {skill_assessed}. Let's move to {next_skill}."}
+        else:
+            # No more skills or insufficient time - conclude interview
+            await flow_manager.set_next_node("interview_conclusion")
+            return {"message": "Excellent technical discussion! Let me wrap up our interview."}
+    
+    else:
+        # Default: continue current assessment
+        return {"message": f"Let's continue our {skill_assessed} discussion."}
+
+
+def get_next_skill_node(flow_manager: FlowManager, current_skill: str) -> str:
+    """
+    Determine the next skill node to transition to.
+    Returns None if all skills have been assessed.
+    """
+    # Get all assessed skills
+    assessed_skills = set()
+    if "assessments" in flow_manager.state:
+        assessed_skills = {a["skill"] for a in flow_manager.state["assessments"]}
+    
+    # Get available skill nodes from flow config
+    available_nodes = flow_manager.flow_config.get("nodes", {}).keys()
+    skill_nodes = [node for node in available_nodes 
+                  if node.endswith("_assessment") and node != "introduction"]
+    
+    # Find next unassessed skill
+    for node_name in skill_nodes:
+        skill_name = node_name.replace("_assessment", "").replace("_", " ")
+        if skill_name not in assessed_skills:
+            return node_name
+    
+    return None  # All skills assessed
+
+
+def extract_skill_name_from_node(node_name: str) -> str:
+    """Extract readable skill name from node name."""
+    return node_name.replace("_assessment", "").replace("_", " ").title()
+
+
+def calculate_skill_duration(flow_manager: FlowManager, skill_name: str) -> int:
+    """Calculate how long was spent on this skill assessment."""
+    # For now, return a default value. This can be enhanced with actual timing logic
+    return 5

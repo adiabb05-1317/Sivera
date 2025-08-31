@@ -565,7 +565,7 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
     fetchAIScores();
   }, [interviewId, interviewedCandidates]);
 
-  // Initialize stages
+  // Initialize stages and update when interviewedCandidates prop changes
   useEffect(() => {
     const initialStages: PipelineStage[] = [
       {
@@ -598,7 +598,34 @@ export const CandidatePipeline: React.FC<CandidatePipelineProps> = ({
         candidates: [],
       },
     ];
-    setStages(initialStages);
+    
+    // If we have existing stages with changes, preserve the structure but update AI interview candidates
+    if (stages.length > 0) {
+      const updatedStages = stages.map(stage => {
+        if (stage.id === "ai_interview") {
+          // Update AI interview stage with latest candidates, preserving any that were moved out
+          const existingCandidateIds = new Set(stage.candidates.map(c => c.id));
+          const newCandidates = interviewedCandidates
+            .filter(c => !existingCandidateIds.has(c.id))
+            .map((c) => ({
+              ...c,
+              skills: ["React", "TypeScript", "Node.js"],
+              pipeline_stage: "ai_interview",
+            }));
+          
+          return {
+            ...stage,
+            candidates: [...stage.candidates, ...newCandidates],
+          };
+        }
+        return stage;
+      });
+      setStages(updatedStages);
+    } else {
+      // First time initialization
+      setStages(initialStages);
+    }
+    
     setOriginalStages(JSON.parse(JSON.stringify(initialStages))); // Deep copy for original state
   }, [interviewedCandidates]);
 

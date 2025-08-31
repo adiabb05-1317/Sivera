@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import {
   Save,
   Loader2,
   Phone,
-  FileText,
   Bot,
   Route,
   Search,
@@ -28,7 +27,7 @@ import {
   AlertTriangle,
   Eye,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -63,15 +62,18 @@ import {
   useCandidates,
   useInterviews,
 } from "@/hooks/useStores";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   authenticatedFetch,
   getCookie,
   getUserContext,
 } from "@/lib/auth-client";
 import { PhoneInterviewSection } from "@/components/ui/phone-interview-section";
-import { InterviewAnalytics } from "@/components/ui/interview-analytics";
+
+import { useInterviewAnalytics } from "@/hooks/queries/useAnalytics";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAnalyticsStore } from "@/store/analytics-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1091,6 +1093,7 @@ export default function InterviewDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
+  const queryClient = useQueryClient();
 
   // Use our store hooks instead of manual API calls
   const {
@@ -1106,6 +1109,24 @@ export default function InterviewDetailsPage() {
   // Get all candidates to merge with interview candidates for complete data
   const { candidates: allCandidates, refresh: refreshCandidates } =
     useCandidates();
+
+  // React Query will handle data fetching automatically - no manual refresh needed
+
+  // Simplified visibility handling - React Query will handle most refetching automatically
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Only invalidate candidates since they might change from invite actions
+        queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [queryClient]);
 
   const [job, setJob] = useState<Job | null>(null);
   const [invitedCandidates, setInvitedCandidates] = useState<Candidate[]>([]);
@@ -1126,7 +1147,7 @@ export default function InterviewDetailsPage() {
   // Skills and timer state
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
-  const [selectedTimer, setSelectedTimer] = useState(10);
+  const [selectedTimer, setSelectedTimer] = useState<30 | 45 | 60>(30); // Default to first option in timerOptions
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
 
   // Process toggle states - initialize with defaults, will be updated from DB
@@ -1208,7 +1229,7 @@ export default function InterviewDetailsPage() {
   };
 
   // Timer options and logic
-  const timerOptions = [10, 20, 30];
+  const timerOptions = [30, 45, 60];
 
   const getTimerStatus = (time: number) => {
     const skillCount = selectedSkills.length;
@@ -1239,11 +1260,11 @@ export default function InterviewDetailsPage() {
   useEffect(() => {
     const skillCount = selectedSkills.length;
     if (skillCount >= 11) {
-      setSelectedTimer(30);
+      setSelectedTimer(60);
     } else if (skillCount >= 6) {
-      setSelectedTimer(20);
+      setSelectedTimer(45);
     } else {
-      setSelectedTimer(10);
+      setSelectedTimer(30);
     }
   }, [selectedSkills.length]);
 
@@ -1261,89 +1282,234 @@ export default function InterviewDetailsPage() {
     }
   }, [noteDialog.open]);
 
-  // Fetch AI scores for interviewed candidates
-  const fetchAIScores = useCallback(async () => {
-    try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL || "https://api.sivera.io";
+  // Use React Query to fetch analytics for all candidates in this interview
+  const {
+    analytics: interviewAnalytics,
+    isLoading: isLoadingAnalytics,
+    error: analyticsError,
+    refetch: refetchAnalytics,
+  } = useInterviewAnalytics(id as string);
 
-      // Get candidates with status "Interviewed" or interview_status "Completed"
-      const interviewedCandidateIds = invitedCandidates
-        .filter(
-          (c) =>
-            c.status === "Interviewed" ||
-            (c.interview_status &&
-              c.interview_status.toLowerCase() === "completed")
-        )
-        .map((c) => c.id);
+  // Get analytics store
+  const {
+    interviewAnalytics: storedAnalytics,
+    setInterviewAnalytics,
+    getCandidateScore,
+    hasAnalytics: hasStoredAnalytics,
+  } = useAnalyticsStore();
 
-      console.log(
-        "Candidates eligible for AI scores:",
-        interviewedCandidateIds.length,
-        interviewedCandidateIds
+  // Update stages with analytics data when it's available
+  useEffect(() => {
+    if (isLoadingAnalytics) {
+      console.log("⏳ Analytics still loading, skipping update");
+      return;
+    }
+
+    const analyticsArray = interviewAnalytics?.analytics || [];
+    const hasStoredData = hasStoredAnalytics(id as string);
+    const totalCandidates = stages.reduce(
+      (acc, stage) => acc + stage.candidates.length,
+      0
+    );
+
+    console.log("🔍 Analytics effect triggered:", {
+      analyticsFromQuery: analyticsArray.length,
+      hasStoredData,
+      candidatesCount: totalCandidates,
+    });
+
+    // Don't process analytics if we don't have candidates loaded yet
+    if (totalCandidates === 0) {
+      console.log("⏳ No candidates loaded yet, skipping analytics processing");
+      return;
+    }
+
+    // Process if we have either fresh analytics OR stored analytics
+    if (analyticsArray.length > 0 || hasStoredData) {
+      // Prioritize fresh React Query data, fallback to stored data
+      const effectiveAnalytics =
+        analyticsArray.length > 0
+          ? analyticsArray
+          : storedAnalytics[id as string] || [];
+
+      if (effectiveAnalytics.length === 0) {
+        console.log("❌ No analytics data available from any source");
+        return;
+      }
+
+      console.log("✅ Processing analytics:", {
+        source: analyticsArray.length > 0 ? "React Query" : "Zustand Store",
+        count: effectiveAnalytics.length,
+        analyticsData: effectiveAnalytics,
+      });
+
+      // Debug: Log candidate IDs and analytics candidate IDs for matching
+      const candidateIds = stages.flatMap((stage) =>
+        stage.candidates.map((c) => c.id)
+      );
+      const analyticsCandidateIds = effectiveAnalytics.map(
+        (a: any) => a.candidate_id
+      );
+      console.log("🔍 Debug matching:", {
+        candidateIds,
+        analyticsCandidateIds,
+        matches: analyticsCandidateIds.filter((id: any) =>
+          candidateIds.includes(id)
+        ),
+      });
+      // Store fresh analytics in Zustand if we got them from React Query
+      if (analyticsArray.length > 0) {
+        setInterviewAnalytics(id as string, analyticsArray);
+      }
+
+      // Check if any candidate needs an AI score update before triggering setState
+      const needsUpdate = stages.some((stage) =>
+        stage.candidates.some((candidate) => {
+          const analytics = effectiveAnalytics.find(
+            (a: any) => a.candidate_id === candidate.id
+          );
+          if (analytics && analytics.data) {
+            let data = analytics.data;
+            if (typeof data === "string") {
+              try {
+                data = JSON.parse(data);
+              } catch (e) {
+                return false;
+              }
+            }
+            return (
+              data &&
+              typeof data.overall_score === "number" &&
+              candidate.ai_score !== data.overall_score
+            );
+          }
+          return false;
+        })
       );
 
-      if (interviewedCandidateIds.length === 0) return;
+      if (!needsUpdate) {
+        console.log(
+          "🔄 No analytics updates needed - all AI scores already match"
+        );
+        return;
+      }
 
-      // Fetch analytics data for these candidates
-      const response = await authenticatedFetch(
-        `${backendUrl}/api/v1/analytics/interview/${id}/candidates`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            candidate_ids: interviewedCandidateIds,
-          }),
-        },
-        false
-      );
+      console.log("🔍 Processing analytics for stages update");
 
-      if (response.ok) {
-        const analyticsData = await response.json();
-        console.log("Analytics data received:", analyticsData);
+      setStages((currentStages) => {
+        return currentStages.map((stage) => {
+          const updatedCandidates = stage.candidates.map((candidate) => {
+            const analytics = effectiveAnalytics.find(
+              (a: any) => a.candidate_id === candidate.id
+            );
 
-        // Update stages with actual AI scores and sort by score (high to low)
-        setStages((currentStages) =>
-          currentStages.map((stage) => {
-            const updatedCandidates = stage.candidates.map((candidate) => {
-              const analytics = analyticsData.find(
-                (a: any) => a.candidate_id === candidate.id
-              );
-
-              if (analytics && analytics.data?.overall_score) {
-                return {
-                  ...candidate,
-                  ai_score: analytics.data.overall_score,
-                };
+            if (analytics && analytics.data) {
+              let data = analytics.data;
+              if (typeof data === "string") {
+                try {
+                  data = JSON.parse(data);
+                } catch (e) {
+                  return candidate;
+                }
               }
 
-              return candidate;
-            });
+              if (data && typeof data.overall_score === "number") {
+                console.log(
+                  `🎯 Setting AI score for candidate ${candidate.name}:`,
+                  data.overall_score
+                );
+                return {
+                  ...candidate,
+                  ai_score: data.overall_score,
+                };
+              }
+            }
 
-            // Sort candidates by AI score (descending: high to low)
-            const sortedCandidates = sortCandidatesByScore([
-              ...updatedCandidates,
-            ]);
+            return candidate;
+          });
 
-            return {
-              ...stage,
-              candidates: sortedCandidates,
-            };
+          return {
+            ...stage,
+            candidates: updatedCandidates,
+          };
+        });
+      });
+    } else if (hasStoredAnalytics(id as string) && !isLoadingAnalytics) {
+      // Use stored analytics if available
+      console.log("📦 Using stored analytics data");
+
+      setStages((currentStages) => {
+        // Check if stages already have the correct AI scores from stored data
+        const needsUpdate = currentStages.some((stage) =>
+          stage.candidates.some((candidate) => {
+            const score = getCandidateScore(id as string, candidate.id);
+            return score !== null && candidate.ai_score !== score;
           })
         );
-      }
-    } catch (error) {
-      console.error("Error fetching AI scores:", error);
-    }
-  }, [invitedCandidates, id]);
 
-  useEffect(() => {
-    if (invitedCandidates.length > 0) {
-      fetchAIScores();
+        if (!needsUpdate) {
+          console.log("🔄 No update needed - stored AI scores already match");
+          return currentStages;
+        }
+
+        return currentStages.map((stage) => {
+          const updatedCandidates = stage.candidates.map((candidate) => {
+            const score = getCandidateScore(id as string, candidate.id);
+            if (score !== null) {
+              console.log(
+                `🎯 Found stored AI score for candidate ${candidate.name}:`,
+                score
+              );
+              return {
+                ...candidate,
+                ai_score: score,
+              };
+            }
+            return candidate;
+          });
+
+          // Sort candidates by AI score (descending: high to low)
+          const sortedCandidates = sortCandidatesByScore([
+            ...updatedCandidates,
+          ]);
+
+          return {
+            ...stage,
+            candidates: sortedCandidates,
+          };
+        });
+      });
+    } else if (!isLoadingAnalytics) {
+      console.log("❌ No analytics data available or analytics array is empty");
     }
-  }, [fetchAIScores, invitedCandidates]);
+  }, [interviewAnalytics, isLoadingAnalytics, id, stages]);
+
+  // Log analytics loading state for debugging
+  useEffect(() => {
+    console.log("Analytics loading state:", isLoadingAnalytics);
+    if (analyticsError) {
+      console.error("Analytics error:", analyticsError);
+    }
+    if (interviewAnalytics) {
+      console.log("Interview analytics received:", interviewAnalytics);
+    }
+  }, [isLoadingAnalytics, analyticsError, interviewAnalytics]);
+
+  // React Query will handle refetching automatically with proper cache settings
+  // No manual refetch needed here
+
+  // Add cache invalidation when candidates are moved (in stageMoveCandidate)
+  // This is already added in the stageMoveCandidate function above
+
+  // Invalidate analytics cache on component mount to ensure fresh data
+  useEffect(() => {
+    if (id) {
+      console.log("🔄 Invalidating analytics cache on mount");
+      queryClient.invalidateQueries({
+        queryKey: ["analytics", "interview", id],
+      });
+    }
+  }, [id, queryClient]);
 
   // Initialize pipeline stages
   useEffect(() => {
@@ -1626,6 +1792,11 @@ export default function InterviewDetailsPage() {
 
     // Original move logic for non-human interview stages
     performCandidateMove(candidate, sourceStageId, destinationStageId);
+
+    // Invalidate analytics cache when candidate is moved
+    queryClient.invalidateQueries({
+      queryKey: ["analytics", "interview", id],
+    });
   };
 
   // Helper function to perform the actual candidate move
@@ -2309,11 +2480,9 @@ export default function InterviewDetailsPage() {
     setSelectedCandidates(new Set());
     setCurrentNumRounds(originalNumRounds);
 
-    // Re-fetch AI scores after stages are reset (use setTimeout to ensure state update happens first)
+    // Re-fetch AI scores after stages are reset (handled automatically by React Query)
     setTimeout(() => {
-      if (invitedCandidates.length > 0) {
-        fetchAIScores();
-      }
+      refetchAnalytics();
     }, 0);
 
     toast.success("Changes discarded", {
@@ -2350,21 +2519,9 @@ export default function InterviewDetailsPage() {
             };
           }
         );
-        console.log(
-          "Merged invited candidates:",
-          mergedInvitedCandidates.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            interview_status: c.interview_status,
-            status: c.status,
-          }))
-        );
+
         setInvitedCandidates(mergedInvitedCandidates);
       } else {
-        console.log(
-          "Using direct invited candidates:",
-          details.candidates.invited
-        );
         setInvitedCandidates(details.candidates.invited || []);
       }
 
@@ -2376,7 +2533,8 @@ export default function InterviewDetailsPage() {
 
       // Set timer duration from flow data
       if (details.duration) {
-        setSelectedTimer(details.duration);
+        const durationAsNumber = Number(details.duration);
+        setSelectedTimer(durationAsNumber as 30 | 45 | 60);
       }
 
       // Set process stages from the job data (stored in jobs table as jsonb)
@@ -2402,7 +2560,7 @@ export default function InterviewDetailsPage() {
       setCurrentNumRounds(numRounds);
       setOriginalNumRounds(numRounds);
     }
-  }, [details, allCandidates]);
+  }, [details, allCandidates?.length]); // Use length instead of the array itself to prevent infinite loops
 
   const handleSaveChanges = async () => {
     const user_id = getCookie("user_id");
@@ -2609,7 +2767,7 @@ export default function InterviewDetailsPage() {
           let group = candidatesByNextStage.find(
             (g) =>
               g.nextStage.id === nextStage.id &&
-              g.currentStage === currentStage.title
+              g.currentStage === currentStage?.title
           );
           if (!group) {
             group = {
@@ -3235,12 +3393,13 @@ export default function InterviewDetailsPage() {
                       <CarouselContent>
                         {timerOptions.map((time) => {
                           const status = getTimerStatus(time);
+                          const isSelected = selectedTimer === time;
                           return (
                             <CarouselItem key={time} className="basis-1/3">
                               <div className="p-1">
                                 <Card
                                   className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                                    selectedTimer === time
+                                    isSelected
                                       ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
                                       : status.disabled
                                       ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
@@ -3248,7 +3407,7 @@ export default function InterviewDetailsPage() {
                                   }`}
                                   onClick={() => {
                                     if (!status.disabled) {
-                                      setSelectedTimer(time);
+                                      setSelectedTimer(time as 30 | 45 | 60);
                                     }
                                   }}
                                   title={
@@ -3260,7 +3419,7 @@ export default function InterviewDetailsPage() {
                                   <CardContent className="flex aspect-square items-center justify-center p-6">
                                     <span
                                       className={`text-lg font-semibold flex flex-col items-center justify-center ${
-                                        selectedTimer === time
+                                        isSelected
                                           ? "text-app-blue-600 dark:text-app-blue-400"
                                           : status.disabled
                                           ? "text-gray-400 dark:text-gray-600"
@@ -3780,7 +3939,7 @@ export default function InterviewDetailsPage() {
           <Dialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader className="text-center sm:text-left">
-                <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                <DialogTitle className="text-md font-semibold text-gray-900 dark:text-white">
                   Confirm Changes & Send Notifications
                 </DialogTitle>
                 <DialogDescription className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -3803,7 +3962,7 @@ export default function InterviewDetailsPage() {
                 />
                 <label
                   htmlFor="confirm-warning"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
+                  className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                 >
                   I understand that email notifications will be sent to
                   candidates and this action cannot be undone.

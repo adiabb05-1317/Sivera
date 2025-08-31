@@ -3,8 +3,13 @@ from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.services.google.tts import GoogleTTSService
 from pipecat.services.rime.tts import RimeTTSService
 from pipecat.transcriptions.language import Language
+from pipecat.services.aws.tts import AWSPollyTTSService
+from pipecat.transcriptions.language import Language
+import logging
 
 from src.core.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class TTSFactory:
@@ -83,5 +88,37 @@ class TTSFactory:
                 ),
             )
 
+        elif provider == "aws":
+            aws_config = config["aws_polly"]
+            return AWSPollyTTSService(
+                aws_access_key_id=aws_config["aws_access_key_id"],
+                api_key=aws_config["aws_secret_access_key"],
+                region=aws_config["region"],
+                voice_id=aws_config["voice_id"],
+                params=AWSPollyTTSService.InputParams(
+                    engine=aws_config["engine"], 
+                    language=Language.EN, 
+                    rate=aws_config["rate"], 
+                    volume=aws_config["volume"]
+                ),
+            )
+
         else:
             raise ValueError(f"Unsupported TTS provider: {provider}")
+
+    @staticmethod
+    async def cleanup_tts_service(tts_service):
+        """
+        Clean up TTS service resources to prevent memory leaks.
+        
+        Args:
+            tts_service: The TTS service instance to clean up
+        """
+        if tts_service:
+            try:
+                if hasattr(tts_service, "close"):
+                    await tts_service.close()
+                elif hasattr(tts_service, "__del__"):
+                    del tts_service
+            except Exception as e:
+                logger.warning(f"Error cleaning up TTS service: {e}")

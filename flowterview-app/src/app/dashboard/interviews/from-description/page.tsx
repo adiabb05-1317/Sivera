@@ -262,7 +262,7 @@ export default function GenerateFromDescriptionPage() {
     }
   };
 
-  const timerOptions = [10, 20, 30];
+  const timerOptions = [30, 45, 60];
 
   const getTimerStatus = (time: number) => {
     const skillCount = selectedSkills.length;
@@ -372,9 +372,8 @@ export default function GenerateFromDescriptionPage() {
                 <Textarea
                   title="Job description"
                   id="jobDescription"
-                  className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
-                    errors.jobDescription && "border-red-500"
-                  } px-3 py-2 text-sm focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00`}
+                  className={`mt-1 block w-full rounded-md border bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${errors.jobDescription && "border-red-500"
+                    } px-3 py-2 text-sm focus:border-app-blue-5/00 focus:outline-none focus:ring-1 focus:ring-app-blue-5/00`}
                   rows={10}
                   placeholder="Paste the job description here..."
                   disabled={loading}
@@ -450,41 +449,36 @@ export default function GenerateFromDescriptionPage() {
                     <CarouselItem className="basis-1/2">
                       <div className="p-1">
                         <Card
-                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                            processStages.phoneInterview
+                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${processStages.phoneInterview
                               ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
                               : "opacity-50 hover:opacity-70 hover:border-gray-400"
-                          }`}
+                            }`}
                           onClick={() => toggleProcessStage("phoneInterview")}
-                          title={`${
-                            processStages.phoneInterview ? "Disable" : "Enable"
-                          } Phone Interview`}
+                          title={`${processStages.phoneInterview ? "Disable" : "Enable"
+                            } Phone Interview`}
                         >
                           <CardContent className="flex aspect-square items-center justify-center p-6">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Phone
-                                className={`h-6 w-6 ${
-                                  processStages.phoneInterview
+                                className={`h-6 w-6 ${processStages.phoneInterview
                                     ? "text-app-blue-600 dark:text-app-blue-400"
                                     : "text-gray-400 dark:text-gray-500"
-                                }`}
+                                  }`}
                               />
                               <div className="text-center">
                                 <div
-                                  className={`text-sm font-semibold ${
-                                    processStages.phoneInterview
+                                  className={`text-sm font-semibold ${processStages.phoneInterview
                                       ? "text-app-blue-600 dark:text-app-blue-400"
                                       : "text-gray-500 dark:text-gray-400"
-                                  }`}
+                                    }`}
                                 >
                                   Phone
                                 </div>
                                 <div
-                                  className={`text-xs ${
-                                    processStages.phoneInterview
+                                  className={`text-xs ${processStages.phoneInterview
                                       ? "text-app-blue-500 dark:text-app-blue-300"
                                       : "text-gray-400 dark:text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   Interview
                                 </div>
@@ -499,41 +493,36 @@ export default function GenerateFromDescriptionPage() {
                     <CarouselItem className="basis-1/2">
                       <div className="p-1">
                         <Card
-                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                            processStages.aiInterviewer
+                          className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${processStages.aiInterviewer
                               ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
                               : "opacity-50 hover:opacity-70 hover:border-gray-400"
-                          }`}
+                            }`}
                           onClick={() => toggleProcessStage("aiInterviewer")}
-                          title={`${
-                            processStages.aiInterviewer ? "Disable" : "Enable"
-                          } AI Interviewer`}
+                          title={`${processStages.aiInterviewer ? "Disable" : "Enable"
+                            } AI Interviewer`}
                         >
                           <CardContent className="flex aspect-square items-center justify-center p-6">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Bot
-                                className={`h-6 w-6 ${
-                                  processStages.aiInterviewer
+                                className={`h-6 w-6 ${processStages.aiInterviewer
                                     ? "text-app-blue-600 dark:text-app-blue-400"
                                     : "text-gray-400 dark:text-gray-500"
-                                }`}
+                                  }`}
                               />
                               <div className="text-center">
                                 <div
-                                  className={`text-sm font-semibold ${
-                                    processStages.aiInterviewer
+                                  className={`text-sm font-semibold ${processStages.aiInterviewer
                                       ? "text-app-blue-600 dark:text-app-blue-400"
                                       : "text-gray-500 dark:text-gray-400"
-                                  }`}
+                                    }`}
                                 >
                                   AI
                                 </div>
                                 <div
-                                  className={`text-xs ${
-                                    processStages.aiInterviewer
+                                  className={`text-xs ${processStages.aiInterviewer
                                       ? "text-app-blue-500 dark:text-app-blue-300"
                                       : "text-gray-400 dark:text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   Interview
                                 </div>
@@ -566,7 +555,7 @@ export default function GenerateFromDescriptionPage() {
               onQuestionsChange={setPhoneScreenQuestions}
               isEditable={true}
               bulkPhoneScreenOpen={false}
-              setBulkPhoneScreenOpen={() => {}}
+              setBulkPhoneScreenOpen={() => { }}
             />
 
             {/* Skills Section */}
@@ -629,11 +618,10 @@ export default function GenerateFromDescriptionPage() {
                           <Badge
                             key={skill}
                             variant="outline"
-                            className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-700 ${
-                              selectedSkills.length >= 15
+                            className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-700 ${selectedSkills.length >= 15
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
-                            }`}
+                              }`}
                             onClick={() => toggleSkill(skill)}
                           >
                             <Plus className="h-3 w-3 mr-1" />
@@ -685,13 +673,12 @@ export default function GenerateFromDescriptionPage() {
                         <CarouselItem key={time} className="basis-1/3">
                           <div className="p-1">
                             <Card
-                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${
-                                selectedTimer === time
+                              className={`cursor-pointer transition-all duration-200 border border-gray-300 dark:border-gray-700 ${selectedTimer === time
                                   ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/20"
                                   : status.disabled
-                                  ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
-                                  : "hover:border-gray-400"
-                              }`}
+                                    ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-800"
+                                    : "hover:border-gray-400"
+                                }`}
                               onClick={() =>
                                 !status.disabled && setSelectedTimer(time)
                               }
@@ -703,13 +690,12 @@ export default function GenerateFromDescriptionPage() {
                             >
                               <CardContent className="flex aspect-square items-center justify-center p-6">
                                 <span
-                                  className={`text-lg font-semibold flex flex-col items-center justify-center ${
-                                    selectedTimer === time
+                                  className={`text-lg font-semibold flex flex-col items-center justify-center ${selectedTimer === time
                                       ? "text-app-blue-600 dark:text-app-blue-400"
                                       : status.disabled
-                                      ? "text-gray-400 dark:text-gray-600"
-                                      : "text-gray-700 dark:text-gray-300"
-                                  }`}
+                                        ? "text-gray-400 dark:text-gray-600"
+                                        : "text-gray-700 dark:text-gray-300"
+                                    }`}
                                 >
                                   <div className="text-lg font-semibold">
                                     {time}

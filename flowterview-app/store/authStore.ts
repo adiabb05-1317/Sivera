@@ -18,12 +18,14 @@ interface AuthState {
   
   // UI state
   showCompanySetupModal: boolean;
+  showUserSetupModal: boolean;
 
   // Actions - simplified to core auth operations only
   setUser: (user: User | null) => void;
   setOrganization: (organization: Organization | null) => void;
   setSession: (session: Session | null) => void;
   setShowCompanySetupModal: (show: boolean) => void;
+  setShowUserSetupModal: (show: boolean) => void;
   logout: () => void;
   initialize: () => Promise<void>;
 }
@@ -36,6 +38,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   showCompanySetupModal: false,
+  showUserSetupModal: false,
 
   // Actions - core auth operations only
   setUser: (user) =>
@@ -50,6 +53,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   setShowCompanySetupModal: (show) => set({ showCompanySetupModal: show }),
 
+  setShowUserSetupModal: (show) => set({ showUserSetupModal: show }),
+
   logout: () => {
     // Clear our custom cookies
     clearUserContext();
@@ -62,6 +67,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthenticated: false,
       isLoading: false,
       showCompanySetupModal: false,
+      showUserSetupModal: false,
     });
 
     // Reset store initialization state
@@ -85,7 +91,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         set({ isAuthenticated: false });
       }
     } catch (error) {
-      console.error("❌ Error initializing auth:", error);
+      // Error initializing auth
       set({ isAuthenticated: false, session: null });
     } finally {
       set({ isLoading: false });

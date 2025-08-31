@@ -1,11 +1,10 @@
 "use client";
 
-import { FileText, Users, Activity, ChevronRight, Star } from "lucide-react";
+import { FileText, Users, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -19,7 +18,6 @@ export default function DashboardPage() {
 
   // Use combined dashboard hook for all data
   const {
-    auth,
     candidates,
     interviews,
     analytics,
@@ -63,7 +61,7 @@ export default function DashboardPage() {
       name: "Average Interview Score",
       value: analytics.organizationAverageScore
         ? `${Number(analytics.organizationAverageScore).toFixed(1)}`
-        : "Loading...",
+        : "0",
       icon: Star,
     },
   ];
@@ -143,7 +141,7 @@ export default function DashboardPage() {
             recentInterviews.map((interview: any) => (
               <div
                 key={interview.id}
-                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors border-l-0 border-r-0 border-b border-gray-200 dark:border-gray-800"
+                className="flex items-center justify-between p-4 cursor-pointer border hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors border-l-0 border-r-0 border-b-0 border-gray-200 dark:border-gray-800"
                 onClick={() =>
                   router.push(`/dashboard/interviews/${interview.id}`)
                 }

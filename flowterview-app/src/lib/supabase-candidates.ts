@@ -7,39 +7,27 @@ export async function uploadResume(
   file: File,
   candidateName: string
 ): Promise<string | null> {
-  console.log("Inside uploadResume, file", file);
-  console.log("Inside uploadResume, candidateName", candidateName);
   const fileExt = file.name.split(".").pop();
-  console.log("Inside uploadResume, fileExt", fileExt);
   // Upload directly to the root of the bucket (no subfolder!)
   const filePath = `${candidateName
     .replace(/\s+/g, "_")
     .toLowerCase()}_${Date.now()}.${fileExt}`;
-  console.log("Inside uploadResume, filePath", filePath);
   const { error } = await supabase.storage
     .from("resumes")
     .upload(filePath, file);
-  console.log("Inside uploadResume, error", error);
   if (error) {
-    console.error("Error uploading file:", error);
+    // Error uploading file
     return null;
   }
   // Generate a signed URL valid for 1 year (365 days)
-  console.log("Inside uploadResume, calling createSignedUrl");
   const secondsInYear = 60 * 60 * 24 * 365;
-  console.log("Inside uploadResume, secondsInYear", secondsInYear);
   const { data: signedData, error: signedError } = await supabase.storage
     .from("resumes")
     .createSignedUrl(filePath, secondsInYear);
-  console.log("Inside uploadResume, signedData", signedData);
   if (signedError) {
-    console.error("Error creating signed URL:", signedError);
+    // Error creating signed URL
     return null;
   }
-  console.log(
-    "Inside uploadResume, returning signedData?.signedUrl",
-    signedData?.signedUrl
-  );
   return signedData?.signedUrl || null;
 }
 
@@ -49,7 +37,7 @@ export async function getOrganizationIdForCurrentUser(): Promise<
 > {
   const userContext = getUserContext();
   if (!userContext?.organization_id) {
-    console.error("No organization_id found in user context");
+    // No organization_id found in user context
     return null;
   }
   return userContext.organization_id;
@@ -121,7 +109,7 @@ export async function extractSkillsFromJobDetails(
 
     return data;
   } catch (error) {
-    console.error("Error generating flow:", error);
+    // Error generating flow
     return { error: "Internal server error" };
   }
 }
@@ -208,6 +196,30 @@ export async function fetchCandidatesSortedByJob() {
   return await response.json();
 }
 
+export async function fetchCandidatesByJob(jobId: string) {
+  const response = await authenticatedFetch(
+    `${
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+    }/api/v1/candidates/by-job/${encodeURIComponent(jobId)}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch candidates for job");
+  return await response.json();
+}
+
+export async function checkEmailExists(email: string, jobId?: string) {
+  const params = new URLSearchParams({ email });
+  if (jobId) params.append("job_id", jobId);
+
+  const response = await authenticatedFetch(
+    `${
+      process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL
+    }/api/v1/candidates/check-email?${params.toString()}`
+  );
+  if (!response.ok) throw new Error("Failed to check email existence");
+  const data = await response.json();
+  return data.exists;
+}
+
 export async function fetchInterviewIdFromJobId(jobId: string) {
   const response = await authenticatedFetch(
     `${
@@ -273,15 +285,11 @@ export async function addBulkCandidates({
   jobId: string;
   interviewId: string;
 }) {
-  console.log(
-    "Inside addBulkCandidates, calling getOrganizationIdForCurrentUser"
-  );
   const organization_id = await getOrganizationIdForCurrentUser();
   if (!organization_id)
     throw new Error("Could not determine organization_id for current user.");
   if (!jobId) throw new Error("Could not determine job_id for selected job.");
 
-  console.log("Inside addBulkCandidates, calling uploadResume");
   // Step 1: Upload all resumes in parallel
   const resumeUploadPromises = candidates.map(async (candidate, index) => {
     if (candidate.resumeFile && !candidate.resume_url) {
@@ -311,13 +319,8 @@ export async function addBulkCandidates({
     }
   });
 
-  console.log(
-    "Inside addBulkCandidates, calling Promise.all(resumeUploadPromises)"
-  );
-
   const resumeResults = await Promise.all(resumeUploadPromises);
 
-  console.log("Inside addBulkCandidates, calling candidates.map");
   // Step 2: Create all candidates using bulk API
   const candidatesData = candidates.map((candidate, index) => {
     const resumeResult = resumeResults.find((r) => r.index === index);
@@ -332,7 +335,6 @@ export async function addBulkCandidates({
     };
   });
 
-  console.log("Inside addBulkCandidates, calling authenticatedFetch");
   const bulkResponse = await authenticatedFetch(
     `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/candidates/bulk`,
     {
@@ -342,28 +344,19 @@ export async function addBulkCandidates({
     }
   );
 
-  console.log("Inside addBulkCandidates, calling bulkResponse.json");
-
   if (!bulkResponse.ok) {
     const err = await bulkResponse.json();
     throw new Error(err.detail || "Failed to create candidates in bulk");
   }
 
-  console.log("Inside addBulkCandidates, calling bulkResult.json");
   const bulkResult = await bulkResponse.json();
 
-  console.log("Inside addBulkCandidates, calling bulkResult.failed_candidates");
-
   if (bulkResult.failed_candidates.length > 0) {
-    console.warn(
-      `${bulkResult.failed_candidates.length} candidates failed to create:`,
-      bulkResult.failed_candidates
-    );
+    // Some candidates failed to create
   }
 
   // Step 3: Update interview with all candidate IDs using bulk API
   if (interviewId && bulkResult.candidates.length > 0) {
-    console.log("Inside addBulkCandidates, calling bulkResult.candidates.map");
     const candidateIds = bulkResult.candidates.map((c: any) => c.id);
 
     const addResp = await authenticatedFetch(
@@ -374,11 +367,9 @@ export async function addBulkCandidates({
         body: JSON.stringify({ candidate_ids: candidateIds }),
       }
     );
-    console.log("addResp", addResp.ok);
 
     if (!addResp.ok) {
       // Fallback to individual updates if bulk endpoint fails
-      console.log("Inside addBulkCandidates, calling candidateIds.map");
       const updatePromises = candidateIds.map((candidateId: string) =>
         authenticatedFetch(
           `${process.env.NEXT_PUBLIC_SIVERA_BACKEND_URL}/api/v1/interviews/${interviewId}/add-candidate`,
@@ -388,10 +379,6 @@ export async function addBulkCandidates({
             body: JSON.stringify({ candidate_id: candidateId }),
           }
         )
-      );
-
-      console.log(
-        "Inside addBulkCandidates, calling Promise.all(updatePromises)"
       );
 
       await Promise.all(updatePromises);

@@ -14,7 +14,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 async def call_llm(
     prompt: str,
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-2.5-pro",
     temperature: float = 0.6,
     max_tokens: Optional[int] = None,
 ) -> str:
@@ -47,6 +47,10 @@ async def call_llm(
         # Check if we got a valid response
         if not response or not hasattr(response, "text"):
             raise ValueError("No valid response received from the model")
+
+        # Check if response.text is None
+        if response.text is None:
+            raise ValueError("Response text is None - model may have failed to generate content")
 
         # Clean the response text to ensure it's valid JSON
         response_text = response.text.strip()

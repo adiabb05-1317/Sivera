@@ -25,7 +25,9 @@ from .handler_functions import (
     process_background_info,
     process_devops_experience,
     present_assessment,
+    evaluate_and_proceed,
 )
+
 from .interview_flow import InterviewFlow
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

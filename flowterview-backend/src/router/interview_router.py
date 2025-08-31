@@ -946,19 +946,16 @@ async def verify_token(request: VerifyTokenRequest) -> Dict[str, Any]:
             return {"success": False, "message": "Error validating token expiration"}
 
         # Check if candidate already exists
-        candidate = db.fetch_one("candidates", {"email": token_data["email"]})
+        interview_id = token_data.get("interview_id")
+        interview_data = db.fetch_one("interviews", {"id": interview_id})
+        candidate = db.fetch_one("candidates", {"email": token_data["email"], "organization_id": token_data["organization_id"], "job_id": interview_data.get("job_id")})
 
         # Fetch actual interview data to send to frontend
-        interview_data = None
         job_data = None
         flow_data = None
         organization_data = None
 
-        interview_id = token_data.get("interview_id")
         if interview_id:
-            # Get interview details
-            interview_data = db.fetch_one("interviews", {"id": interview_id})
-
             if interview_data and interview_data.get("job_id"):
                 # Get job details
                 job_data = db.fetch_one("jobs", {"id": interview_data["job_id"]})

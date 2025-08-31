@@ -13,8 +13,11 @@ services:
       - SUPABASE_URL=https://gdivpjirohbxantnnmmg.supabase.co
       - SUPABASE_KEY=REDACTED_SUPABASE_KEY
       - DAILY_API_KEY=REDACTED_DAILY_API_KEY
-      - GEMINI_API_KEY=AIzaSyDQwIA_Pj-4B9V8m2K7ASKfeIqMm09Yl4w
+      - GEMINI_API_KEY=REDACTED_GEMINI_API_KEY
       - OPENAI_API_KEY=REDACTED_OPENAI_API_KEY
+      - AWS_ACCESS_KEY_ID=REDACTED_AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY=REDACTED_AWS_SECRET_ACCESS_KEY
+      - AWS_REGION=us-east-1
       - PORT=8010
 
   flowterview-app:
@@ -30,3 +33,4 @@ services:
       - NEXT_PUBLIC_SITE_URL=https://recruiter.sivera.io
       - NEXT_PUBLIC_SIVERA_BACKEND_URL=https://api.sivera.io
       - NEXT_PUBLIC_CORE_BACKEND_URL=https://core.sivera.io
+      - NEXT_PUBLIC_AWS_CDN=https://sivera-recordings.s3.us-east-1.amazonaws.com

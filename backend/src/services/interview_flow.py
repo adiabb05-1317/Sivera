@@ -68,9 +68,13 @@ interview__flow_instance = None
 
 
 async def end_interview_pipeline():
-    logger.info("Ending interview session")
+    logger.info("end_interview_pipeline called - terminating interview session")
     if interview__flow_instance:
+        logger.info("Calling stop() on interview flow instance")
         await interview__flow_instance.stop()
+        logger.info("Interview flow instance stopped successfully")
+    else:
+        logger.warning("No interview flow instance found to stop")
 
 
 class RTVISourcesMessage(BaseModel):
@@ -127,8 +131,7 @@ class InterviewFlow:
         self.runner: Optional[PipelineRunner] = None
         self.task_running = False
         self.db = db_manager
-        self.interview_start_time = None  # Track when interview starts
-        self.timer_task = None  # Track the timer background task
+        # Remove time tracking functionality
 
         # TODO: here call linkedin api to get the profile
         # also get the additional links and their important information
@@ -166,13 +169,64 @@ class InterviewFlow:
             self.skills = ["Java", "Python", "Langchain", "RabbitMQ", "AWS"]
             self.duration = 20
 
+        # Ensure flow_config is always set
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.warning("flow_config not set, using default configuration")
+            try:
+                with open("src/services/flows/default.json", "r") as f:
+                    self.flow_config = json.load(f)
+                logger.info("Loaded default flow configuration successfully")
+            except FileNotFoundError:
+                logger.error("Default flow configuration file not found")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in default flow configuration: {e}")
+                # Create a minimal default flow config
+                self.flow_config = {
+                    "nodes": [],
+                    "edges": [],
+                    "start_node": None
+                }
+        
+        # Log flow_config status
+        logger.info(f"Flow config type: {type(self.flow_config)}")
+        logger.info(f"Flow config keys: {list(self.flow_config.keys()) if isinstance(self.flow_config, dict) else 'Not a dict'}")
+
         # Fetch resume content during initialization
         self.resume = fetch_and_process_resume(self.resume_url, self.candidate_name)
 
         self.stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
         self.tts = TTSFactory.create_tts_service()
-        tts_instructions = Config.TTS_CONFIG[Config.TTS_CONFIG.get("provider")]["instructions"]
+        
+        # Map provider names to configuration keys
+        provider_config_map = {
+            "elevenlabs": "elevenlabs",
+            "cartesia": "cartesia", 
+            "rime": "rime",
+            "google": "google",
+            "aws": "aws_polly"  # Map "aws" provider to "aws_polly" config key
+        }
+        
+        provider = Config.TTS_CONFIG.get("provider", "elevenlabs")
+        config_key = provider_config_map.get(provider, provider)
+        tts_instructions = Config.TTS_CONFIG[config_key]["instructions"]
+        
         self.llm = LLMFactory.create_llm_service()
+        
+        # Register cleanup handlers for proper resource management
+        import atexit
+        atexit.register(self._cleanup_resources)
+        
+        # Suppress nanobind warnings if configured
+        if Config.SUPPRESS_NANOBIND_WARNINGS:
+            import warnings
+            warnings.filterwarnings("ignore", message="nanobind: leaked")
+            logger.info("Nanobind warnings suppressed")
 
         # Get formatted links information
         links_info = self.get_formatted_links_info()
@@ -195,8 +249,7 @@ class InterviewFlow:
         - Your job is to assess the candidate’s skills and experience. Be strict and critical in your evaluation.
         - Spend time asking questions based on the skills required for the job, ensure all the skills are assessed in the given time.
         - If the candidate absolutely doesn't know something or asks for help, offer only a very subtle hint.
-        - The duration of the interview is {self.duration} minutes, so you need to assess the candidate’s skills and experience within this time frame.
-        - A timer is provided for the interview duration. Make sure to monitor it and complete all necessary questions within the allotted time.
+        - Focus on assessing the candidate's skills and experience thoroughly for each required skill area.
 
         Begin by greeting the candidate by name. i.e "Hey {self.candidate_name}" and introduce yourself as {self.bot_name} then proceed with the interview.
         You will be asking question based on the skills required for the job, which are: {self.skills}
@@ -241,65 +294,7 @@ class InterviewFlow:
     async def create(cls, url, bot_token, session_id, db_manager, job_id, bot_name="Sia"):
         return cls(url, bot_token, session_id, db_manager, job_id, bot_name)
 
-    async def start_interview_timer(self):
-        """
-        This function updates the interview timer every second.
-        """
-        try:
-            while self.interview_start_time:
-                try:
-                    # Calculate elapsed time
-                    elapsed = datetime.now() - self.interview_start_time
-                    elapsed_minutes = int(elapsed.total_seconds() // 60)
-                    elapsed_seconds = int(elapsed.total_seconds() % 60)
-
-                    if elapsed_minutes >= self.duration:
-                        logger.info("Interview timer reached the duration")
-
-                        # Create an assistant message that will be spoken out loud
-                        message = {
-                            "role": "system",
-                            "content": "Interview time has ended, please proceed to stop the interview. Say thank you to the candidate and end the interview."
-                        }
-                        
-                        # Add the message to context and let it be spoken through TTS
-                        await self.task.queue_frame(LLMMessagesAppendFrame([message]))
-                        await self.task.queue_frame(self.context_aggregator.user().get_context_frame())
-                        
-                        # Wait a bit for the message to be spoken before stopping
-                        await asyncio.sleep(10)
-
-                        end_message = {
-                            "type": "interview_ended",
-                            "message": "Interview time has ended"
-                        }
-                        await send_message_to_client(end_message)
-
-                        await self.stop()
-                        break
-                    
-                    # Create time update message
-                    time_message = {
-                        "role": "system",
-                        "content": f"Elapsed time is {elapsed_minutes} minutes and {elapsed_seconds} seconds, out of {self.duration} minutes."
-                    }
-                    
-                    # Update context with current time
-                    await self.task.queue_frame(LLMMessagesAppendFrame([time_message]))
-                    
-                    # Wait 1 second before next update
-                    await asyncio.sleep(1)
-                    
-                except Exception as e:
-                    logger.error(f"Error updating interview timer: {e}")
-                    break
-        except asyncio.CancelledError:
-            logger.info("Interview timer task cancelled")
-            raise
-        except Exception as e:
-            logger.error(f"Interview timer task failed: {e}")
-        finally:
-            logger.info("Interview timer task finished")
+    # Timer functionality removed to improve bot response time
 
     async def create_transport(self):
         self.aiohttp_session = aiohttp.ClientSession()
@@ -354,13 +349,6 @@ class InterviewFlow:
                 return
 
             logger.info(f"First participant joined: {participant}")
-            # Start the interview timer
-            self.interview_start_time = datetime.now()
-            logger.info(f"Interview timer started at: {self.interview_start_time}")
-            
-            # Start the timer task in the background without awaiting it
-            self.timer_task = asyncio.create_task(self.start_interview_timer())
-
             await self.flow_manager.initialize()
             pass
 
@@ -428,6 +416,13 @@ class InterviewFlow:
             observers=[self.rtvi_observer],
         )
 
+        # Ensure flow_config is available before creating FlowManager
+        if not hasattr(self, 'flow_config') or self.flow_config is None:
+            logger.error("flow_config is not available, cannot create FlowManager")
+            raise ValueError("flow_config is required for FlowManager initialization")
+        
+        logger.info(f"Creating FlowManager with flow_config: {type(self.flow_config)}")
+        
         self.flow_manager = FlowManager(
             task=self.task,
             llm=self.llm,
@@ -502,38 +497,33 @@ class InterviewFlow:
 
     async def stop(self):
         try:
-            # Stop the interview timer
-            if hasattr(self, 'timer_task') and self.timer_task:
-                logger.info("Cancelling interview timer task")
-                self.timer_task.cancel()
-                try:
-                    await self.timer_task
-                except asyncio.CancelledError:
-                    pass
-                self.timer_task = None
-            
-            # Calculate interview duration if not already done
-            interview_duration_seconds = None
-            interview_end_time = None
-            if self.interview_start_time:
-                interview_end_time = datetime.now()
-                duration = interview_end_time - self.interview_start_time
-                interview_duration_seconds = duration.total_seconds()
-                logger.info(
-                    f"Interview duration on stop: {interview_duration_seconds} seconds ({duration})"
-                )
-                # Clear the interview start time to stop the timer loop
-                self.interview_start_time = None
+            interview_end_time = datetime.now()
+            logger.info("Stopping interview session")
 
             # Save chat history when pipeline is canceled
-            if hasattr(self, "flow_manager") and self.flow_manager:
+            if hasattr(self, "flow_manager") and self.flow_manager and hasattr(self.flow_manager, 'get_current_context'):
                 try:
                     message_history = self.flow_manager.get_current_context()
-                    filtered_messages = [
-                        msg
-                        for msg in message_history
-                        if (msg["role"] == "user" or msg["role"] == "assistant")
-                    ]
+                    logger.info(f"Raw message history structure: {type(message_history)}")
+                    if message_history:
+                        logger.info(f"First message example: {message_history[0] if isinstance(message_history, list) and len(message_history) > 0 else 'N/A'}")
+                    
+                    filtered_messages = []
+                    for msg in message_history:
+                        # Handle different message structures
+                        if isinstance(msg, dict):
+                            role = msg.get("role")
+                            if role in ["user", "assistant"]:
+                                # Ensure the message has content field
+                                if "content" not in msg and "text" in msg:
+                                    msg["content"] = msg["text"]
+                                elif "content" not in msg:
+                                    msg["content"] = str(msg)
+                                filtered_messages.append(msg)
+                        else:
+                            logger.warning(f"Unexpected message type: {type(msg)}, content: {msg}")
+                    
+                    logger.info(f"Filtered {len(filtered_messages)} messages from {len(message_history) if message_history else 0} total messages")
 
                     merged_messages = []
                     current_user_message = ""
@@ -575,7 +565,6 @@ class InterviewFlow:
                     if (
                         hasattr(self, "candidate_id")
                         and hasattr(self, "interview")
-                        and interview_duration_seconds is not None
                     ):
                         try:
                             self.db.update("candidate_interviews", {
@@ -608,19 +597,40 @@ class InterviewFlow:
                                 },
                             )
                             if candidate_interview_id:
-                                analytics_service = InterviewAnalytics()
-                                analytics = await analytics_service.analyze_interview(self.job_title, self.job_description, self.resume, self.additional_links_info, filtered_messages)
-                                details = {
-                                    "interview_duration_seconds": interview_duration_seconds,
-                                    "interview_start_time": self.interview_start_time.isoformat(),
-                                    "interview_end_time": interview_end_time.isoformat(),
-                                }
+                                try:
+                                    # Validate data before analytics
+                                    logger.info(f"Preparing analytics with {len(filtered_messages)} messages")
+                                    logger.info(f"Job title: {getattr(self, 'job_title', 'N/A')}")
+                                    logger.info(f"Job description: {getattr(self, 'job_description', 'N/A')}")
+                                    logger.info(f"Resume: {getattr(self, 'resume', 'N/A')[:100]}...")
+                                    logger.info(f"Additional links: {getattr(self, 'additional_links_info', 'N/A')}")
+                                    
+                                    # Ensure we have valid data for analytics
+                                    if not filtered_messages:
+                                        logger.warning("No chat messages available for analytics")
+                                        analytics = {"error": "No chat messages available for analysis"}
+                                    elif not getattr(self, 'job_title', None):
+                                        logger.warning("No job title available for analytics")
+                                        analytics = {"error": "No job title available for analysis"}
+                                    else:
+                                        analytics_service = InterviewAnalytics()
+                                        analytics = await analytics_service.analyze_interview(
+                                            job_title=self.job_title,
+                                            job_description=self.job_description,
+                                            candidate_name=self.candidate_name,
+                                            resume=self.resume,
+                                            additional_links_info=self.additional_links_info,
+                                            chat_history=filtered_messages
+                                        )
 
-                                analytics.update(details)
-
-                                logger.info(
-                                    f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
-                                )
+                                        logger.info(
+                                            f"Interview analytics calculated for candidate {self.candidate_id} and interview {self.interview.get('id')}"
+                                        )
+                                        logger.info(f"Analytics keys: {list(analytics.keys()) if isinstance(analytics, dict) else 'Not a dict'}")
+                                except Exception as analytics_error:
+                                    logger.error(f"Failed to generate analytics: {analytics_error}")
+                                    logger.error(f"Analytics error details: {type(analytics_error).__name__}: {str(analytics_error)}")
+                                    analytics = {"error": f"Analytics generation failed: {str(analytics_error)}"}
 
                                 ix = str(uuid.uuid4())
                                 self.db.execute_query("interview_analytics", {
@@ -637,13 +647,13 @@ class InterviewFlow:
                                     {
                                         "candidate_interview_id": candidate_interview_id.get("id"),
                                         "session_history": session_data.get("id"),
-                                        "created_at": self.interview_start_time.isoformat(),
+                                        "created_at": datetime.now().isoformat(),
                                         "updated_at": interview_end_time.isoformat(),
                                         "analytics": ix,
                                         "status": "Completed",
                                     },
                                 )
-                                logger.info("Analytics with duration saved during stop()")
+                                logger.info("Analytics saved during stop()")
                         except Exception as e:
                             logger.error(f"Failed to save analytics during stop(): {e}")
 
@@ -666,8 +676,84 @@ class InterviewFlow:
             if hasattr(self, "aiohttp_session"):
                 await self.aiohttp_session.close()
 
+            # Clean up audio resources to prevent nanobind memory leaks
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "close"):
+                        await self.tts.close()
+                    elif hasattr(self.tts, "__del__"):
+                        del self.tts
+                    logger.info("TTS service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up TTS service: {e}")
+
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "close"):
+                        await self.stt.close()
+                    elif hasattr(self.stt, "__del__"):
+                        del self.stt
+                    logger.info("STT service cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up STT service: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "close"):
+                        await self.runner.close()
+                    elif hasattr(self.runner, "__del__"):
+                        del self.runner
+                    logger.info("Pipeline runner cleaned up")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up pipeline runner: {e}")
+
+            # Force garbage collection to clean up any remaining references
+            import gc
+            gc.collect()
+
         except Exception as e:
             logger.error(f"Error stopping interview flow: {e}")
+
+    def _cleanup_resources(self):
+        """
+        Cleanup method called by atexit to ensure resources are properly released.
+        This helps prevent nanobind memory leaks.
+        """
+        try:
+            # Clean up TTS service
+            if hasattr(self, "tts") and self.tts:
+                try:
+                    if hasattr(self.tts, "__del__"):
+                        del self.tts
+                    self.tts = None
+                except Exception as e:
+                    logger.warning(f"Error in TTS cleanup: {e}")
+
+            # Clean up STT service
+            if hasattr(self, "stt") and self.stt:
+                try:
+                    if hasattr(self.stt, "__del__"):
+                        del self.stt
+                    self.stt = None
+                except Exception as e:
+                    logger.warning(f"Error in STT cleanup: {e}")
+
+            # Clean up pipeline runner
+            if hasattr(self, "runner") and self.runner:
+                try:
+                    if hasattr(self.runner, "__del__"):
+                        del self.runner
+                    self.runner = None
+                except Exception as e:
+                    logger.warning(f"Error in runner cleanup: {e}")
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+        except Exception as e:
+            logger.warning(f"Error in resource cleanup: {e}")
 
     def _inject_dynamic_content_into_flow(self, context):
         """

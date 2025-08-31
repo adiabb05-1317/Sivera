@@ -1,12 +1,53 @@
 "use client";
 
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import FlowterviewComponent from "./components/flowterview/main-component";
 import { usePathStore } from "./store/PathStore";
 
 export default function Home() {
-  const { jobId } = usePathStore();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { jobId, setJobId, setCandidateId, setBotToken, setRoomUrl, setInterviewId } =
+    usePathStore();
+
+  useEffect(() => {
+    const urlJobId = searchParams.get("job_id");
+    const urlCandidateId = searchParams.get("candidate_id");
+    const urlInterviewId = searchParams.get("interview_id");
+    const botToken = searchParams.get("bot_token");
+    const roomUrl = searchParams.get("room_url");
+
+    if (urlJobId && urlCandidateId) {
+      setJobId(urlJobId);
+      setCandidateId(urlCandidateId);
+
+      if (urlInterviewId) {
+        setInterviewId(urlInterviewId);
+      }
+
+      if (botToken) {
+        setBotToken(botToken);
+      }
+      if (roomUrl) {
+        setRoomUrl(decodeURIComponent(roomUrl));
+      }
+
+      router.replace("/", undefined);
+    }
+  }, [
+    searchParams,
+    setJobId,
+    setCandidateId,
+    setInterviewId,
+    setBotToken,
+    setRoomUrl,
+    jobId,
+    router,
+  ]);
+
   if (!jobId) {
-  return (
+    return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a]">
         <div className="flex flex-col items-center justify-center">
           <h1 className="text-xl font-bold text-app-blue-900 dark:text-app-blue-200">

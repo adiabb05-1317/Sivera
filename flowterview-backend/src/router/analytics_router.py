@@ -65,16 +65,24 @@ async def get_interview_analytics(interview_id: str) -> Dict[str, Any]:
     """
     Get the analytics for a specific interview.
     """
-    analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
-    return {"analytics": analytics}
+    try:
+        analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
+        return {"analytics": analytics or []}
+    except Exception as e:
+        logger.error(f"Error fetching interview analytics: {e}")
+        return {"analytics": []}
 
 @router.get("/interview/{interview_id}/candidate/{candidate_id}")
 async def get_interview_candidate_analytics(interview_id: str, candidate_id: str) -> Dict[str, Any]:
     """
     Get the analytics for a specific interview and candidate.
     """
-    analytics = db.fetch_one("interview_analytics", {"interview_id": interview_id, "candidate_id": candidate_id})
-    return {"analytics": analytics}
+    try:
+        analytics = db.fetch_one("interview_analytics", {"interview_id": interview_id, "candidate_id": candidate_id})
+        return {"analytics": analytics}
+    except Exception as e:
+        logger.error(f"Error fetching candidate analytics: {e}")
+        return {"analytics": None}
 
 @router.post("/interview/{interview_id}/candidates")
 async def get_interview_candidates_analytics(interview_id: str, request: CandidateAnalyticsRequest) -> List[Dict[str, Any]]:
@@ -88,10 +96,13 @@ async def get_interview_candidates_analytics(interview_id: str, request: Candida
         # Fetch all analytics for this interview first
         all_analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
         
+        if not all_analytics:
+            return []
+        
         # Filter to only include the requested candidates
         filtered_analytics = [
             analytics for analytics in all_analytics 
-            if analytics.get("candidate_id") in request.candidate_ids
+            if analytics and analytics.get("candidate_id") in request.candidate_ids
         ]
         
         return filtered_analytics
@@ -104,56 +115,85 @@ async def get_average_score(request: Request) -> Dict[str, Any]:
     """
     Get the average score for all interviews.
     """
-    organization_id = request.headers.get("X-Organization-Id")
-    analytics = db.fetch_all("interview_analytics", {"organization_id": organization_id})
-    total_score = 0
-    count = 0
-    for a in analytics:
-        try:
-            data = a.get("data")
-            # Handle both direct JSON and string formats for backward compatibility
-            if isinstance(data, str):
-                data = json.loads(data)
+    try:
+        organization_id = request.headers.get("X-Organization-Id")
+        if not organization_id:
+            logger.warning("No organization ID provided in headers")
+            return {"average_score": 0}
             
-            if isinstance(data, dict) and "overall_score" in data:
-                total_score += data.get("overall_score", 0)
-                count += 1
-        except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            logger.warning(f"Failed to parse analytics data: {e}")
-            continue
+        analytics = db.fetch_all("interview_analytics", {"organization_id": organization_id})
+        
+        if not analytics:
+            return {"average_score": 0}
+            
+        total_score = 0
+        count = 0
+        for a in analytics:
+            if not a:
+                continue
+                
+            try:
+                data = a.get("data")
+                # Handle both direct JSON and string formats for backward compatibility
+                if isinstance(data, str):
+                    data = json.loads(data)
+                
+                if isinstance(data, dict) and "overall_score" in data:
+                    score = data.get("overall_score", 0)
+                    if isinstance(score, (int, float)) and score > 0:
+                        total_score += score
+                        count += 1
+            except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                logger.warning(f"Failed to parse analytics data: {e}")
+                continue
 
-    if count == 0:
+        if count == 0:
+            return {"average_score": 0}
+        
+        return {"average_score": round(total_score / count, 2)}
+    except Exception as e:
+        logger.error(f"Error calculating average score: {e}")
         return {"average_score": 0}
-    
-    return {"average_score": total_score / count}
 
 @router.get("/average-score/{interview_id}")
 async def get_interview_average_score(interview_id: str) -> Dict[str, Any]:
     """
     Get the average score for a specific interview.
     """
-    analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
+    try:
+        analytics = db.fetch_all("interview_analytics", {"interview_id": interview_id})
 
-    total_score = 0
-    count = 0 
-    for a in analytics:
-        try:
-            data = a.get("data")
-            # Handle both direct JSON and string formats for backward compatibility
-            if isinstance(data, str):
-                data = json.loads(data)
-            
-            if isinstance(data, dict) and "overall_score" in data:
-                total_score += data.get("overall_score", 0)
-                count += 1
-        except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            logger.warning(f"Failed to parse analytics data: {e}")
-            continue
-    
-    if count == 0:
+        if not analytics:
+            return {"average_score": 0}
+
+        total_score = 0
+        count = 0 
+        for a in analytics:
+            if not a:
+                continue
+                
+            try:
+                data = a.get("data")
+                # Handle both direct JSON and string formats for backward compatibility
+                if isinstance(data, str):
+                    data = json.loads(data)
+                
+                if isinstance(data, dict) and "overall_score" in data:
+                    score = data.get("overall_score", 0)
+                    if isinstance(score, (int, float)) and score > 0:
+                        total_score += score
+                        count += 1
+            except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                logger.warning(f"Failed to parse analytics data: {e}")
+                continue
+        
+        if count == 0:
+            return {"average_score": 0}
+        
+        return {"average_score": round(total_score / count, 2)}
+    except Exception as e:
+        logger.error(f"Error calculating interview average score: {e}")
         return {"average_score": 0}
-    
-    return {"average_score": total_score / count}
 
 @router.post("/analyze-interview")
 async def analyze_interview(request: AnalyzeInterviewRequest) -> Dict[str, Any]:
@@ -161,6 +201,9 @@ async def analyze_interview(request: AnalyzeInterviewRequest) -> Dict[str, Any]:
     Analyze the interview chat history and return structured analytics.
     """
     try:
+        if not request.chat_history:
+            return {"error": "No chat history provided"}
+            
         prompt = _prepare_prompt([msg.dict() for msg in request.chat_history])
         response = generate_text(
             prompt=prompt,
@@ -168,11 +211,33 @@ async def analyze_interview(request: AnalyzeInterviewRequest) -> Dict[str, Any]:
             model="claude-sonnet-4-20250514",
             temperature=0.3,
         )
+        
+        if not response:
+            return {"error": "No response from LLM"}
+            
         try:
-            analytics = json.loads(response)
+            # Clean the response in case it has markdown formatting
+            cleaned_response = response.strip()
+            if cleaned_response.startswith("```json"):
+                cleaned_response = cleaned_response[7:]
+            if cleaned_response.endswith("```"):
+                cleaned_response = cleaned_response[:-3]
+            cleaned_response = cleaned_response.strip()
+            
+            analytics = json.loads(cleaned_response)
+            
+            # Validate the analytics structure
+            required_fields = ["summary", "technical_topics", "strengths", "weaknesses", 
+                             "areas_for_improvement", "communication_score", "technical_score", 
+                             "overall_assessment", "overall_score"]
+            
+            for field in required_fields:
+                if field not in analytics:
+                    logger.warning(f"Missing field in analytics: {field}")
+            
             return {"analytics": analytics}
-        except json.JSONDecodeError:
-            logger.error("Failed to parse LLM response as JSON")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
             return {
                 "error": "Failed to parse structured analytics",
                 "raw_analysis": response,

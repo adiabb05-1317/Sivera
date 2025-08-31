@@ -359,13 +359,14 @@ export function PhoneInterviewSection({
                     className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
                     disabled={phoneScreenQuestions.length >= 5}
                   />
+
                   <Button
                     onClick={addPhoneScreenQuestion}
                     variant="outline"
                     disabled={
                       !newQuestion.trim() || phoneScreenQuestions.length >= 5
                     }
-                    className="cursor-pointer border border-blue-500/80 dark:border-blue-400/80 hover:bg-blue-500/10 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-4"
+                    className="cursor-pointer text-xs"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Add
@@ -444,11 +445,6 @@ export function PhoneInterviewSection({
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {screen.retry_count > 0 && (
-                            <span className="text-xs text-orange-600 dark:text-orange-400">
-                              Retry {screen.retry_count}/{screen.max_retries}
-                            </span>
-                          )}
                           <Badge
                             variant="outline"
                             className={getStatusColor(screen.status)}
@@ -635,7 +631,9 @@ export function PhoneInterviewSection({
               />
             </div>
             <div>
-              <Label htmlFor="scheduled_at">Scheduled At (Optional)</Label>
+              <Label htmlFor="scheduled_at">
+                Scheduled At (UTC) - Optional
+              </Label>
               <Input
                 id="scheduled_at"
                 type="datetime-local"
@@ -646,7 +644,12 @@ export function PhoneInterviewSection({
                     scheduled_at: e.target.value,
                   })
                 }
+                placeholder="UTC time - Leave empty to schedule in 5 minutes"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Time will be treated as UTC. Current UTC time:{" "}
+                {new Date().toISOString().slice(0, 16)}
+              </p>
             </div>
           </div>
           <DialogFooter>

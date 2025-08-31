@@ -9,6 +9,17 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    // CRITICAL: This component should ONLY render for the root "/" route
+    // If this is rendering on dashboard routes, it indicates a routing issue
+    
+    // Get current pathname to debug routing issues
+    const currentPath = window.location.pathname;
+    
+    // If we're already on a dashboard route, don't redirect!
+    if (currentPath.startsWith('/dashboard')) {
+      return;
+    }
+    
     const checkSession = async () => {
       const {
         data: { session },
@@ -22,8 +33,10 @@ export default function Home() {
       }
     };
 
-    checkSession();
-  }, [router, getUserContext]);
+    // Add a small delay to prevent race conditions with middleware
+    const timer = setTimeout(checkSession, 100);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-app-blue-1/00 dark:from-gray-900 dark:to-gray-800 p-4">

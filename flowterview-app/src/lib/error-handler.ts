@@ -113,9 +113,4 @@ export const handleErrorWithToast = (
   });
 
   // Log error for debugging
-  console.error("Application Error:", {
-    ...appError,
-    context,
-    isRetryable,
-  });
 };

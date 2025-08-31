@@ -236,9 +236,8 @@ export default function SettingsPage() {
     );
     if (invalidEmails.length > 0) {
       toast.error("Invalid Email Domain", {
-        description: `The following emails don't match your organization domain (${
-          organization.domain
-        }): ${invalidEmails.join(", ")}`,
+        description: `The following emails don't match your organization domain (${organization.domain
+          }): ${invalidEmails.join(", ")}`,
       });
       return;
     }
@@ -573,9 +572,8 @@ export default function SettingsPage() {
 
       if (response.ok) {
         toast.success("LinkedIn Test Successful", {
-          description: `Integration is working correctly. Profile: ${
-            result.test_api_call?.profile_name || "N/A"
-          }`,
+          description: `Integration is working correctly. Profile: ${result.test_api_call?.profile_name || "N/A"
+            }`,
         });
       } else {
         toast.error("LinkedIn Test Failed", {
@@ -631,7 +629,7 @@ export default function SettingsPage() {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-[1rem] font-medium text-gray-900 dark:text-white">
+                <h3 className="text-sm font-sm text-gray-900 dark:text-white">
                   {organization?.name || "Company Name Not Set"}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -664,9 +662,8 @@ export default function SettingsPage() {
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {members.length > 0
-                    ? `${members.length} ${
-                        members.length === 1 ? "member" : "members"
-                      } in your organization`
+                    ? `${members.length} ${members.length === 1 ? "member" : "members"
+                    } in your organization`
                     : "View and manage organization members"}
                 </p>
               </div>
@@ -717,37 +714,33 @@ export default function SettingsPage() {
               <button
                 key={option.value}
                 onClick={() => setTheme(option.value)}
-                className={`cursor-pointer relative flex items-center space-x-3 rounded-lg border p-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                  theme === option.value
-                    ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/40 dark:border-app-blue-400"
-                    : "border-gray-200 dark:border-gray-700"
-                }`}
+                className={`cursor-pointer relative flex items-center space-x-3 rounded-lg border p-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${theme === option.value
+                  ? "border-app-blue-500 bg-app-blue-50 dark:bg-app-blue-900/40 dark:border-app-blue-400"
+                  : "border-gray-200 dark:border-gray-700"
+                  }`}
               >
                 <div className="flex-shrink-0">
                   <option.icon
-                    className={`h-5 w-5 ${
-                      theme === option.value
-                        ? "text-app-blue-600 dark:text-app-blue-300"
-                        : "text-gray-400 dark:text-gray-500"
-                    }`}
+                    className={`h-5 w-5 ${theme === option.value
+                      ? "text-app-blue-600 dark:text-app-blue-300"
+                      : "text-gray-400 dark:text-gray-500"
+                      }`}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm font-medium ${
-                      theme === option.value
-                        ? "text-app-blue-900 dark:text-app-blue-100"
-                        : "text-gray-900 dark:text-white"
-                    }`}
+                    className={`text-sm font-medium ${theme === option.value
+                      ? "text-app-blue-900 dark:text-app-blue-100"
+                      : "text-gray-900 dark:text-white"
+                      }`}
                   >
                     {option.label}
                   </p>
                   <p
-                    className={`text-xs ${
-                      theme === option.value
-                        ? "text-app-blue-700 dark:text-app-blue-200"
-                        : "text-gray-500 dark:text-gray-400"
-                    }`}
+                    className={`text-xs ${theme === option.value
+                      ? "text-app-blue-700 dark:text-app-blue-200"
+                      : "text-gray-500 dark:text-gray-400"
+                      }`}
                   >
                     {option.description}
                   </p>
@@ -922,11 +915,10 @@ export default function SettingsPage() {
                     }
                     variant="outline"
                     disabled={linkedInLoading}
-                    className={`${
-                      linkedInStatus?.is_connected
-                        ? "text-orange-600 border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:text-orange-400 dark:border-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-300"
-                        : "text-app-blue-600 border-app-blue-300 hover:bg-app-blue-50 hover:text-app-blue-700 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300"
-                    } cursor-pointer text-xs`}
+                    className={`${linkedInStatus?.is_connected
+                      ? "text-orange-600 border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:text-orange-400 dark:border-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-300"
+                      : "text-app-blue-600 border-app-blue-300 hover:bg-app-blue-50 hover:text-app-blue-700 dark:text-app-blue-400 dark:border-app-blue-600 dark:hover:bg-app-blue-900/20 dark:hover:text-app-blue-300"
+                      } cursor-pointer text-xs`}
                   >
                     {linkedInLoading && (
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -958,8 +950,7 @@ export default function SettingsPage() {
             <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
               {organization?.name && `Members of ${organization.name}`}
               {members.length > 0 &&
-                ` • ${members.length} ${
-                  members.length === 1 ? "member" : "members"
+                ` • ${members.length} ${members.length === 1 ? "member" : "members"
                 }`}
             </DialogDescription>
           </DialogHeader>
@@ -997,11 +988,10 @@ export default function SettingsPage() {
                   <div className="px-1">
                     <Textarea
                       className="w-full min-h-[120px] text-xs"
-                      placeholder={`Enter email addresses...${
-                        organization?.domain
-                          ? `\ne.g., johndoe@${organization.domain}, jane@${organization.domain}`
-                          : ""
-                      }`}
+                      placeholder={`Enter email addresses...${organization?.domain
+                        ? `\ne.g., johndoe@${organization.domain}, jane@${organization.domain}`
+                        : ""
+                        }`}
                       value={newMemberEmails}
                       onChange={(e) => setNewMemberEmails(e.target.value)}
                     />
@@ -1069,31 +1059,29 @@ export default function SettingsPage() {
                   .map((member) => (
                     <div
                       key={member.id}
-                      className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
-                        member.role === "admin"
-                          ? "border-app-blue-200 bg-app-blue-50 dark:border-app-blue-700/50 dark:bg-app-blue-900/10"
-                          : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50"
-                      }`}
+                      className={`flex items-center justify-between px-4 py-3 rounded-lg border ${member.role === "admin"
+                        ? "border-app-blue-200 bg-app-blue-50 dark:border-app-blue-700/50 dark:bg-app-blue-900/10"
+                        : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50"
+                        }`}
                     >
                       <div className="flex items-center space-x-4">
                         <Avatar className="h-12 w-12">
                           <AvatarFallback
-                            className={`text-sm font-medium ${
-                              member.role === "admin"
-                                ? "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
-                                : "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
-                            }`}
+                            className={`text-sm font-medium ${member.role === "admin"
+                              ? "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
+                              : "bg-app-blue-100 text-app-blue-700 dark:bg-app-blue-900/30 dark:text-app-blue-400"
+                              }`}
                           >
                             {member.name
                               ? member.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2)
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)
                               : member.email
-                              ? member.email.substring(0, 2).toUpperCase()
-                              : "?"}
+                                ? member.email.substring(0, 2).toUpperCase()
+                                : "?"}
                           </AvatarFallback>
                         </Avatar>
 

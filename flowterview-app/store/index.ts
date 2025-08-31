@@ -48,7 +48,7 @@ const setCacheState = (state: CacheState) => {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.warn('Failed to save cache state:', error);
+    // Failed to save cache state
   }
 };
 
@@ -87,7 +87,7 @@ const waitForAuthReady = async (maxWaitMs = 10000): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  console.warn("⚠️ Auth readiness timeout, proceeding anyway");
+  // Auth readiness timeout, proceeding anyway
   return useAuthStore.getState().isAuthenticated;
 };
 
@@ -114,23 +114,19 @@ export const initializeStores = async (force = false) => {
         const currentUserId = authState.user?.id;
         
         if (!currentUserId) {
-          console.warn("⚠️ No user ID available, skipping data fetch");
+          // No user ID available, skipping data fetch
           return;
         }
 
         const cache = getCacheState();
         const needsRefresh = force || shouldForceRefresh(currentUserId);
         
-        // Show what we're doing for debugging
-        console.log(`🔄 Store initialization: ${needsRefresh ? 'FETCHING' : 'USING_CACHE'} (force: ${force})`);
-
         if (needsRefresh) {
-
-          console.log("📡 Fetching fresh data from all APIs...");
-          
           await Promise.all([
             
-          ]).catch(console.error);
+          ]).catch(() => {
+            // Error during data fetch
+          });
 
           // Update cache state after successful fetch
           setCacheState({
@@ -138,24 +134,20 @@ export const initializeStores = async (force = false) => {
             lastFullSync: Date.now(),
             user_id: currentUserId
           });
-          
-          console.log("✅ Fresh data loaded and cached");
         } else {
-          console.log("⚡ Using cached data, skipping API calls");
-          
           // Still check if we need background refresh for stale data
           if (isDataStale()) {
-            console.log("🔄 Background refresh triggered for stale data");
-            
             // Non-blocking background refresh
             setTimeout(() => {
-              initializeStores(true).catch(console.error);
+              initializeStores(true).catch(() => {
+                // Error during background refresh
+              });
             }, 100);
           }
         }
       }
     } catch (error) {
-      console.error("❌ Error initializing stores:", error);
+      // Error initializing stores
     } finally {
       isInitializing = false;
       initializationPromise = null;
@@ -174,9 +166,8 @@ export const resetInitialization = () => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(CACHE_KEY);
-      console.log("🧹 Cache cleared on reset");
     } catch (error) {
-      console.warn("Failed to clear cache:", error);
+      // Failed to clear cache
     }
   }
 };

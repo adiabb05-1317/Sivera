@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { authenticatedFetch } from "@/lib/auth-client";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 function extractOrgFromEmail(email: string): string {
   // Extracts the part between @ and . in the domain
@@ -17,7 +18,6 @@ function extractOrgFromEmail(email: string): string {
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>("");
   const [orgLoading, setOrgLoading] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
         const sessionData = sessionResp.data;
         const sessionError = sessionResp.error;
         if (sessionError) {
-          setDebugInfo("Session error: " + sessionError.message);
+          toast.error(sessionError.message);
         } else if (sessionData.session) {
           // 2. Get user info
           const { data: userData } = await supabase.auth.getUser();
@@ -59,7 +59,7 @@ export default function AuthCallbackPage() {
             // User does not exist, create user with org from domain
             setOrgLoading(true);
             const userId = userData?.user?.id;
-            const name = email.split("@")[0];
+            const name = "";
             const orgName = extractOrgFromEmail(email);
             // Defensive: fallback if orgName is empty
             if (!orgName) {
@@ -91,8 +91,8 @@ export default function AuthCallbackPage() {
               }
               throw new Error(
                 (data as any).detail ||
-                (data as any).error ||
-                "Failed to create user"
+                  (data as any).error ||
+                  "Failed to create user"
               );
             }
 
@@ -107,8 +107,8 @@ export default function AuthCallbackPage() {
 
         if (!hash || !hash.includes("access_token")) {
           console.error("No access_token found in URL hash");
-          setDebugInfo(
-            (prev) => prev + "\nNo access_token in URL hash: " + hash
+          toast.info(
+            "No access_token found in URL hash. Please try logging in again."
           );
         } else {
           // Extract the access_token from the hash
@@ -125,10 +125,7 @@ export default function AuthCallbackPage() {
 
             if (setSessionError) {
               console.error("Error setting session:", setSessionError);
-              setDebugInfo(
-                (prev) =>
-                  prev + "\nError setting session: " + setSessionError.message
-              );
+              toast.error(setSessionError.message);
             } else {
               // Wait a moment to ensure session propagates
               setTimeout(() => {
@@ -145,9 +142,9 @@ export default function AuthCallbackPage() {
 
         if (code) {
           // We have a code, but need to handle it
-          setDebugInfo((prev) => prev + "\nAuth code found: " + code);
-          setError(
-            "Authentication partially succeeded. Please click the button below to go to the dashboard."
+          toast.info("Handling auth code...");
+          toast.error(
+            "Auth code handling is not yet implemented. Please try logging in again."
           );
           return;
         }
@@ -160,8 +157,7 @@ export default function AuthCallbackPage() {
         console.error("Authentication error:", err);
         const errorMsg =
           err instanceof Error ? err.message : "Unknown error occurred";
-        setError(errorMsg);
-        setDebugInfo((prev) => prev + "\nError caught: " + errorMsg);
+        toast.error(errorMsg);
 
         // Don't automatically redirect on error, let user see debug info
       }
@@ -204,18 +200,7 @@ export default function AuthCallbackPage() {
             <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300">
               {error}
             </div>
-
-            {debugInfo && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
-                {debugInfo}
-              </div>
-            )}
-
-            <Button
-              asChild
-              variant="outline"
-              className="w-full"
-            >
+            <Button asChild variant="outline" className="w-full">
               <a href="/auth/login">Back to Login</a>
             </Button>
           </div>
@@ -228,7 +213,7 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Signing you in
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -236,7 +221,7 @@ export default function AuthCallbackPage() {
           </p>
         </div>
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-app-blue-300" />
         </div>
       </div>
     </div>

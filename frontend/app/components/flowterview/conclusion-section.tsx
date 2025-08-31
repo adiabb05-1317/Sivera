@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/logos";
 import { useTheme } from "next-themes";
-import { CheckCircle } from "lucide-react";
+import {
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  CheckCircle2Icon,
+  CheckCircleIcon,
+} from "lucide-react";
 
 const ConclusionSection = () => {
   const { resetStore } = usePathStore();
@@ -21,12 +27,11 @@ const ConclusionSection = () => {
 
   return (
     <section className="w-full h-full flex items-center justify-center p-6 bg-app-blue-50 dark:bg-[#101624] min-h-screen">
-      <Card className="relative max-w-lg w-full z-20 animate-fade-in rounded-2xl shadow-xl border border-app-blue-200 dark:border-app-blue-700 bg-white/95 dark:bg-[#232d44] backdrop-blur-xl transition-all duration-500">
-        <div className="absolute top-0 left-0 w-full h-1 bg-app-blue-500 dark:bg-app-blue-400/80 rounded-t-2xl" />
+      <Card className="relative max-w-lg w-full z-20 animate-fade-in rounded-xl shadow-xl border border-app-blue-200 dark:border-app-blue-700 bg-white/95 dark:bg-[#232d44] backdrop-blur-xl transition-all duration-500">
         <CardContent className="flex flex-col items-center p-10 md:p-14">
           {/* Professional Icon */}
           <div className="mb-6 flex flex-col items-center">
-            <CheckCircle className="w-14 h-14 text-app-blue-600 dark:text-app-blue-200 mb-2" />
+            <CheckCircle2 className="w-14 h-14 text-app-blue-600 dark:text-app-blue-200 mb-2" />
           </div>
           {/* Heading and Message */}
           <div className="mb-6 text-center w-full">
