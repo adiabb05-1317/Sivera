@@ -359,13 +359,14 @@ export function PhoneInterviewSection({
                     className="flex-1 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
                     disabled={phoneScreenQuestions.length >= 5}
                   />
+
                   <Button
                     onClick={addPhoneScreenQuestion}
                     variant="outline"
                     disabled={
                       !newQuestion.trim() || phoneScreenQuestions.length >= 5
                     }
-                    className="cursor-pointer border border-blue-500/80 dark:border-blue-400/80 hover:bg-blue-500/10 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-4"
+                    className="cursor-pointer text-xs"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Add

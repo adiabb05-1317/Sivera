@@ -160,7 +160,7 @@ const CandidateCard: React.FC<CandidateCardProps> = React.memo(
                     window.open(candidate.linkedin_profile, "_blank");
                   }}
                 >
-                  <Linkedin className="h-4 w-4 mr-2" />
+                  <Linkedin className="h-4 w-4" />
                   View LinkedIn Profile
                 </DropdownMenuItem>
               )}

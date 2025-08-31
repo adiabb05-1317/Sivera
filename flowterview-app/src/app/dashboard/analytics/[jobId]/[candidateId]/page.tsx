@@ -105,7 +105,7 @@ export default function CandidateAnalyticsPage({
             const candidateRecording = recordingData.recordings?.find(
               (recording: any) => recording.candidate_id === candidateId
             );
-         
+
             if (candidateRecording?.s3_key) {
               recordingUrl = candidateRecording.s3_key;
             } else if (candidateRecording?.cloud_url) {
@@ -114,13 +114,16 @@ export default function CandidateAnalyticsPage({
                 const url = new URL(candidateRecording.cloud_url);
                 const pathname = url.pathname;
                 // Remove leading slash and bucket name if present
-                const pathParts = pathname.split('/').filter(Boolean);
+                const pathParts = pathname.split("/").filter(Boolean);
                 // If it's a virtual-hosted style URL
-                if (url.hostname.includes('.s3.') || url.hostname.includes('.s3-')) {
-                  recordingUrl = pathParts.join('/');
+                if (
+                  url.hostname.includes(".s3.") ||
+                  url.hostname.includes(".s3-")
+                ) {
+                  recordingUrl = pathParts.join("/");
                 } else {
                   // Path-style URL - skip bucket name
-                  recordingUrl = pathParts.slice(1).join('/');
+                  recordingUrl = pathParts.slice(1).join("/");
                 }
               } catch (e) {
                 console.error("Error parsing S3 URL:", e);
@@ -155,9 +158,9 @@ export default function CandidateAnalyticsPage({
   if (candidatesLoading || jobsLoading || candidateAnalyticsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 font-kyiv">
           <Loader2 className="h-8 w-8 animate-spin text-app-blue-500" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Loading candidate analytics...
           </p>
         </div>
@@ -183,9 +186,10 @@ export default function CandidateAnalyticsPage({
   // Extract analytics data from the API response
   const analyticsData = candidateAnalyticsQuery.data?.analytics?.data || {};
   const recordingKey = candidateAnalyticsQuery.data?.recordingUrl;
-  
+
   // Always use CDN for video playback
-  const AWS_CDN = process.env.NEXT_PUBLIC_AWS_CDN || "https://d3m7q9diz9wdge.cloudfront.net";
+  const AWS_CDN =
+    process.env.NEXT_PUBLIC_AWS_CDN || "https://d3m7q9diz9wdge.cloudfront.net";
   const recordingUrl = recordingKey ? `${AWS_CDN}/${recordingKey}` : null;
 
   // Use real data from API

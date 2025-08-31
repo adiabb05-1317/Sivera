@@ -14,6 +14,35 @@ import { Separator } from "@radix-ui/react-separator";
 
 const emailSchema = z.string().email();
 
+// Common personal email domains to exclude
+const personalEmailDomains = [
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "aol.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "live.com",
+  "msn.com",
+  "ymail.com",
+  "rocketmail.com",
+  "protonmail.com",
+  "tutanota.com",
+  "zoho.com",
+  "mail.com",
+  "gmx.com",
+  "fastmail.com",
+];
+
+const isBusinessEmail = (email: string): boolean => {
+  if (!emailSchema.safeParse(email).success) return false;
+
+  const domain = email.split("@")[1]?.toLowerCase();
+  return domain ? !personalEmailDomains.includes(domain) : false;
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -23,6 +52,7 @@ export default function LoginPage() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<"email" | "password">("email");
+  const [emailError, setEmailError] = useState(false);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -42,11 +72,21 @@ export default function LoginPage() {
 
   const handleEmailLogin = async () => {
     setLoading(true);
+    setEmailError(false);
 
     try {
       if (!email || !emailSchema.safeParse(email).success) {
+        setEmailError(true);
         toast.error("Invalid email", {
           description: "Please enter a valid email address",
+        });
+        return;
+      }
+
+      if (!isBusinessEmail(email)) {
+        setEmailError(true);
+        toast.error("Business email required", {
+          description: "Please use your business email address to continue",
         });
         return;
       }
@@ -80,12 +120,24 @@ export default function LoginPage() {
   };
 
   const handleEmailStep = () => {
+    setEmailError(false);
+
     if (!email || !emailSchema.safeParse(email).success) {
+      setEmailError(true);
       toast.error("Invalid email", {
         description: "Please enter a valid email address",
       });
       return;
     }
+
+    if (!isBusinessEmail(email)) {
+      setEmailError(true);
+      toast.error("Business email required", {
+        description: "Please use your business email address to continue",
+      });
+      return;
+    }
+
     setStep("password");
   };
 
@@ -208,7 +260,9 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {showPassword ? "Log in or create an account to collaborate" : "Log in to Sivera"}
+              {showPassword
+                ? "Log in or create an account to collaborate"
+                : "Log in to Sivera"}
             </h2>
           </div>
 
@@ -220,8 +274,18 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full flex items-center justify-center gap-3 py-3 cursor-pointer"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
                   </svg>
                   Continue with SAML SSO
                 </Button>
@@ -231,15 +295,27 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full flex items-center justify-center gap-3 py-3 cursor-pointer"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                    />
                   </svg>
                   Continue with Passkey
                 </Button>
 
                 <div className="flex items-center gap-4">
                   <Separator className="flex-1 h-px bg-gray-300 dark:bg-gray-600 opacity-40" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">or</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    or
+                  </span>
                   <Separator className="flex-1 h-px bg-gray-300 dark:bg-gray-600 opacity-40" />
                 </div>
 
@@ -249,8 +325,15 @@ export default function LoginPage() {
                     type="email"
                     placeholder="Email Address"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full py-3"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError(false);
+                    }}
+                    className={`w-full py-3 ${
+                      emailError
+                        ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500 dark:border-red-600 dark:bg-red-950/20 dark:focus:border-red-500"
+                        : ""
+                    }`}
                   />
                 </div>
 
@@ -284,10 +367,19 @@ export default function LoginPage() {
                         <Input
                           type="email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full py-3"
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setEmailError(false);
+                          }}
+                          className={`w-full py-3 ${
+                            emailError
+                              ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500 dark:border-red-600 dark:bg-red-950/20 dark:focus:border-red-500"
+                              : ""
+                          }`}
                           placeholder="Enter your email address"
-                          onKeyDown={(e) => e.key === "Enter" && handleEmailStep()}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleEmailStep()
+                          }
                         />
                       </div>
 
@@ -331,7 +423,9 @@ export default function LoginPage() {
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full py-3"
                           placeholder="Enter your password"
-                          onKeyDown={(e) => e.key === "Enter" && handlePasswordLogin()}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handlePasswordLogin()
+                          }
                           autoFocus
                         />
                       </div>
