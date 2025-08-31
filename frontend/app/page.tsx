@@ -1,15 +1,21 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import FlowterviewComponent from "./components/flowterview/main-component";
 import { usePathStore } from "./store/PathStore";
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { jobId, setJobId, setCandidateId, setBotToken, setRoomUrl, setInterviewId } =
-    usePathStore();
+  const {
+    jobId,
+    setJobId,
+    setCandidateId,
+    setBotToken,
+    setRoomUrl,
+    setInterviewId,
+  } = usePathStore();
 
   useEffect(() => {
     const urlJobId = searchParams.get("job_id");
@@ -65,5 +71,29 @@ export default function Home() {
     <main className="flex h-screen w-full flex-col items-center justify-center">
       <FlowterviewComponent />
     </main>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <main className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-app-blue-50 to-white dark:from-[#101624] dark:to-[#23304a]">
+      <div className="flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-blue-600 dark:border-app-blue-400 mb-4"></div>
+        <h1 className="text-xl font-bold text-app-blue-900 dark:text-app-blue-200">
+          Loading...
+        </h1>
+        <p className="text-app-blue-500 dark:text-app-blue-400 text-sm">
+          Please wait while we load your interview.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomeContent />
+    </Suspense>
   );
 }

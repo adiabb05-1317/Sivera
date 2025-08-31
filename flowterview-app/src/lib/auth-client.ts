@@ -53,14 +53,17 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
     // Advanced invalidation with cross-store coordination
     if (url.includes("/candidates")) {
       candidatesStore.invalidateCache();
-      
+
       // Candidates affect interview counts and analytics
       if (method === "POST" || method === "PATCH") {
         interviewsStore.invalidateCache();
-        
+
         // Try to invalidate analytics store if available
         try {
-          const { useAnalyticsStore } = await import("../../store/analyticsStore");
+          const { useAnalyticsStore } = await import(
+            "../../store/analyticsStore"
+          );
+          // @ts-ignore
           useAnalyticsStore.getState().invalidateCache();
         } catch (error) {
           // Analytics store not available for invalidation
@@ -74,12 +77,15 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
       if (interviewIdMatch) {
         interviewsStore.invalidateInterviewDetails(interviewIdMatch[1]);
       }
-      
+
       // Interviews affect candidate data and analytics
       candidatesStore.invalidateCache();
-      
+
       try {
-        const { useAnalyticsStore } = await import("../../store/analyticsStore");
+        const { useAnalyticsStore } = await import(
+          "../../store/analyticsStore"
+        );
+        // @ts-ignore
         useAnalyticsStore.getState().invalidateCache();
       } catch (error) {
         // Analytics store not available for invalidation
@@ -88,7 +94,7 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
 
     if (url.includes("/jobs")) {
       jobsStore.invalidateCache();
-      
+
       // Jobs affect candidates and interviews
       candidatesStore.invalidateCache();
       interviewsStore.invalidateCache();
@@ -100,18 +106,24 @@ const invalidateRelevantCaches = async (url: string, method: string) => {
     }
 
     // Global invalidation for certain operations
-    if (url.includes("/status") || url.includes("/bulk") || url.includes("/invite")) {
+    if (
+      url.includes("/status") ||
+      url.includes("/bulk") ||
+      url.includes("/invite")
+    ) {
       candidatesStore.invalidateCache();
       interviewsStore.invalidateCache();
-      
+
       try {
-        const { useAnalyticsStore } = await import("../../store/analyticsStore");
+        const { useAnalyticsStore } = await import(
+          "../../store/analyticsStore"
+        );
+        // @ts-ignore
         useAnalyticsStore.getState().invalidateCache();
       } catch (error) {
         // Analytics store not available for invalidation
       }
     }
-
   } catch (error) {
     // Failed to invalidate caches
   }
@@ -122,7 +134,9 @@ export const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
 
-  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=${config.auth.cookieSameSite}`;
+  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=${
+    config.auth.cookieSameSite
+  }`;
 
   if (config.auth.cookieSecure) {
     cookieString += ";Secure";
@@ -147,8 +161,8 @@ export const getCookie = (name: string): string | null => {
 };
 
 export const deleteCookie = (name: string) => {
-  if (typeof window === 'undefined') return;
-  
+  if (typeof window === "undefined") return;
+
   // Multiple attempts to ensure cookie is deleted across different configurations
   const expiredDate = "Thu, 01 Jan 1970 00:00:01 GMT";
 
@@ -179,7 +193,7 @@ export const deleteCookie = (name: string) => {
     );
   }
 
-  cookieVariations.forEach(cookieString => {
+  cookieVariations.forEach((cookieString) => {
     document.cookie = cookieString;
   });
 };
@@ -267,28 +281,28 @@ export const getUserContext = (): UserContext | null => {
 
 // Clear user context from cookies
 export const clearUserContext = () => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // Cannot clear cookies on server side
     return;
   }
-  
+
   // Delete our custom cookies
   deleteCookie("user_id");
   deleteCookie("user_email");
   deleteCookie("organization_id");
   deleteCookie("user_context");
-  
+
   // Get all existing cookies and delete them
-  const allCookies = document.cookie.split(';');
-  
-  allCookies.forEach(cookie => {
-    const cookieName = cookie.split('=')[0].trim();
+  const allCookies = document.cookie.split(";");
+
+  allCookies.forEach((cookie) => {
+    const cookieName = cookie.split("=")[0].trim();
     if (cookieName) {
       // Delete all cookies, especially Supabase ones
       deleteCookie(cookieName);
-      
+
       // Extra aggressive deletion for Supabase cookies
-      if (cookieName.startsWith('sb-')) {
+      if (cookieName.startsWith("sb-")) {
         // Try multiple deletion methods for stubborn Supabase cookies
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
@@ -299,7 +313,7 @@ export const clearUserContext = () => {
       }
     }
   });
-  
+
   // Clear all storage
   try {
     localStorage.clear();
@@ -307,10 +321,12 @@ export const clearUserContext = () => {
   } catch (error) {
     // Storage clear error
   }
-  
+
   // Verify cookies are cleared
-  const remainingCookies = document.cookie.split(';').filter(c => c.trim()).length;
-  
+  const remainingCookies = document.cookie
+    .split(";")
+    .filter((c) => c.trim()).length;
+
   if (remainingCookies > 0) {
     // Some cookies may not have been cleared
   }
@@ -466,10 +482,10 @@ export const logout = async () => {
     clearUserContext();
 
     // 3. Clear all localStorage data
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Clear all localStorage
       localStorage.clear();
-      
+
       // Clear sessionStorage
       sessionStorage.clear();
     }
@@ -482,40 +498,44 @@ export const logout = async () => {
         { useInterviewsStore },
         { useJobsStore },
         { useAnalyticsStore },
-        { resetInitialization }
+        { resetInitialization },
       ] = await Promise.all([
         import("../../store/authStore"),
         import("../../store/candidatesStore"),
         import("../../store/interviewsStore"),
         import("../../store/jobsStore"),
         import("../../store/analyticsStore"),
-        import("../../store").then(m => ({ resetInitialization: m.resetInitialization }))
+        import("../../store").then((m) => ({
+          resetInitialization: m.resetInitialization,
+        })),
       ]);
 
       // Clear all store states
       useAuthStore.getState().logout();
+      // @ts-ignore
       useCandidatesStore.getState().invalidateCache();
+      // @ts-ignore
       useInterviewsStore.getState().invalidateCache();
+      // @ts-ignore
       useJobsStore.getState().invalidateCache();
+      // @ts-ignore
       useAnalyticsStore.getState().invalidateCache();
-      
+
       // Reset store initialization
       resetInitialization();
-      
     } catch (storeError) {
       // Failed to clear stores
     }
 
     return { error: null };
-
   } catch (logoutError) {
     // Even if logout fails, clear what we can
     clearUserContext();
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.clear();
       sessionStorage.clear();
     }
-    
+
     return { error: logoutError };
   }
 };

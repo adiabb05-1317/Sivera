@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle,
@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-export default function LinkedInCallbackPage() {
+function LinkedInCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -28,7 +28,7 @@ export default function LinkedInCallbackPage() {
     "loading"
   );
   const [message, setMessage] = useState("");
-  const [profileData, setProfileData] = useState<any>(null);
+
   const [redirectTimer, setRedirectTimer] = useState(5);
 
   // Handle callback parameters and set initial status
@@ -215,5 +215,30 @@ export default function LinkedInCallbackPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-app-blue-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Loading...
+            </h2>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function LinkedInCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LinkedInCallbackContent />
+    </Suspense>
   );
 }
