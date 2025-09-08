@@ -60,20 +60,20 @@ jobs:
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.AWS_MAIN_APP_HOST }}
-          username: ${{ secrets.AWS_MAIN_APP_USER }}
+          host: ${{ secrets.MAIN_APP_HOST }}
+          username: ${{ secrets.MAIN_APP_USER }}
           key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
           script_stop: true
           script: |
-            mkdir -p /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
-            sudo chown -R $USER:$USER /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
-            sudo chmod -R 755 /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+            mkdir -p /home/${{ secrets.MAIN_APP_USER }}/sivera-main-application
+            sudo chown -R $USER:$USER /home/${{ secrets.MAIN_APP_USER }}/sivera-main-application
+            sudo chmod -R 755 /home/${{ secrets.MAIN_APP_USER }}/sivera-main-application
 
             DOCKER_COMPOSE="docker-compose"
 
             echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-            cd /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+            cd /home/${{ secrets.MAIN_APP_USER }}/sivera-main-application
             $DOCKER_COMPOSE pull || true
             $DOCKER_COMPOSE down || true
 
