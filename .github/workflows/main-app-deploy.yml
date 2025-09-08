@@ -1,6 +1,6 @@
 name: Deploy Main App
 
-# Trigger rebuild with corrected HTTPS URLs - July 8, 2025
+# Trigger rebuild with corrected HTTPS URLs - Sept 8, 2025
 
 on:
   push:
@@ -13,117 +13,114 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and push backend image
-      uses: docker/build-push-action@v4
-      with:
-        context: ./backend
-        push: true
-        tags: sivera/sivera:backend
-        cache-from: type=registry,ref=sivera/sivera:backend-cache
-        cache-to: type=registry,ref=sivera/sivera:backend-cache,mode=max
+      - name: Build and push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: sivera/sivera:backend
+          cache-from: type=registry,ref=sivera/sivera:backend-cache
+          cache-to: type=registry,ref=sivera/sivera:backend-cache,mode=max
+          build-args: |
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+            DAILY_API_KEY=${{ secrets.DAILY_API_KEY }}
 
-    - name: Build and push frontend image
-      uses: docker/build-push-action@v4
-      with:
-        context: ./frontend
-        push: true
-        tags: sivera/sivera:frontend
-        cache-from: type=registry,ref=sivera/sivera:frontend-cache
-        cache-to: type=registry,ref=sivera/sivera:frontend-cache,mode=max
-        build-args: |
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_SIVERA_BACKEND_URL=${{ secrets.NEXT_PUBLIC_SIVERA_BACKEND_URL }}
-          NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
-          NEXT_PUBLIC_PIPECAT_BASE_URL=${{ secrets.NEXT_PUBLIC_PIPECAT_BASE_URL }}
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: sivera/sivera:frontend
+          cache-from: type=registry,ref=sivera/sivera:frontend-cache
+          cache-to: type=registry,ref=sivera/sivera:frontend-cache,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_SIVERA_BACKEND_URL=${{ secrets.NEXT_PUBLIC_SIVERA_BACKEND_URL }}
+            NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
+            NEXT_PUBLIC_PIPECAT_BASE_URL=${{ secrets.NEXT_PUBLIC_PIPECAT_BASE_URL }}
 
-    - name: Deploy to GCP VM
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.MAIN_APP_VM_HOST }}
-        username: ${{ secrets.MAIN_APP_VM_USER }}
-        key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-        script_stop: true
-        script: |
-          # Create directory with proper permissions if it doesn't exist
-          mkdir -p /home/${{ secrets.MAIN_APP_VM_USER }}/sivera-main-application
-          
-          # Fix permissions for the deployment directory
-          sudo chown -R $USER:$USER /home/${{ secrets.MAIN_APP_VM_USER }}/sivera-main-application
-          sudo chmod -R 755 /home/${{ secrets.MAIN_APP_VM_USER }}/sivera-main-application
-          
-          # Define Docker Compose command (using v2 syntax which is already installed)
-          DOCKER_COMPOSE="docker compose"
-          
-          # Login to Docker Hub with credentials directly from GitHub secrets
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          
-          cd /home/${{ secrets.MAIN_APP_VM_USER }}/sivera-main-application
-          $DOCKER_COMPOSE pull || true
-          $DOCKER_COMPOSE down || true
-          
-          # Create environment files from secrets
-          cat > .env.backend << EOF
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}
-          DAILY_API_KEY=${{ secrets.DAILY_API_KEY }}
-          RIME_API_KEY=${{ secrets.RIME_API_KEY }}
-          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-          SMTP_HOST=${{ secrets.SMTP_HOST }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
-          SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_PASS=${{ secrets.SMTP_PASS }}
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-          RELOAD=false
-          EOF
-          
-          cat > .env.frontend << EOF
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_SIVERA_BACKEND_URL=${{ secrets.NEXT_PUBLIC_SIVERA_BACKEND_URL }}
-          NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
-          NEXT_PUBLIC_PIPECAT_BASE_URL=${{ secrets.NEXT_PUBLIC_PIPECAT_BASE_URL }}
-          EOF
-          
-          # Create docker-compose.yml file with simple echo commands to avoid heredoc issues
-          echo "services:" > docker-compose.yml
-          echo "  backend:" >> docker-compose.yml
-          echo "    image: sivera/sivera:backend" >> docker-compose.yml
-          echo "    pull_policy: always" >> docker-compose.yml
-          echo "    ports:" >> docker-compose.yml
-          echo "      - \"8000:8000\"" >> docker-compose.yml
-          echo "    restart: always" >> docker-compose.yml
-          echo "    env_file:" >> docker-compose.yml
-          echo "      - .env.backend" >> docker-compose.yml
-          echo "  frontend:" >> docker-compose.yml
-          echo "    image: sivera/sivera:frontend" >> docker-compose.yml
-          echo "    pull_policy: always" >> docker-compose.yml
-          echo "    env_file:" >> docker-compose.yml
-          echo "      - .env.frontend" >> docker-compose.yml
-          echo "    ports:" >> docker-compose.yml
-          echo "      - \"3000:3000\"" >> docker-compose.yml
-          echo "    restart: always" >> docker-compose.yml
-          
-          # Pull the latest images and start the services
-          $DOCKER_COMPOSE up -d
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.AWS_MAIN_APP_HOST }}
+          username: ${{ secrets.AWS_MAIN_APP_USER }}
+          key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            mkdir -p /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+            sudo chown -R $USER:$USER /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+            sudo chmod -R 755 /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+
+            DOCKER_COMPOSE="docker-compose"
+
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            cd /home/${{ secrets.AWS_MAIN_APP_USER }}/sivera-main-application
+            $DOCKER_COMPOSE pull || true
+            $DOCKER_COMPOSE down || true
+
+            cat > .env.backend << EOF
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+            ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}
+            DAILY_API_KEY=${{ secrets.DAILY_API_KEY }}
+            RIME_API_KEY=${{ secrets.RIME_API_KEY }}
+            DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASS=${{ secrets.SMTP_PASS }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+            RELOAD=false
+            EOF
+
+            cat > .env.frontend << EOF
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_SIVERA_BACKEND_URL=${{ secrets.NEXT_PUBLIC_SIVERA_BACKEND_URL }}
+            NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
+            NEXT_PUBLIC_PIPECAT_BASE_URL=${{ secrets.NEXT_PUBLIC_PIPECAT_BASE_URL }}
+            EOF
+
+            echo "# Main application deployment configuration" > docker-compose.yml
+            echo "services:" >> docker-compose.yml
+            echo "  backend:" >> docker-compose.yml
+            echo "    image: sivera/sivera:backend" >> docker-compose.yml
+            echo "    pull_policy: always" >> docker-compose.yml
+            echo "    ports:" >> docker-compose.yml
+            echo "      - \"8000:8000\"" >> docker-compose.yml
+            echo "    restart: always" >> docker-compose.yml
+            echo "    env_file:" >> docker-compose.yml
+            echo "      - .env.backend" >> docker-compose.yml
+            echo "  frontend:" >> docker-compose.yml
+            echo "    image: sivera/sivera:frontend" >> docker-compose.yml
+            echo "    pull_policy: always" >> docker-compose.yml
+            echo "    ports:" >> docker-compose.yml
+            echo "      - \"3001:3000\"" >> docker-compose.yml
+            echo "    restart: always" >> docker-compose.yml
+            echo "    env_file:" >> docker-compose.yml
+            echo "      - .env.frontend" >> docker-compose.yml
+
+            $DOCKER_COMPOSE up -d
