@@ -60,7 +60,7 @@ jobs:
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.MAIN_APP_HOST }}
+          host: ${{ secrets.AWS_MAIN_APP_HOST }}
           username: ${{ secrets.MAIN_APP_USER }}
           key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
           script_stop: true
