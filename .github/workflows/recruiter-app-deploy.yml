@@ -57,34 +57,26 @@ jobs:
             NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
             NEXT_PUBLIC_AWS_CDN=${{ secrets.NEXT_PUBLIC_AWS_CDN }}
 
-      - name: Deploy to GCP VM
+      - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.RECRUITER_APP_VM_HOST }}
-          username: ${{ secrets.RECRUITER_APP_VM_USER }}
-          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-          # Pass Docker Hub credentials to the server via GitHub secrets
-          # But instead of trying to pass them directly, we'll set them in the script
+          host: ${{ secrets.AWS_RECRUITER_APP_HOST }}
+          username: ubuntu
+          key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
           script_stop: true
           script: |
-            # Create directory with proper permissions if it doesn't exist
-            mkdir -p /home/${{ secrets.RECRUITER_APP_VM_USER }}/sivera-recruiter-application
+            mkdir -p /home/ubuntu/sivera-recruiter-application
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/sivera-recruiter-application
+            sudo chmod -R 755 /home/ubuntu/sivera-recruiter-application
 
-            # Fix permissions for the deployment directory
-            sudo chown -R $USER:$USER /home/${{ secrets.RECRUITER_APP_VM_USER }}/sivera-recruiter-application
-            sudo chmod -R 755 /home/${{ secrets.RECRUITER_APP_VM_USER }}/sivera-recruiter-application
-
-            # Define Docker Compose command (using v2 syntax which is already installed)
             DOCKER_COMPOSE="docker compose"
 
-            # Login to Docker Hub with credentials directly from GitHub secrets
             echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-            cd /home/${{ secrets.RECRUITER_APP_VM_USER }}/sivera-recruiter-application
+            cd /home/ubuntu/sivera-recruiter-application
             $DOCKER_COMPOSE pull || true
             $DOCKER_COMPOSE down || true
 
-            # Create environment files from secrets
             cat > .env.backend << EOF
             SMTP_HOST=${{ secrets.SMTP_HOST }}
             SMTP_PORT=${{ secrets.SMTP_PORT }}
@@ -126,8 +118,6 @@ jobs:
             NEXT_PUBLIC_AWS_CDN=${{ secrets.NEXT_PUBLIC_AWS_CDN }}
             EOF
 
-            # Create docker-compose.yml file with simple echo commands to avoid heredoc issues
-            # Note: Removed deprecated version field for compatibility with latest Docker Compose
             echo "# Recruiter application deployment configuration" > docker-compose.yml
             echo "services:" >> docker-compose.yml
             echo "  backend:" >> docker-compose.yml
@@ -147,5 +137,4 @@ jobs:
             echo "    env_file:" >> docker-compose.yml
             echo "      - .env.frontend" >> docker-compose.yml
 
-            # Pull the latest images and start the services
             $DOCKER_COMPOSE up -d
