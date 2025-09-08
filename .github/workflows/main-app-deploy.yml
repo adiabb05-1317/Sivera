@@ -62,7 +62,7 @@ jobs:
         with:
           host: ${{ secrets.AWS_MAIN_APP_HOST }}
           username: ${{ secrets.MAIN_APP_USER }}
-          key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          key: ${{ secrets.AWS_MAIN_SSH_PRIVATE_KEY }}
           script_stop: true
           script: |
             mkdir -p /home/${{ secrets.MAIN_APP_USER }}/sivera-main-application
