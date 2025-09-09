@@ -57,6 +57,15 @@ jobs:
             NEXT_PUBLIC_CORE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_CORE_BACKEND_URL }}
             NEXT_PUBLIC_PIPECAT_BASE_URL=${{ secrets.NEXT_PUBLIC_PIPECAT_BASE_URL }}
 
+      - name: CI SSH debug
+        run: |
+          mkdir -p /tmp/ci_ssh && chmod 700 /tmp/ci_ssh
+          echo "${{ secrets.AWS_MAIN_SSH_PRIVATE_KEY }}" > /tmp/ci_ssh/id_rsa
+          chmod 600 /tmp/ci_ssh/id_rsa
+          /usr/bin/ssh -i /tmp/ci_ssh/id_rsa -o StrictHostKeyChecking=no -vvv -o ConnectTimeout=10 ${{ secrets.MAIN_APP_USER }}@${{ secrets.AWS_MAIN_APP_HOST }} "echo ACTION_RUNNER_OK && whoami && uname -a"
+        env:
+          AWS_MAIN_SSH_PRIVATE_KEY: ${{ secrets.AWS_MAIN_SSH_PRIVATE_KEY }}
+
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
