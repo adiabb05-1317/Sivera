@@ -61,7 +61,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.AWS_MAIN_APP_HOST }}
-          username: ${{ secrets.MAIN_APP_USER }}
+          username: ${{ secrets.MAIN_APP_VM_USER }}
           key: ${{ secrets.AWS_MAIN_SSH_PRIVATE_KEY }}
           script_stop: true
           script: |
