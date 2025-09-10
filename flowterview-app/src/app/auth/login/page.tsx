@@ -343,7 +343,7 @@ export default function LoginPage() {
                   disabled={loading || !email}
                   className="w-full py-3 bg-app-blue-700 cursor-pointer dark:bg-app-blue-600"
                 >
-                  {loading ? "Sending link..." : "Continue with Email"}
+                  {loading ? "Sending link..." : "Send Magic Link"}
                 </Button>
 
                 {/* Show other options */}
@@ -351,7 +351,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(true)}
                   className="w-full text-sm text-app-blue-600 hover:text-app-blue-500 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
                 >
-                  Show other options
+                  Login with password
                 </button>
               </>
             ) : (
