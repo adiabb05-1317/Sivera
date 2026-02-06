@@ -5,20 +5,8 @@ services:
     ports:
       - "8010:8010"
     restart: always
-    environment:
-      - SMTP_HOST=smtp.loops.so
-      - SMTP_PORT=587
-      - SMTP_USER=loops
-      - SMTP_PASS=REDACTED_SMTP_PASS
-      - SUPABASE_URL=https://gdivpjirohbxantnnmmg.supabase.co
-      - SUPABASE_KEY=REDACTED_SUPABASE_KEY
-      - DAILY_API_KEY=REDACTED_DAILY_API_KEY
-      - GEMINI_API_KEY=REDACTED_GEMINI_API_KEY
-      - OPENAI_API_KEY=REDACTED_OPENAI_API_KEY
-      - AWS_ACCESS_KEY_ID=REDACTED_AWS_ACCESS_KEY_ID
-      - AWS_SECRET_ACCESS_KEY=REDACTED_AWS_SECRET_ACCESS_KEY
-      - AWS_REGION=us-east-1
-      - PORT=8010
+    env_file:
+      - .env.recruiter
 
   flowterview-app:
     image: sivera/sivera:recruiter-frontend
@@ -26,11 +14,5 @@ services:
     ports:
       - "3000:3000"
     restart: always
-    environment:
-      - NEXT_PUBLIC_SUPABASE_URL=https://gdivpjirohbxantnnmmg.supabase.co
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=REDACTED_SUPABASE_KEY
-      - DATABASE_URL=REDACTED_DATABASE_URL
-      - NEXT_PUBLIC_SITE_URL=https://recruiter.sivera.io
-      - NEXT_PUBLIC_SIVERA_BACKEND_URL=https://api.sivera.io
-      - NEXT_PUBLIC_CORE_BACKEND_URL=https://core.sivera.io
-      - NEXT_PUBLIC_AWS_CDN=https://sivera-recordings.s3.us-east-1.amazonaws.com
+    env_file:
+      - .env.recruiter
